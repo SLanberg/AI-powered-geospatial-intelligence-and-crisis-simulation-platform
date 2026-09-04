@@ -1,6 +1,6 @@
 # 🌆 Neural City
 
-City Signal is an application designed for reporting and tracking urban infrastructure issues.
+Neural City is an application designed for reporting and tracking urban infrastructure issues.
 
 ---
 
@@ -78,7 +78,7 @@ Run all database commands from inside the `app/` directory:
 ## 📁 Project Structure
 
 ```
-city-signal/
+neural-city/
 ├── start.command      # macOS 1-click startup script
 ├── start.bat          # Windows 1-click startup script
 ├── start.js           # Launch script runner
