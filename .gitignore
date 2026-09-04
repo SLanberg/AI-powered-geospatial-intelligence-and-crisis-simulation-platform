@@ -35,6 +35,13 @@ pnpm-debug.log*
 .env.test.local
 .env.production.local
 
+# SQLite Database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+
 # Vercel & Turbo
 .vercel
 .turbo
