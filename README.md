@@ -1,4 +1,4 @@
-# 🌆 City Signal
+# 🌆 Neural City
 
 City Signal is an application designed for reporting and tracking urban infrastructure issues.
 
