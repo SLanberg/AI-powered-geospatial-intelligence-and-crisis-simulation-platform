@@ -17,7 +17,7 @@ if (process.env.LAUNCHED_IN_NEW_WINDOW !== 'true') {
     return;
   } else if (isWin) {
     // Launch a fresh Command Prompt window on Windows
-    const command = `cmd /c start cmd /k "set LAUNCHED_IN_NEW_WINDOW=true && node \\"${scriptPath}\\""`;
+    const command = `start "Neural City" cmd /k set LAUNCHED_IN_NEW_WINDOW=true^&node "${scriptPath}"`;
     exec(command, () => process.exit(0));
     return;
   }
@@ -43,21 +43,38 @@ console.log(GREEN + `
                   ▀▀▀                                                                                                                          
 ` + RESET);
 
-// Terminal Progress Bar helper
 function renderProgressBar(percent, statusMessage) {
   const barWidth = 30;
   const completed = Math.round((barWidth * percent) / 100);
   const remaining = barWidth - completed;
   const progressBar = '█'.repeat(completed) + '░'.repeat(remaining);
 
-  process.stdout.clearLine(0);
-  process.stdout.cursorTo(0);
-  process.stdout.write(`Progress: [${GREEN}${progressBar}${RESET}] ${BOLD}${percent}%${RESET} | ${statusMessage}`);
+  if (process.stdout.isTTY && typeof process.stdout.clearLine === 'function') {
+    process.stdout.clearLine(0);
+    process.stdout.cursorTo(0);
+    process.stdout.write(`Progress: [${GREEN}${progressBar}${RESET}] ${BOLD}${percent}%${RESET} | ${statusMessage}`);
+  } else {
+    console.log(`Progress: [${progressBar}] ${percent}% | ${statusMessage}`);
+  }
 }
+
+const fs = require('fs');
 
 const appDir = path.join(__dirname, 'app');
 
 console.log('Initializing application components...\n');
+
+if (!fs.existsSync(path.join(appDir, 'node_modules'))) {
+  renderProgressBar(5, 'Installing dependencies in app directory...');
+  const { execSync } = require('child_process');
+  try {
+    execSync('npm install', { cwd: appDir, stdio: 'inherit' });
+  } catch (err) {
+    console.error('\nFailed to install dependencies:', err.message);
+    process.exit(1);
+  }
+}
+
 renderProgressBar(10, 'Starting Next.js Dev Server...');
 
 // Spawn Next.js server
