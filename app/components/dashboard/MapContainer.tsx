@@ -25,7 +25,6 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { CrisisTimeline } from "./CrisisTimeline";
 import { MapClusterPopup } from "./map/MapClusterPopup";
 import { MapHeader } from "./map/MapHeader";
-import { MapHUD } from "./map/MapHUD";
 import { MapIncidentPopup } from "./map/MapIncidentPopup";
 import { TelemetryFeed } from "./map/TelemetryFeed";
 import { useMapInteractions } from "./map/useMapInteractions";
@@ -523,6 +522,7 @@ interface MapContainerProps {
   showClusters: boolean;
   crisisActive: boolean;
   setCrisisActive: (active: boolean) => void;
+  onUseFeedContext?: (context: string) => void;
 
   selectedTime: string;
   setSelectedTime: React.Dispatch<
@@ -539,6 +539,7 @@ export function MapContainer({
   showIncidents,
   showClusters,
   crisisActive,
+  onUseFeedContext,
   selectedTime,
   setSelectedTime,
   selectedIncident,
@@ -547,7 +548,7 @@ export function MapContainer({
   const mapRef = useRef<MapRef | null>(null);
 
   const [mapTheme, setMapTheme] =
-    useState<MapTheme>("dark");
+    useState<MapTheme>("satellite");
 
   const [is3D, setIs3D] =
     useState(false);
@@ -557,8 +558,8 @@ export function MapContainer({
   const [selectedCluster, setSelectedCluster] =
     useState<ClusterPoint | null>(null);
 
-  const [sideDrawerOpen, setSideDrawerOpen] =
-    useState(true);
+  const [feedMinimized, setFeedMinimized] =
+    useState(false);
 
   const [viewState, setViewState] =
     useState<ViewState>({
@@ -734,203 +735,183 @@ export function MapContainer({
         is3D={is3D}
         toggle3D={toggle3D}
         resetView={resetView}
-        sideDrawerOpen={sideDrawerOpen}
-        setSideDrawerOpen={setSideDrawerOpen}
-        filteredIncidentsCount={filteredIncidents.length}
       />
 
       {/* ------------------------------------------------------------------ */}
       {/* Map                                                                 */}
       {/* ------------------------------------------------------------------ */}
 
-      <div className="relative w-full h-[640px] lg:h-[calc(100vh-230px)] min-h-[580px] overflow-hidden border-x border-b border-slate-800/90 rounded-b-xl bg-[#06080D]">
-        {isClient ? (
-        <Map
-          ref={mapRef}
-          mapLib={maplibregl}
-          initialViewState={
-            viewState
-          }
-          mapStyle={MAP_STYLES[mapTheme]}
-          style={{
-            width: "100%",
-            height: "100%",
-          }}
-          attributionControl={false}
-          fadeDuration={0}
-          onMoveEnd={(event) => {
-            /*
-             * React only receives camera state after movement.
-             *
-             * There is intentionally NO setState inside onMove.
-             */
-            setViewState(
-              event.viewState,
-            );
-          }}
-          interactiveLayerIds={[
-            ...(showIncidents
-              ? [
-                  "incident-circles",
-                  "incident-pulse",
-                  "incident-labels",
-                  "selected-incident",
-                ]
-              : []),
+      <div className="relative w-full h-[640px] lg:h-[calc(100vh-230px)] min-h-[580px]">
+        <div className="absolute inset-0 overflow-hidden rounded-b-xl border-x border-b border-border bg-background">
+          {isClient ? (
+          <Map
+            ref={mapRef}
+            mapLib={maplibregl}
+            initialViewState={
+              viewState
+            }
+            mapStyle={MAP_STYLES[mapTheme]}
+            style={{
+              width: "100%",
+              height: "100%",
+            }}
+            attributionControl={false}
+            fadeDuration={0}
+            onMoveEnd={(event) => {
+              /*
+               * React only receives camera state after movement.
+               *
+               * There is intentionally NO setState inside onMove.
+               */
+              setViewState(
+                event.viewState,
+              );
+            }}
+            interactiveLayerIds={[
+              ...(showIncidents
+                ? [
+                    "incident-circles",
+                    "incident-pulse",
+                    "incident-labels",
+                    "selected-incident",
+                  ]
+                : []),
 
-            ...(showClusters
-              ? [
-                  "cluster-circles",
-                  "cluster-labels",
-                ]
-              : []),
-          ]}
-          onClick={handleMapClick}
-          onError={(err) => {
-            console.error("map error", err);
-          }}
-          cursor="default"
-        >
-          <NavigationControl
-            position="bottom-right"
-            showCompass
-          />
+              ...(showClusters
+                ? [
+                    "cluster-circles",
+                    "cluster-labels",
+                  ]
+                : []),
+            ]}
+            onClick={handleMapClick}
+            onError={(err) => {
+              console.error("map error", err);
+            }}
+            cursor="default"
+          >
+            <NavigationControl
+              position="bottom-right"
+              showCompass
+            />
 
-          <FullscreenControl
-            position="bottom-right"
-          />
+            <FullscreenControl
+              position="bottom-right"
+            />
 
-          {/* -------------------------------------------------------------- */}
-          {/* Incidents                                                       */}
-          {/* -------------------------------------------------------------- */}
+            {/* -------------------------------------------------------------- */}
+            {/* Incidents                                                       */}
+            {/* -------------------------------------------------------------- */}
 
-          {showIncidents && (
-            <>
+            {showIncidents && (
+              <>
+                <Source
+                  id="incidents"
+                  type="geojson"
+                  data={
+                    incidentGeoJSON
+                  }
+                >
+                  <Layer
+                    {...INCIDENT_PULSE}
+                  />
+
+                  <Layer
+                    {...INCIDENT_CIRCLES}
+                  />
+
+                  <Layer
+                    {...INCIDENT_LABELS}
+                  />
+                </Source>
+
+                {/* -------------------------------------------------------- */}
+                {/* Selected incident                                        */}
+                {/* -------------------------------------------------------- */}
+
+                <Source
+                  id="selected-incident"
+                  type="geojson"
+                  data={
+                    selectedIncidentGeoJSON
+                  }
+                >
+                  <Layer
+                    {...SELECTED_INCIDENT}
+                  />
+                </Source>
+              </>
+            )}
+
+            {/* -------------------------------------------------------------- */}
+            {/* Operational clusters                                           */}
+            {/* -------------------------------------------------------------- */}
+
+            {showClusters && (
               <Source
-                id="incidents"
+                id="clusters"
                 type="geojson"
                 data={
-                  incidentGeoJSON
+                  clusterGeoJSON
                 }
               >
                 <Layer
-                  {...INCIDENT_PULSE}
+                  {...CLUSTER_CIRCLES}
                 />
 
                 <Layer
-                  {...INCIDENT_CIRCLES}
-                />
-
-                <Layer
-                  {...INCIDENT_LABELS}
+                  {...CLUSTER_LABELS}
                 />
               </Source>
+            )}
 
-              {/* -------------------------------------------------------- */}
-              {/* Selected incident                                        */}
-              {/* -------------------------------------------------------- */}
+            {/* -------------------------------------------------------------- */}
+            {/* Incident popup                                                  */}
+            {/* -------------------------------------------------------------- */}
 
-              <Source
-                id="selected-incident"
-                type="geojson"
-                data={
-                  selectedIncidentGeoJSON
-                }
+            {selectedIncident && (
+              <Popup
+                latitude={selectedIncident.lat}
+                longitude={selectedIncident.lng}
+                anchor="top"
+                offset={16}
+                closeButton={false}
+                closeOnClick={false}
+                onClose={() => setSelectedIncident(null)}
               >
-                <Layer
-                  {...SELECTED_INCIDENT}
+                <MapIncidentPopup
+                  selectedIncident={selectedIncident}
+                  setSelectedIncident={setSelectedIncident}
                 />
-              </Source>
-            </>
-          )}
+              </Popup>
+            )}
 
-          {/* -------------------------------------------------------------- */}
-          {/* Operational clusters                                           */}
-          {/* -------------------------------------------------------------- */}
+            {/* -------------------------------------------------------------- */}
+            {/* Cluster popup                                                   */}
+            {/* -------------------------------------------------------------- */}
 
-          {showClusters && (
-            <Source
-              id="clusters"
-              type="geojson"
-              data={
-                clusterGeoJSON
-              }
-            >
-              <Layer
-                {...CLUSTER_CIRCLES}
-              />
+            {selectedCluster && (
+              <Popup
+                latitude={selectedCluster.lat}
+                longitude={selectedCluster.lng}
+                anchor="top"
+                offset={16}
+                closeButton={false}
+                closeOnClick={false}
+                onClose={() => setSelectedCluster(null)}
+              >
+                <MapClusterPopup
+                  selectedCluster={selectedCluster}
+                  setSelectedCluster={setSelectedCluster}
+                />
+              </Popup>
+            )}
+          </Map>
+          ) : null}
 
-              <Layer
-                {...CLUSTER_LABELS}
-              />
-            </Source>
-          )}
+        </div>
 
-          {/* -------------------------------------------------------------- */}
-          {/* Incident popup                                                  */}
-          {/* -------------------------------------------------------------- */}
 
-          {selectedIncident && (
-            <Popup
-              latitude={selectedIncident.lat}
-              longitude={selectedIncident.lng}
-              anchor="top"
-              offset={16}
-              closeButton={false}
-              closeOnClick={false}
-              onClose={() => setSelectedIncident(null)}
-            >
-              <MapIncidentPopup
-                selectedIncident={selectedIncident}
-                setSelectedIncident={setSelectedIncident}
-              />
-            </Popup>
-          )}
-
-          {/* -------------------------------------------------------------- */}
-          {/* Cluster popup                                                   */}
-          {/* -------------------------------------------------------------- */}
-
-          {selectedCluster && (
-            <Popup
-              latitude={selectedCluster.lat}
-              longitude={selectedCluster.lng}
-              anchor="top"
-              offset={16}
-              closeButton={false}
-              closeOnClick={false}
-              onClose={() => setSelectedCluster(null)}
-            >
-              <MapClusterPopup
-                selectedCluster={selectedCluster}
-                setSelectedCluster={setSelectedCluster}
-              />
-            </Popup>
-          )}
-        </Map>
-        ) : null}
-
-        {/* ---------------------------------------------------------------- */}
-        {/* HUD                                                               */}
-        {/* ---------------------------------------------------------------- */}
-
-        <MapHUD
-          zoom={viewState.zoom}
-          pitch={viewState.pitch}
-        />
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Feed                                                              */}
-        {/* ---------------------------------------------------------------- */}
-
-        {sideDrawerOpen && (
-          <TelemetryFeed
-            filteredIncidents={filteredIncidents}
-            setSelectedIncident={setSelectedIncident}
-            setSelectedCluster={setSelectedCluster}
-            flyTo={flyTo}
-          />
-        )}
       </div>
 
       {/* ------------------------------------------------------------------ */}
@@ -938,15 +919,11 @@ export function MapContainer({
       {/* ------------------------------------------------------------------ */}
 
       <CrisisTimeline
-        selectedTime={
-          selectedTime
-        }
-        setSelectedTime={
-          setSelectedTime
-        }
-        crisisActive={
-          crisisActive
-        }
+        selectedTime={selectedTime}
+        setSelectedTime={setSelectedTime}
+        crisisActive={crisisActive}
+        selectedIncident={selectedIncident}
+        setSelectedIncident={setSelectedIncident}
       />
     </div>
   );

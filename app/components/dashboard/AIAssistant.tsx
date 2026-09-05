@@ -70,15 +70,24 @@ function MessageContent({ content }: { content: string }) {
 interface AIAssistantProps {
   isOpen: boolean;
   onClose: () => void;
+  context?: string | null;
+  onClearContext?: () => void;
 }
 
-export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
+export function AIAssistant({ isOpen, onClose, context, onClearContext }: AIAssistantProps) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT);
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const idCounterRef = useRef(1);
+
+  useEffect(() => {
+    if (!context || !isOpen) return;
+
+    const prompt = `Analyze the live telemetry feed context and recommend the next action plan.\n\nContext:\n${context}`;
+    setChatInput(prompt);
+  }, [context, isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -127,40 +136,65 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
     <>
       {/* Full-height side panel from right */}
       <div
-        className={`fixed top-0 right-0 bottom-0 z-50 w-[420px] max-w-[calc(100vw-1rem)] flex flex-col bg-[#080B14] border-l border-slate-800 shadow-2xl shadow-black/80 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 bottom-0 z-50 w-[420px] max-w-[calc(100vw-1rem)] flex flex-col bg-card border-l border-border shadow-2xl transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-[#060910] shrink-0">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-card shrink-0">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-blue-600/15 border border-blue-500/30 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-blue-400" />
+            <div className="h-8 w-8 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-slate-100 font-sans tracking-wide">
+              <div className="flex items-center">
+                <span className="text-sm font-semibold text-card-foreground font-sans tracking-wide">
                   AI Assistant
                 </span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
               </div>
-              <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+              <div className="text-[10px] font-mono text-muted-foreground mt-0.5">
                 Neural City · Tallinn SCADA Integration
               </div>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-600 hover:text-slate-300 hover:bg-slate-800/60 transition-all rounded-md p-1.5"
+            className="text-muted-foreground hover:text-card-foreground hover:bg-muted transition-all rounded-md p-1.5"
             title="Close (Esc)"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
+        {context && (
+          <div className="border-b border-primary/20 bg-primary/5 px-5 py-2.5 shrink-0">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-[9px] font-mono uppercase tracking-[0.18em] text-primary">
+                  <Sparkles className="h-3 w-3" />
+                  Feed context loaded
+                </div>
+                <div className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {context.split("\n").slice(0, 2).join(" · ")}
+                </div>
+              </div>
+
+              {onClearContext && (
+                <button
+                  type="button"
+                  onClick={onClearContext}
+                  className="text-[10px] font-mono text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Quick prompts bar */}
-        <div className="flex items-center gap-2 px-5 py-2.5 border-b border-slate-800/60 bg-[#060910]/80 shrink-0 flex-wrap">
-          <span className="text-[10px] font-mono text-slate-600 mr-1">Quick:</span>
+        <div className="flex items-center gap-2 px-5 py-2.5 border-b border-border bg-muted/40 shrink-0 flex-wrap">
+          <span className="text-[10px] font-mono text-muted-foreground mr-1">Quick:</span>
           {["status", "frequency", "incident", "cluster", "threat", "help"].map((p) => (
             <button
               key={p}
@@ -168,7 +202,7 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
                 setChatInput(p);
                 inputRef.current?.focus();
               }}
-              className="text-[10px] font-mono px-2 py-0.5 rounded border border-slate-700/80 text-slate-500 hover:text-blue-300 hover:border-blue-700/60 hover:bg-blue-950/20 transition-all"
+              className="text-[10px] font-mono px-2 py-0.5 rounded border border-border text-muted-foreground hover:text-primary hover:border-primary/60 hover:bg-primary/10 transition-all"
             >
               {p}
             </button>
@@ -182,12 +216,12 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
               {/* Avatar */}
               <div className="shrink-0 mt-0.5">
                 {msg.role === "assistant" ? (
-                  <div className="h-6 w-6 rounded-md bg-blue-600/15 border border-blue-500/30 flex items-center justify-center">
-                    <Sparkles className="w-3 h-3 text-blue-400" />
+                  <div className="h-6 w-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
+                    <Sparkles className="w-3 h-3 text-primary" />
                   </div>
                 ) : (
-                  <div className="h-6 w-6 rounded-md bg-slate-700/50 border border-slate-600/40 flex items-center justify-center">
-                    <Bot className="w-3 h-3 text-slate-400" />
+                  <div className="h-6 w-6 rounded-md bg-muted border border-border flex items-center justify-center">
+                    <Bot className="w-3 h-3 text-muted-foreground" />
                   </div>
                 )}
               </div>
@@ -197,14 +231,14 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
                 <div
                   className={`px-3.5 py-2.5 rounded-xl text-[12.5px] leading-relaxed whitespace-pre-line ${
                     msg.role === "user"
-                      ? "bg-slate-800 border border-slate-700 text-slate-200 rounded-tr-sm"
-                      : "bg-[#0D1220] border border-slate-800 text-slate-400 rounded-tl-sm"
+                      ? "bg-primary text-primary-foreground rounded-tr-sm"
+                      : "bg-muted border border-border text-foreground rounded-tl-sm"
                   }`}
                 >
                   <MessageContent content={msg.content} />
                 </div>
                 {msg.ts && (
-                  <span className="text-[9px] font-mono text-slate-700 px-1">{msg.ts}</span>
+                  <span className="text-[9px] font-mono text-muted-foreground/70 px-1">{msg.ts}</span>
                 )}
               </div>
             </div>
@@ -213,14 +247,14 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
           {/* Typing indicator */}
           {isTyping && (
             <div className="flex gap-3">
-              <div className="h-6 w-6 rounded-md bg-blue-600/15 border border-blue-500/30 flex items-center justify-center shrink-0">
-                <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
+              <div className="h-6 w-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
+                <Loader2 className="w-3 h-3 text-primary animate-spin" />
               </div>
-              <div className="bg-[#0D1220] border border-slate-800 px-3.5 py-2.5 rounded-xl rounded-tl-sm">
+              <div className="bg-muted border border-border px-3.5 py-2.5 rounded-xl rounded-tl-sm">
                 <div className="flex gap-1 items-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500/60 animate-bounce [animation-delay:0ms]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500/60 animate-bounce [animation-delay:150ms]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500/60 animate-bounce [animation-delay:300ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
                 </div>
               </div>
             </div>
@@ -229,8 +263,8 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
         </div>
 
         {/* Input */}
-        <div className="px-5 py-4 border-t border-slate-800 bg-[#060910] shrink-0">
-          <div className="flex items-center gap-3 bg-[#0D1220] border border-slate-700/80 rounded-xl px-4 py-2.5 focus-within:border-blue-600/50 focus-within:shadow-sm focus-within:shadow-blue-500/5 transition-all">
+        <div className="px-5 py-4 border-t border-border bg-card shrink-0">
+          <div className="flex items-center gap-3 bg-muted/60 border border-border rounded-xl px-4 py-2.5 focus-within:border-primary/50 transition-all">
             <input
               ref={inputRef}
               id="ai-assistant-input"
@@ -239,10 +273,10 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
               placeholder="Ask about grid status, incidents, frequency..."
-              className="flex-1 bg-transparent text-[12.5px] text-slate-200 placeholder-slate-600 outline-none font-mono"
+              className="flex-1 bg-transparent text-[12.5px] text-foreground placeholder-muted-foreground outline-none font-mono"
             />
             <div className="flex items-center gap-2 shrink-0">
-              <span className="hidden sm:flex items-center gap-1 text-[9px] font-mono text-slate-700 border border-slate-800 rounded px-1.5 py-0.5">
+              <span className="hidden sm:flex items-center gap-1 text-[9px] font-mono text-muted-foreground border border-border rounded px-1.5 py-0.5">
                 <CornerDownLeft className="w-2.5 h-2.5" />
                 Enter
               </span>
@@ -250,15 +284,12 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
                 id="ai-assistant-send"
                 onClick={sendMessage}
                 disabled={!chatInput.trim() || isTyping}
-                className="text-slate-600 hover:text-blue-400 disabled:text-slate-800 transition-colors p-0.5"
+                className="text-muted-foreground hover:text-primary disabled:opacity-40 transition-colors p-0.5"
               >
                 <Send className="w-4 h-4" />
               </button>
             </div>
           </div>
-          <p className="text-[9.5px] font-mono text-slate-700 mt-2 text-center">
-            Grid AI · Tallinn SCADA data · Real-time situational awareness
-          </p>
         </div>
       </div>
     </>

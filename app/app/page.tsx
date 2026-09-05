@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { MapContainer } from "@/components/dashboard/MapContainer";
 import { IncidentMatrix } from "@/components/dashboard/IncidentMatrix";
 import { AIAssistant } from "@/components/dashboard/AIAssistant";
+import { TelemetryFeed } from "@/components/dashboard/map/TelemetryFeed";
 
 import { Incident, MOCK_CLUSTERS, MOCK_INCIDENTS } from "@/components/dashboard/data";
 import {
@@ -18,110 +19,163 @@ import {
   Sparkles,
   PanelRightOpen,
   PanelRightClose,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function NeuralCityDashboard() {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("map");
   const [showIncidents, setShowIncidents] = useState<boolean>(true);
   const [showClusters, setShowClusters] = useState<boolean>(true);
   const [crisisActive, setCrisisActive] = useState<boolean>(true);
   const [selectedTime, setSelectedTime] = useState<string>("08:47");
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
+  const [sideDrawerOpen, setSideDrawerOpen] = useState(true);
+  const [feedMinimized, setFeedMinimized] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [aiContext, setAiContext] = useState<string | null>(null);
+
+  const filteredIncidents = useMemo(() => {
+    switch (selectedTime) {
+      case "08:40":
+        return MOCK_INCIDENTS.slice(4);
+      case "08:44":
+        return MOCK_INCIDENTS.slice(2);
+      case "08:47":
+      default:
+        return MOCK_INCIDENTS;
+    }
+  }, [selectedTime]);
 
   const handleSelectIncidentFromMatrix = (incident: Incident) => {
     setSelectedIncident(incident);
     setActiveTab("map");
   };
 
+  const handleUseFeedContext = (context: string) => {
+    setAiContext(context);
+    setAiOpen(true);
+  };
+
+  const handleFeedSelectIncident = (incident: Incident) => {
+    setSelectedIncident(incident);
+    setActiveTab("map");
+  };
+
   return (
-    <div className="min-h-screen w-full bg-[#05070D] text-slate-100 flex font-sans selection:bg-blue-600/40">
-      {/* Left sidebar navigation (~220px wide) */}
+    <div className="min-h-screen w-full bg-background text-foreground flex font-sans selection:bg-primary/20">
+      {/* Left sidebar navigation (~220px wide or collapsed) */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen((open) => !open)}
       />
 
       {/* Main Command Center Content Area - Full fluid width */}
       <main
-        className={`ml-[220px] flex-1 min-h-screen flex flex-col px-4 md:px-6 py-4 w-[calc(100%-220px)] overflow-x-hidden transition-all duration-300 ease-in-out ${
-          aiOpen ? "lg:mr-[420px]" : ""
-        }`}
+        className={`flex-1 min-h-screen flex flex-col px-4 md:px-6 py-4 overflow-x-hidden transition-all duration-300 ease-in-out ${
+          sidebarOpen ? "ml-[220px] w-[calc(100%-220px)]" : "ml-0 w-full"
+        } ${aiOpen ? "lg:mr-[420px]" : ""}`}
       >
         {/* Top Command Bar & Tallinn Grid Telemetry Ribbon */}
-        <header className="w-full bg-[#080B14]/90 backdrop-blur border border-slate-800/80 rounded-xl px-4 py-2.5 mb-4 flex flex-wrap items-center justify-between gap-3 shadow-lg shadow-black/40">
-          {/* Left: City & Grid Status */}
+        <header className="w-full bg-card/90 backdrop-blur border border-border rounded-xl px-4 py-2.5 mb-4 flex flex-wrap items-center justify-between gap-3 shadow-lg">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-              </span>
-              <h1 className="font-bold text-sm tracking-wider uppercase text-slate-100 font-sans">
-                Tallinn Grid Command
-              </h1>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-2 font-mono text-[11px] text-slate-400 border-l border-slate-800 pl-3">
-              <span className="text-blue-400 font-medium">SECTOR 37-TLN</span>
-              <span className="text-slate-600">/</span>
-              <span>HARJU ELECTRICAL NODE</span>
-            </div>
-
-            <Badge
-              variant="outline"
-              className={`hidden md:inline-flex font-mono text-[10px] px-2 py-0.5 ${crisisActive
-                  ? "bg-rose-950/70 text-rose-300 border-rose-800 animate-pulse"
-                  : "bg-emerald-950/50 text-emerald-300 border-emerald-800"
-                }`}
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((open) => !open)}
+              aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+              title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+              className="group relative flex items-center justify-center rounded-lg border border-border bg-muted/80 h-7 w-7 p-0 text-foreground transition-all hover:border-primary/60 hover:text-primary"
             >
-              {crisisActive ? "ALERT LEVEL: TIER-1 ANOMALY (08:47)" : "SYSTEM STATUS: NOMINAL"}
-            </Badge>
+              <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+                {sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+              </span>
+              {sidebarOpen ? (
+                <PanelLeftClose className="h-3.5 w-3.5 text-foreground" />
+              ) : (
+                <PanelLeftOpen className="h-3.5 w-3.5 text-foreground" />
+              )}
+            </button>
           </div>
-
           {/* Right: Real-time Telemetry Indicators */}
           <div className="flex items-center gap-3 font-mono text-xs">
-            <div className="flex items-center gap-4 bg-[#05070D]/80 border border-slate-800/80 rounded-lg px-3 py-1 text-[11px]">
+            <div className="flex items-center gap-4 bg-muted/80 border border-border rounded-lg px-3 py-1 text-[11px]">
               <div className="flex items-center gap-1.5">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-zap w-3.5 h-3.5 text-amber-400" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"></path></svg>
-                <span className="text-slate-500">FREQ:</span>
-                <span className="text-slate-200 font-bold">49.92 Hz</span>
+                <span className="text-muted-foreground">FREQ:</span>
+                <span className="text-foreground font-bold">49.92 Hz</span>
                 <span className="text-rose-400 text-[9.5px]">(-0.08)</span>
               </div>
-              <div className="hidden lg:flex items-center gap-1.5 border-l border-slate-800 pl-3">
+              <div className="hidden lg:flex items-center gap-1.5 border-l border-border pl-3">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-activity w-3.5 h-3.5 text-emerald-400" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg>
-                <span className="text-slate-500">LOSS:</span>
+                <span className="text-muted-foreground">LOSS:</span>
                 <span className="text-emerald-400 font-bold">0.04%</span>
               </div>
-              <div className="hidden sm:flex items-center gap-1.5 border-l border-slate-800 pl-3">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-radio w-3.5 h-3.5 text-blue-400" aria-hidden="true"><path d="M16.247 7.761a6 6 0 0 1 0 8.478"></path><path d="M19.075 4.933a10 10 0 0 1 0 14.134"></path><path d="M4.925 19.067a10 10 0 0 1 0-14.134"></path><path d="M7.753 16.239a6 6 0 0 1 0-8.478"></path><circle cx="12" cy="12" r="2"></circle></svg>
-                <span className="text-slate-500">NODES:</span>
-                <span className="text-slate-200 font-bold">1,420/1,424</span>
+              <div className="hidden sm:flex items-center gap-1.5 border-l border-border pl-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-radio w-3.5 h-3.5 text-primary" aria-hidden="true"><path d="M16.247 7.761a6 6 0 0 1 0 8.478"></path><path d="M19.075 4.933a10 10 0 0 1 0 14.134"></path><path d="M4.925 19.067a10 10 0 0 1 0-14.134"></path><path d="M7.753 16.239a6 6 0 0 1 0-8.478"></path><circle cx="12" cy="12" r="2"></circle></svg>
+                <span className="text-muted-foreground">NODES:</span>
+                <span className="text-foreground font-bold">1,420/1,424</span>
               </div>
-              <div className="flex items-center gap-1.5 border-l border-slate-800 pl-3">
+              <div className="flex items-center gap-1.5 border-l border-border pl-3">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-triangle-alert w-3.5 h-3.5 text-rose-400" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
-                <span className="text-slate-500">ACTIVE:</span>
+                <span className="text-muted-foreground">ACTIVE:</span>
                 <span className="text-rose-300 font-bold">6</span>
               </div>
             </div>
 
             <button
               type="button"
+              onClick={() => setSideDrawerOpen((open) => !open)}
+              aria-expanded={sideDrawerOpen}
+              aria-label={sideDrawerOpen ? "Close feed" : "Open feed"}
+              title={sideDrawerOpen ? "Close feed" : "Open feed"}
+              className="group relative inline-flex shrink-0 items-center justify-center bg-clip-padding font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 gap-1 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5 h-7 w-7 p-0 border border-border bg-muted text-foreground"
+            >
+              <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+                {sideDrawerOpen ? "Close feed" : "Open feed"}
+              </span>
+              <Radio className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
               onClick={() => setAiOpen((open) => !open)}
               aria-label={aiOpen ? "Close secondary sidebar" : "Open secondary sidebar"}
-              className="flex items-center gap-2 rounded-lg border border-slate-700/80 bg-[#05070D]/80 px-2.5 py-1.5 text-[9px] font-mono uppercase tracking-[0.18em] text-slate-300 shadow-sm shadow-black/30 transition-all hover:border-blue-500/60 hover:text-blue-300"
+              title={aiOpen ? "Close secondary sidebar" : "Open secondary sidebar"}
+              className="group relative flex items-center justify-center rounded-lg border border-border bg-muted/80 h-7 w-7 p-0 text-foreground transition-all hover:border-primary/60 hover:text-primary"
             >
-              <span className={`h-2 w-2 rounded-full ${aiOpen ? "bg-emerald-400" : "bg-slate-500"}`} />
-              <span>Menu</span>
+              <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+                {aiOpen ? "Close secondary sidebar" : "Open secondary sidebar"}
+              </span>
               {aiOpen ? (
-                <PanelRightClose className="h-3.5 w-3.5 text-slate-200" />
+                <PanelRightClose className="h-3.5 w-3.5 text-foreground" />
               ) : (
-                <PanelRightOpen className="h-3.5 w-3.5 text-slate-200" />
+                <PanelRightOpen className="h-3.5 w-3.5 text-foreground" />
               )}
             </button>
           </div>
         </header>
+
+        {sideDrawerOpen && (
+          <div className="pointer-events-none absolute inset-x-0 top-20 z-30 flex justify-end pr-4 md:pr-6">
+            <div className="pointer-events-auto">
+              <TelemetryFeed
+                filteredIncidents={filteredIncidents}
+                setSelectedIncident={setSelectedIncident}
+                setSelectedCluster={() => undefined}
+                flyTo={() => undefined}
+                isMinimized={feedMinimized}
+                onToggleMinimize={() => setFeedMinimized((value) => !value)}
+                onClose={() => setSideDrawerOpen(false)}
+                onUseContext={handleUseFeedContext}
+                onSelectIncident={handleFeedSelectIncident}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Viewport Content Switcher */}
         {activeTab === "map" || activeTab === "timeline" ? (
@@ -131,6 +185,7 @@ export default function NeuralCityDashboard() {
               showClusters={showClusters}
               crisisActive={crisisActive}
               setCrisisActive={setCrisisActive}
+              onUseFeedContext={handleUseFeedContext}
               selectedTime={selectedTime}
               setSelectedTime={setSelectedTime}
               selectedIncident={selectedIncident}
@@ -148,30 +203,30 @@ export default function NeuralCityDashboard() {
               {MOCK_CLUSTERS.map((cluster) => (
                 <div
                   key={cluster.id}
-                  className="bg-[#090D16] border border-slate-800/80 rounded-xl p-4 space-y-2 hover:border-blue-500/50 transition-colors"
+                  className="bg-card border border-border rounded-xl p-4 space-y-2 hover:border-primary/50 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-blue-400" />
-                      <span className="font-semibold text-xs text-slate-100">
+                      <Layers className="w-4 h-4 text-primary" />
+                      <span className="font-semibold text-xs text-card-foreground">
                         {cluster.name}
                       </span>
                     </div>
-                    <Badge className="bg-blue-950 text-blue-300 border-blue-800 font-mono text-[10px]">
+                    <Badge className="bg-primary/20 text-primary border-primary/40 font-mono text-[10px]">
                       {cluster.id}
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs font-mono pt-2 text-slate-400 border-t border-slate-800/60">
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono pt-2 text-muted-foreground border-t border-border">
                     <div>
-                      <span className="text-slate-500">INCIDENTS:</span>{" "}
+                      <span className="text-muted-foreground">INCIDENTS:</span>{" "}
                       <span className="text-rose-400 font-bold">{cluster.incidentCount}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500">RADIUS:</span> {cluster.radiusKm} km
+                      <span className="text-muted-foreground">RADIUS:</span> {cluster.radiusKm} km
                     </div>
                     <div className="col-span-2">
-                      <span className="text-slate-500">TYPE:</span> {cluster.primaryCategory}
+                      <span className="text-muted-foreground">TYPE:</span> {cluster.primaryCategory}
                     </div>
                   </div>
                 </div>
@@ -185,6 +240,7 @@ export default function NeuralCityDashboard() {
                 showClusters={true}
                 crisisActive={crisisActive}
                 setCrisisActive={setCrisisActive}
+                onUseFeedContext={handleUseFeedContext}
                 selectedTime={selectedTime}
                 setSelectedTime={setSelectedTime}
                 selectedIncident={selectedIncident}
@@ -196,34 +252,34 @@ export default function NeuralCityDashboard() {
           /* Telemetry & Diagnostics Full Panel */
           <div className="w-full space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="p-4 rounded-xl border border-slate-800/90 bg-[#080B14]">
-                <div className="flex items-center justify-between text-slate-500 text-[11px] font-mono">
+              <div className="p-4 rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between text-muted-foreground text-[11px] font-mono">
                   <span>GRID FREQUENCY</span>
                   <Zap className="w-4 h-4 text-amber-400" />
                 </div>
-                <div className="text-2xl text-slate-100 font-bold font-mono mt-2">49.92 Hz</div>
+                <div className="text-2xl text-card-foreground font-bold font-mono mt-2">49.92 Hz</div>
                 <div className="text-[10px] text-rose-400 mt-1 font-mono">
                   -0.08 Hz (08:47:01 Drop detected)
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl border border-slate-800/90 bg-[#080B14]">
-                <div className="flex items-center justify-between text-slate-500 text-[11px] font-mono">
+              <div className="p-4 rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between text-muted-foreground text-[11px] font-mono">
                   <span>PACKET LOSS RATE</span>
                   <Activity className="w-4 h-4 text-emerald-400" />
                 </div>
-                <div className="text-2xl text-slate-100 font-bold font-mono mt-2">0.04%</div>
+                <div className="text-2xl text-card-foreground font-bold font-mono mt-2">0.04%</div>
                 <div className="text-[10px] text-emerald-400 mt-1 font-mono">
                   Subsea & terrestrial links stable
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl border border-slate-800/90 bg-[#080B14]">
-                <div className="flex items-center justify-between text-slate-500 text-[11px] font-mono">
+              <div className="p-4 rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between text-muted-foreground text-[11px] font-mono">
                   <span>SENSOR HEARTBEATS</span>
-                  <Radio className="w-4 h-4 text-blue-400" />
+                  <Radio className="w-4 h-4 text-primary" />
                 </div>
-                <div className="text-2xl text-slate-100 font-bold font-mono mt-2">
+                <div className="text-2xl text-card-foreground font-bold font-mono mt-2">
                   1,420 / 1,424
                 </div>
                 <div className="text-[10px] text-amber-400 mt-1 font-mono">
@@ -231,28 +287,28 @@ export default function NeuralCityDashboard() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl border border-slate-800/90 bg-[#080B14]">
-                <div className="flex items-center justify-between text-slate-500 text-[11px] font-mono">
+              <div className="p-4 rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between text-muted-foreground text-[11px] font-mono">
                   <span>FAILOVER PROTOCOL</span>
                   <ShieldAlert className="w-4 h-4 text-rose-400" />
                 </div>
                 <div className="text-2xl text-rose-400 font-bold font-mono mt-2">ENGAGED</div>
-                <div className="text-[10px] text-slate-400 mt-1 font-mono">
+                <div className="text-[10px] text-muted-foreground mt-1 font-mono">
                   Vanalinn & Ülemiste isolations active
                 </div>
               </div>
             </div>
 
             {/* Substation Relay Telemetry Grid */}
-            <div className="bg-[#080B14] border border-slate-800/80 rounded-xl p-5 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+            <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+              <div className="flex items-center justify-between border-b border-border pb-3">
                 <div className="flex items-center gap-2">
-                  <Server className="w-4 h-4 text-blue-400" />
-                  <h3 className="font-semibold text-xs tracking-wider uppercase text-slate-100 font-sans">
+                  <Server className="w-4 h-4 text-primary" />
+                  <h3 className="font-semibold text-xs tracking-wider uppercase text-card-foreground font-sans">
                     Tallinn Substation Primary Relays
                   </h3>
                 </div>
-                <Badge variant="outline" className="font-mono text-[10px] bg-slate-900 border-slate-800 text-slate-400">
+                <Badge variant="outline" className="font-mono text-[10px] bg-muted border-border text-muted-foreground">
                   REAL-TIME TELEMETRY STREAM
                 </Badge>
               </div>
@@ -261,14 +317,14 @@ export default function NeuralCityDashboard() {
                 {MOCK_INCIDENTS.map((inc) => (
                   <div
                     key={inc.id}
-                    className="p-3 rounded-lg border border-slate-800/70 bg-[#05070D] flex items-center justify-between"
+                    className="p-3 rounded-lg border border-border bg-muted/40 flex items-center justify-between"
                   >
                     <div>
-                      <div className="text-[10px] text-slate-500">{inc.nodeId}</div>
-                      <div className="text-xs font-semibold text-slate-200 mt-0.5">
+                      <div className="text-[10px] text-muted-foreground">{inc.nodeId}</div>
+                      <div className="text-xs font-semibold text-card-foreground mt-0.5">
                         {inc.title.split(" ")[0]} Sector
                       </div>
-                      <div className="text-[9.5px] text-slate-400 mt-0.5">{inc.category}</div>
+                      <div className="text-[9.5px] text-muted-foreground mt-0.5">{inc.category}</div>
                     </div>
                     <Badge
                       variant={inc.severity === "critical" ? "destructive" : "outline"}
@@ -284,7 +340,12 @@ export default function NeuralCityDashboard() {
         )}
       </main>
 
-      <AIAssistant isOpen={aiOpen} onClose={() => setAiOpen(false)} />
+      <AIAssistant
+        isOpen={aiOpen}
+        onClose={() => setAiOpen(false)}
+        context={aiContext}
+        onClearContext={() => setAiContext(null)}
+      />
     </div>
   );
 }

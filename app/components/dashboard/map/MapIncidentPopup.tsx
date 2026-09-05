@@ -14,7 +14,7 @@ export function MapIncidentPopup({
   setSelectedIncident,
 }: MapIncidentPopupProps) {
   return (
-    <div className="bg-[#0B0F19] text-slate-200 p-3 rounded-lg border border-slate-700 shadow-xl max-w-xs">
+    <div className="bg-popover text-popover-foreground p-3 rounded-lg border border-border shadow-xl max-w-xs">
       <div className="flex justify-between gap-3">
         <div>
           <div className="flex gap-2 items-center">
@@ -25,22 +25,22 @@ export function MapIncidentPopup({
               {selectedIncident.severity}
             </Badge>
 
-            <span className="font-mono text-[10px] text-slate-400">
+            <span className="font-mono text-[10px] text-muted-foreground">
               {selectedIncident.timestamp}
             </span>
           </div>
 
-          <h4 className="font-semibold text-xs mt-1">{selectedIncident.title}</h4>
+          <h4 className="font-semibold text-xs mt-1 text-popover-foreground">{selectedIncident.title}</h4>
         </div>
 
-        <button onClick={() => setSelectedIncident(null)}>
+        <button onClick={() => setSelectedIncident(null)} className="text-muted-foreground hover:text-popover-foreground">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      <p className="text-[11px] mt-2 leading-relaxed">{selectedIncident.description}</p>
+      <p className="text-[11px] mt-2 leading-relaxed text-popover-foreground">{selectedIncident.description}</p>
 
-      <div className="mt-2 pt-2 border-t border-slate-800 font-mono text-[10px] text-slate-500">
+      <div className="mt-2 pt-2 border-t border-border font-mono text-[10px] text-muted-foreground">
         NODE: {selectedIncident.nodeId}
         <br />
         STATUS: {selectedIncident.status}

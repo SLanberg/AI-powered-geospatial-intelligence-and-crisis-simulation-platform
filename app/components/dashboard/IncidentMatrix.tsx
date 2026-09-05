@@ -37,16 +37,16 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
   }, [severityFilter, searchQuery]);
 
   return (
-    <div className="w-full bg-[#080B14] border border-slate-800/80 rounded-xl overflow-hidden shadow-2xl p-5 font-sans text-slate-200 space-y-4">
+    <div className="w-full bg-card border border-border rounded-xl overflow-hidden shadow-2xl p-5 font-sans text-card-foreground space-y-4">
       {/* Header & Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <div className="flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-lg bg-rose-950/60 border border-rose-800/60 flex items-center justify-center text-rose-400">
             <AlertTriangle className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-sm tracking-wider uppercase text-slate-100 font-sans">
+              <h3 className="font-semibold text-sm tracking-wider uppercase text-card-foreground font-sans">
                 Tallinn Incident Log Matrix
               </h3>
               <Badge
@@ -56,7 +56,7 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
                 {filteredIncidents.length} EVENTS
               </Badge>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               Active telemetry anomalies captured during the 08:47 grid event window
             </p>
           </div>
@@ -64,15 +64,15 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
 
         {/* Severity Filter Tabs & Search */}
         <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+          <div className="flex items-center bg-muted border border-border rounded-lg p-0.5">
             {["all", "critical", "warning", "info"].map((sev) => (
               <button
                 key={sev}
                 onClick={() => setSeverityFilter(sev)}
                 className={`px-2.5 py-1 rounded text-[11px] capitalize transition-colors ${
                   severityFilter === sev
-                    ? "bg-blue-600/30 text-blue-300 border border-blue-500/50 font-semibold"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "bg-primary/20 text-primary border border-primary/40 font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {sev}
@@ -81,42 +81,42 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
           </div>
 
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search nodes, IDs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-slate-900/90 border border-slate-800 rounded-lg pl-8 pr-3 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 w-44"
+              className="bg-muted border border-border rounded-lg pl-8 pr-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary w-44"
             />
           </div>
         </div>
       </div>
 
       {/* Incident Table */}
-      <div className="rounded-lg border border-slate-800/80 overflow-hidden bg-[#05070D]">
+      <div className="rounded-lg border border-border overflow-hidden bg-muted/30">
         <Table>
-          <TableHeader className="bg-slate-900/90 border-b border-slate-800">
-            <TableRow className="hover:bg-transparent border-slate-800">
-              <TableHead className="font-mono text-[11px] text-slate-400">
+          <TableHeader className="bg-muted/80 border-b border-border">
+            <TableRow className="hover:bg-transparent border-border">
+              <TableHead className="font-mono text-[11px] text-muted-foreground">
                 INCIDENT ID
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-slate-400">
+              <TableHead className="font-mono text-[11px] text-muted-foreground">
                 TIMESTAMP
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-slate-400">
+              <TableHead className="font-mono text-[11px] text-muted-foreground">
                 SEVERITY
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-slate-400">
+              <TableHead className="font-mono text-[11px] text-muted-foreground">
                 INCIDENT SUMMARY
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-slate-400">
+              <TableHead className="font-mono text-[11px] text-muted-foreground">
                 CATEGORY
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-slate-400">
+              <TableHead className="font-mono text-[11px] text-muted-foreground">
                 TALLINN NODE
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-slate-400 text-right">
+              <TableHead className="font-mono text-[11px] text-muted-foreground text-right">
                 ACTION
               </TableHead>
             </TableRow>
@@ -124,7 +124,7 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
           <TableBody>
             {filteredIncidents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-slate-500 font-mono text-xs">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground font-mono text-xs">
                   NO INCIDENTS MATCHING FILTER CRITERIA
                 </TableCell>
               </TableRow>
@@ -132,12 +132,12 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
               filteredIncidents.map((inc) => (
                 <TableRow
                   key={inc.id}
-                  className="border-slate-800/60 hover:bg-slate-900/40 transition-colors"
+                  className="border-border/60 hover:bg-muted/50 transition-colors"
                 >
-                  <TableCell className="font-mono text-xs text-blue-400 font-semibold">
+                  <TableCell className="font-mono text-xs text-primary font-semibold">
                     {inc.id}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-300">
+                  <TableCell className="font-mono text-xs text-card-foreground">
                     {inc.timestamp}
                   </TableCell>
                   <TableCell>
@@ -153,17 +153,17 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium text-xs text-slate-200">
+                    <div className="font-medium text-xs text-card-foreground">
                       {inc.title}
                     </div>
-                    <div className="text-[11px] text-slate-400 line-clamp-1">
+                    <div className="text-[11px] text-muted-foreground line-clamp-1">
                       {inc.description}
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-slate-300">
+                  <TableCell className="text-xs text-card-foreground">
                     {inc.category}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-400">
+                  <TableCell className="font-mono text-xs text-muted-foreground">
                     {inc.nodeId}
                   </TableCell>
                   <TableCell className="text-right">
@@ -171,7 +171,7 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
                       size="sm"
                       variant="ghost"
                       onClick={() => onSelectIncident(inc)}
-                      className="h-7 px-2 text-xs text-blue-400 hover:text-blue-200 hover:bg-blue-950/50 font-mono"
+                      className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10 font-mono"
                     >
                       <MapPin className="w-3.5 h-3.5 mr-1" />
                       Locate Map
