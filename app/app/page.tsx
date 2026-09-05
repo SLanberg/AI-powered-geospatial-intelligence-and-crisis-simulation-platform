@@ -41,13 +41,6 @@ export default function NeuralCityDashboard() {
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        showIncidents={showIncidents}
-        setShowIncidents={setShowIncidents}
-        showClusters={showClusters}
-        setShowClusters={setShowClusters}
-        crisisActive={crisisActive}
-        setCrisisActive={setCrisisActive}
-        selectedTime={selectedTime}
       />
 
       {/* Main Command Center Content Area - Full fluid width */}

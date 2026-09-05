@@ -78,6 +78,7 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const idCounterRef = useRef(1);
 
   useEffect(() => {
     if (isOpen) {
@@ -100,7 +101,7 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
   const sendMessage = () => {
     if (!chatInput.trim() || isTyping) return;
     const userMsg: ChatMessage = {
-      id: `u-${Date.now()}`,
+      id: `u-${idCounterRef.current++}`,
       role: "user",
       content: chatInput.trim(),
       ts: now(),
@@ -112,7 +113,7 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
       setChatMessages((prev) => [
         ...prev,
         {
-          id: `a-${Date.now()}`,
+          id: `a-${idCounterRef.current++}`,
           role: "assistant",
           content: getReply(userMsg.content),
           ts: now(),

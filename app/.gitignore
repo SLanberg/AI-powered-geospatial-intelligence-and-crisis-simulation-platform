@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# generated MapLibre worker assets
+/public/maplibre/
+
 # production
 /build
 
