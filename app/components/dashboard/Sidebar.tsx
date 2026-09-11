@@ -7,7 +7,6 @@ import {
   Activity,
   Radio,
   Cpu,
-  PanelLeftClose,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,14 +16,12 @@ interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   isOpen?: boolean;
-  onToggle?: () => void;
 }
 
 export function Sidebar({
   activeTab,
   setActiveTab,
   isOpen = true,
-  onToggle,
 }: SidebarProps) {
   const navItems = [
     { id: "map", label: "Map View", icon: Map, badge: null },
@@ -55,20 +52,6 @@ export function Sidebar({
                   Neural City
                 </span>
               </div>
-              {onToggle && (
-                <button
-                  type="button"
-                  onClick={onToggle}
-                  aria-label="Hide sidebar"
-                  title="Hide sidebar"
-                  className="group relative flex items-center justify-center rounded-lg border border-border bg-muted/80 h-7 w-7 p-0 text-foreground transition-all hover:border-primary/60 hover:text-primary"
-                >
-                  <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
-                    Hide sidebar
-                  </span>
-                  <PanelLeftClose className="h-3.5 w-3.5 text-foreground" />
-                </button>
-              )}
             </div>
 
             <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
