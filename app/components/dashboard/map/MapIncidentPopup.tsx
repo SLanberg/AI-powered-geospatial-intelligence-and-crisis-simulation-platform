@@ -1,4 +1,4 @@
-import { X, AlertTriangle, ShieldCheck, AlertCircle } from "lucide-react";
+import { X, AlertTriangle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 

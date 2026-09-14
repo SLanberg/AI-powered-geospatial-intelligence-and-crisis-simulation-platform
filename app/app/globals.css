@@ -211,3 +211,41 @@
 .mapboxgl-popup-tip {
   display: none !important;
 }
+
+/* Keep the native map controls within the same low-glare tactical system. */
+.maplibregl-ctrl-group {
+  overflow: hidden;
+  border: 1px solid #2a3545 !important;
+  border-radius: 6px !important;
+  background: #121820 !important;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 35%) !important;
+}
+
+.maplibregl-ctrl-group button {
+  background-color: #121820 !important;
+  border-color: #2a3545 !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background-color: #1e2530 !important;
+}
+
+.maplibregl-ctrl-icon {
+  filter: invert(91%) sepia(15%) saturate(333%) hue-rotate(174deg) brightness(106%) contrast(94%);
+}
+
+/* Smooth & subtle tactical ping animation override */
+@keyframes smooth-ping {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.6;
+  }
+  75%, 100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+.animate-ping {
+  animation: smooth-ping 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite !important;
+}

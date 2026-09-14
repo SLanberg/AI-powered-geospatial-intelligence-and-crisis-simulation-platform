@@ -25,7 +25,7 @@ export function Sidebar({
   isOpen = true,
 }: SidebarProps) {
   const navItems = [
-    { id: "map", label: "Map View", icon: Map, badge: null },
+    { id: "map", label: "Operational picture", icon: Map, badge: null },
     {
       id: "incidents",
       label: "Incidents",

@@ -7,10 +7,9 @@ import { IncidentMatrix } from "@/components/dashboard/IncidentMatrix";
 import { AIAssistant } from "@/components/dashboard/AIAssistant";
 import { TelemetryFeed } from "@/components/dashboard/map/TelemetryFeed";
 
-import { Incident, MOCK_CLUSTERS, MOCK_INCIDENTS } from "@/components/dashboard/data";
+import { Incident, MOCK_INCIDENTS } from "@/components/dashboard/data";
 import {
   Activity,
-  Layers,
   Server,
   AlertTriangle,
   Radio,
@@ -28,7 +27,6 @@ export default function NeuralCityDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("map");
   const [showIncidents, setShowIncidents] = useState<boolean>(true);
-  const [showClusters, setShowClusters] = useState<boolean>(true);
   const [crisisActive, setCrisisActive] = useState<boolean>(true);
   const [selectedTime, setSelectedTime] = useState<string>("08:47");
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
@@ -165,7 +163,6 @@ export default function NeuralCityDashboard() {
               <TelemetryFeed
                 filteredIncidents={filteredIncidents}
                 setSelectedIncident={setSelectedIncident}
-                setSelectedCluster={() => undefined}
                 flyTo={() => undefined}
                 isMinimized={feedMinimized}
                 onToggleMinimize={() => setFeedMinimized((value) => !value)}
@@ -182,7 +179,6 @@ export default function NeuralCityDashboard() {
           <div className="w-full flex-1 flex flex-col">
             <MapContainer
               showIncidents={showIncidents}
-              showClusters={showClusters}
               crisisActive={crisisActive}
               setCrisisActive={setCrisisActive}
               onUseFeedContext={handleUseFeedContext}
@@ -190,63 +186,12 @@ export default function NeuralCityDashboard() {
               setSelectedTime={setSelectedTime}
               selectedIncident={selectedIncident}
               setSelectedIncident={setSelectedIncident}
+              setShowIncidents={setShowIncidents}
             />
           </div>
         ) : activeTab === "incidents" ? (
           <div className="w-full flex-1">
             <IncidentMatrix onSelectIncident={handleSelectIncidentFromMatrix} />
-          </div>
-        ) : activeTab === "clusters" ? (
-          <div className="w-full space-y-4">
-            {/* Cluster Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {MOCK_CLUSTERS.map((cluster) => (
-                <div
-                  key={cluster.id}
-                  className="bg-card border border-border rounded-xl p-4 space-y-2 hover:border-primary/50 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-primary" />
-                      <span className="font-semibold text-xs text-card-foreground">
-                        {cluster.name}
-                      </span>
-                    </div>
-                    <Badge className="bg-primary/20 text-primary border-primary/40 font-mono text-[10px]">
-                      {cluster.id}
-                    </Badge>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs font-mono pt-2 text-muted-foreground border-t border-border">
-                    <div>
-                      <span className="text-muted-foreground">INCIDENTS:</span>{" "}
-                      <span className="text-rose-400 font-bold">{cluster.incidentCount}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">RADIUS:</span> {cluster.radiusKm} km
-                    </div>
-                    <div className="col-span-2">
-                      <span className="text-muted-foreground">TYPE:</span> {cluster.primaryCategory}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Interactive Cluster Map View */}
-            <div className="w-full">
-              <MapContainer
-                showIncidents={showIncidents}
-                showClusters={true}
-                crisisActive={crisisActive}
-                setCrisisActive={setCrisisActive}
-                onUseFeedContext={handleUseFeedContext}
-                selectedTime={selectedTime}
-                setSelectedTime={setSelectedTime}
-                selectedIncident={selectedIncident}
-                setSelectedIncident={setSelectedIncident}
-              />
-            </div>
           </div>
         ) : (
           /* Telemetry & Diagnostics Full Panel */

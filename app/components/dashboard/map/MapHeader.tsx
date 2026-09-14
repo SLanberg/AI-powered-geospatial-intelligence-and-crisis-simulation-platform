@@ -1,4 +1,4 @@
-import { Crosshair, Layers3, Satellite, Map as MapIcon, ShieldAlert } from "lucide-react";
+import { Crosshair, Layers3, Satellite, Map as MapIcon, ShieldAlert, Plane, Anchor, Siren, AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -10,6 +10,18 @@ interface MapHeaderProps {
   is3D: boolean;
   toggle3D: () => void;
   resetView: () => void;
+  showFlights?: boolean;
+  setShowFlights?: (show: boolean | ((prev: boolean) => boolean)) => void;
+  showVehicles?: boolean;
+  setShowVehicles?: (show: boolean | ((prev: boolean) => boolean)) => void;
+  showEmergencyServices?: boolean;
+  setShowEmergencyServices?: (show: boolean | ((prev: boolean) => boolean)) => void;
+  showIncidents?: boolean;
+  setShowIncidents?: (show: boolean | ((prev: boolean) => boolean)) => void;
+  flightCount?: number;
+  vehicleCount?: number;
+  emergencyCount?: number;
+  incidentCount?: number;
 }
 
 export function MapHeader({
@@ -18,40 +30,52 @@ export function MapHeader({
   is3D,
   toggle3D,
   resetView,
+  showFlights = true,
+  setShowFlights,
+  showVehicles = true,
+  setShowVehicles,
+  showEmergencyServices = true,
+  setShowEmergencyServices,
+  showIncidents = true,
+  setShowIncidents,
+  flightCount = 0,
+  vehicleCount = 0,
+  emergencyCount = 0,
+  incidentCount = 0,
 }: MapHeaderProps) {
   return (
-    <div className="bg-card border border-border rounded-t-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-card-foreground">
+    <div className="bg-[#121820] border border-[#2A3545] rounded-t-xl px-3 py-2.5 flex flex-wrap items-center justify-between gap-3 text-slate-100">
       {/* Basemap Selection - Defaults to Dark Monochrome Vector for optimal marker contrast */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5 font-semibold text-xs tracking-wider text-foreground">
-          <ShieldAlert className="w-5 h-5 text-blue-400" />
-          <span>TACTICAL MAP MATRIX</span>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1.5 font-semibold text-xs tracking-wider text-slate-100">
+          <ShieldAlert className="w-4 h-4 text-[#34C759]" />
+          <span>TACTICAL MAP</span>
         </div>
 
-        <div className="flex items-center bg-muted/80 border border-border rounded-lg p-1 gap-1">
+        <div className="flex items-center bg-[#1E2530] border border-[#2A3545] rounded-md p-1 gap-1" role="group" aria-label="Basemap style">
           <button
             onClick={() => setMapTheme("dark")}
-            title="Dark Vector (Recommended for Marker Contrast)"
+            title="Dark Muted Canvas (Recommended)"
             className={`min-h-[38px] px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
               mapTheme === "dark"
-                ? "bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/50"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+              ? "bg-[#007AFF] text-white shadow-sm"
+                : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
             }`}
           >
             <MapIcon className="w-4 h-4" />
-            Dark Vector
+            Tactical
           </button>
 
           <button
             onClick={() => setMapTheme("voyager")}
-            title="Voyager Light Vector"
+            title="Dark street reference"
             className={`min-h-[38px] px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all ${
               mapTheme === "voyager"
-                ? "bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/50"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+              ? "bg-[#007AFF] text-white shadow-sm"
+                : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
             }`}
           >
-            Voyager
+            Street
           </button>
 
           <button
@@ -59,17 +83,106 @@ export function MapHeader({
             title="Aerial Imagery"
             className={`min-h-[38px] px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
               mapTheme === "satellite"
-                ? "bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/50"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+              ? "bg-[#007AFF] text-white shadow-sm"
+                : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
             }`}
           >
             <Satellite className="w-4 h-4" />
             Aerial
           </button>
         </div>
+
+        {/* Each operational domain has an explicit group to avoid ambiguity. */}
+        {setShowFlights && setShowVehicles && (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center bg-[#1E2530] border border-[#2A3545] rounded-md p-1 gap-1" role="group" aria-label="Air and maritime tracking layers">
+              <span className="px-1 font-mono text-[9px] font-bold tracking-wider text-sky-300 uppercase">Air & maritime</span>
+            <button
+              onClick={() => setShowFlights((prev) => !prev)}
+              title="Toggle Live Air Domain (Flights & Helicopters)"
+              className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                showFlights
+                  ? "bg-sky-500/20 text-white border border-sky-400/50"
+                  : "text-slate-500 hover:text-slate-100 hover:bg-white/5 opacity-70"
+              }`}
+            >
+              <Plane className="w-4 h-4 text-sky-300" />
+              <span>Air</span>
+              {showFlights && flightCount > 0 && (
+                <span className="bg-sky-950/80 text-sky-200 text-[10px] px-1.5 py-0.5 rounded-full font-mono">
+                  {flightCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setShowVehicles((prev) => !prev)}
+              title="Toggle Live Maritime Domain (Ships & Speedboats)"
+              className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                showVehicles
+                  ? "bg-cyan-500/20 text-white border border-cyan-400/50"
+                  : "text-slate-500 hover:text-slate-100 hover:bg-white/5 opacity-70"
+              }`}
+            >
+              <Anchor className="w-4 h-4 text-cyan-200" />
+              <span>Maritime</span>
+              {showVehicles && vehicleCount > 0 && (
+                <span className="bg-cyan-950/80 text-cyan-300 text-[10px] px-1.5 py-0.5 rounded-full font-mono">
+                  {vehicleCount}
+                </span>
+              )}
+            </button>
+            </div>
+
+            <div className="flex items-center bg-[#1E2530] border border-[#2A3545] rounded-md p-1 gap-1" role="group" aria-label="Emergency response layers">
+              <span className="px-1 font-mono text-[9px] font-bold tracking-wider text-[#FFB4AF] uppercase">Emergency</span>
+            {setShowEmergencyServices && (
+              <button
+                onClick={() => setShowEmergencyServices((prev) => !prev)}
+                title="Toggle Emergency Services (Hospitals, Police, Fire Stations)"
+                className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  showEmergencyServices
+                    ? "bg-[#FF3B30]/15 text-white border border-[#FF3B30]/60"
+                    : "text-slate-500 hover:text-slate-100 hover:bg-white/5 opacity-70"
+                }`}
+              >
+                <Siren className="w-4 h-4 text-[#FF3B30]" />
+                <span>Services</span>
+                {showEmergencyServices && emergencyCount > 0 && (
+                  <span className="bg-[#FF3B30]/20 text-[#FFB4AF] text-[10px] px-1.5 py-0.5 rounded-full font-mono">
+                    {emergencyCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {setShowIncidents && (
+              <button
+                onClick={() => setShowIncidents((prev) => !prev)}
+                title="Toggle Incidents (Active Alerts & Hazards)"
+                className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  showIncidents
+                    ? "bg-[#FF3B30]/15 text-white border border-[#FF3B30]/60"
+                    : "text-slate-500 hover:text-slate-100 hover:bg-white/5 opacity-70"
+                }`}
+              >
+                <AlertTriangle className="w-4 h-4 text-[#FF3B30]" />
+                <span>Incidents</span>
+                {showIncidents && incidentCount > 0 && (
+                  <span className="bg-[#FF3B30]/20 text-[#FFB4AF] text-[10px] px-1.5 py-0.5 rounded-full font-mono">
+                    {incidentCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            </div>
+          </div>
+        )}
+
       </div>
 
-      {/* Action Controls - 44x44px touch targets minimum, h-5 w-5 icons */}
+      {/* Action Controls */}
       <div className="ml-auto flex items-center gap-2">
         <Button
           size="default"
@@ -79,8 +192,8 @@ export function MapHeader({
           title={is3D ? "3D Tactical View Active" : "Activate 3D Pitch"}
           className={`h-11 w-11 p-0 border flex items-center justify-center transition-all min-h-[44px] min-w-[44px] ${
             is3D
-              ? "bg-blue-600 text-white border-blue-400 shadow-md ring-2 ring-blue-500/30"
-              : "border-border text-foreground hover:bg-accent"
+              ? "bg-[#007AFF]/20 text-[#A9D4FF] border-[#007AFF] shadow-md ring-2 ring-[#007AFF]/30"
+              : "border-[#2A3545] bg-[#121820] text-slate-100 hover:bg-[#1E2530]"
           }`}
         >
           <Layers3 className="w-5 h-5" />
@@ -92,7 +205,7 @@ export function MapHeader({
           onClick={resetView}
           aria-label="Recenter Map Camera"
           title="Recenter Map Camera"
-          className="h-11 w-11 p-0 border border-border flex items-center justify-center text-foreground hover:bg-accent min-h-[44px] min-w-[44px]"
+          className="h-11 w-11 p-0 border border-[#2A3545] bg-[#121820] flex items-center justify-center text-slate-100 hover:bg-[#1E2530] min-h-[44px] min-w-[44px]"
         >
           <Crosshair className="w-5 h-5" />
         </Button>
@@ -100,4 +213,3 @@ export function MapHeader({
     </div>
   );
 }
-

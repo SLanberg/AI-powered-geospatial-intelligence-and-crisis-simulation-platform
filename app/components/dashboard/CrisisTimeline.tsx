@@ -1,7 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Play, Pause, RotateCcw, Clock, AlertTriangle, ShieldCheck } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  Clock,
+  AlertTriangle,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { MOCK_INCIDENTS, type Incident } from "./data";
 
@@ -17,9 +24,15 @@ export interface TimelineEvent {
   time: string;
   fullTime: string;
   title: string;
-  category: "Grid Failure" | "Traffic Flow" | "Telecom Node" | "Emergency Dispatch" | "Sensor Anomaly" | "System Status";
+  category:
+  | "Grid Failure"
+  | "Traffic Flow"
+  | "Telecom Node"
+  | "Emergency Dispatch"
+  | "Sensor Anomaly"
+  | "System Status";
   severity: "critical" | "warning" | "info" | "normal";
-  intensity: number; // 0 to 100
+  intensity: number;
   description: string;
   incidentId?: string;
   registeredIncidentsCount?: number;
@@ -35,7 +48,8 @@ export const EVENT_TIMELINE: TimelineEvent[] = [
     category: "System Status",
     severity: "normal",
     intensity: 20,
-    description: "All grid substations and traffic nodes operating within nominal telemetry limits.",
+    description:
+      "All grid substations and traffic nodes operating within nominal telemetry limits.",
     registeredIncidentsCount: 0,
   },
   {
@@ -46,7 +60,8 @@ export const EVENT_TIMELINE: TimelineEvent[] = [
     category: "Telecom Node",
     severity: "info",
     intensity: 35,
-    description: "Subsea link latency increased to 48ms. Terrestrial fallback standby engaged.",
+    description:
+      "Subsea link latency increased to 48ms. Terrestrial fallback standby engaged.",
     incidentId: "INC-0847-05",
     registeredIncidentsCount: 1,
   },
@@ -58,7 +73,8 @@ export const EVENT_TIMELINE: TimelineEvent[] = [
     category: "Grid Failure",
     severity: "warning",
     intensity: 60,
-    description: "Voltage harmonics surge detected in Ülemiste Industrial Feeder Alpha.",
+    description:
+      "Voltage harmonics surge detected in Ülemiste Industrial Feeder Alpha.",
     incidentId: "INC-0847-02",
     registeredIncidentsCount: 1,
   },
@@ -70,7 +86,8 @@ export const EVENT_TIMELINE: TimelineEvent[] = [
     category: "Sensor Anomaly",
     severity: "warning",
     intensity: 45,
-    description: "Environmental acoustic sensor array recorded pre-trip acoustic harmonics.",
+    description:
+      "Environmental acoustic sensor array recorded pre-trip acoustic harmonics.",
     incidentId: "INC-0847-06",
     registeredIncidentsCount: 2,
   },
@@ -82,7 +99,8 @@ export const EVENT_TIMELINE: TimelineEvent[] = [
     category: "Grid Failure",
     severity: "critical",
     intensity: 100,
-    description: "Dual critical events: Automated breaker isolated Ülemiste sectors B & C, followed by Vanalinn Relay #4 trip.",
+    description:
+      "Dual critical events: Automated breaker isolated Ülemiste sectors B & C, followed by Vanalinn Relay #4 trip.",
     incidentId: "INC-0847-01",
     registeredIncidentsCount: 5,
     subEvents: [
@@ -90,37 +108,41 @@ export const EVENT_TIMELINE: TimelineEvent[] = [
         title: "Ülemiste Feeder Isolation",
         category: "Grid Failure",
         severity: "critical",
-        description: "Automated circuit breaker isolated tech park sectors B & C.",
+        description:
+          "Automated circuit breaker isolated tech park sectors B & C.",
       },
       {
         title: "Vanalinn Substation #4 Trip",
         category: "Grid Failure",
         severity: "critical",
-        description: "Primary isolation relay tripped. Cascading frequency drop across Old Town district.",
+        description:
+          "Primary isolation relay tripped. Cascading frequency drop across Old Town district.",
       },
     ],
   },
   {
     id: "EV-0848",
     time: "08:48",
-    fullTime: "08:47:18:00",
+    fullTime: "08:48:00:00",
     title: "Viru Signal Controller Freeze",
     category: "Traffic Flow",
     severity: "warning",
     intensity: 75,
-    description: "Optical traffic sensors lost heartbeat. Intersection defaulted to amber pulse.",
+    description:
+      "Optical traffic sensors lost heartbeat. Intersection defaulted to amber pulse.",
     incidentId: "INC-0847-03",
     registeredIncidentsCount: 4,
   },
   {
     id: "EV-0849",
     time: "08:49",
-    fullTime: "08:47:30:00",
+    fullTime: "08:49:00:00",
     title: "Dispatch Routing Packet Drop",
     category: "Emergency Dispatch",
     severity: "warning",
     intensity: 65,
-    description: "Emergency vehicle priority routing server experienced 1.4s packet drop.",
+    description:
+      "Emergency vehicle priority routing server experienced 1.4s packet drop.",
     incidentId: "INC-0847-04",
     registeredIncidentsCount: 3,
   },
@@ -132,7 +154,8 @@ export const EVENT_TIMELINE: TimelineEvent[] = [
     category: "Grid Failure",
     severity: "warning",
     intensity: 50,
-    description: "Automated grid rerouting engaged reserve transformer bank #2.",
+    description:
+      "Automated grid rerouting engaged reserve transformer bank #2.",
     registeredIncidentsCount: 2,
   },
   {
@@ -143,7 +166,8 @@ export const EVENT_TIMELINE: TimelineEvent[] = [
     category: "Traffic Flow",
     severity: "info",
     intensity: 35,
-    description: "Emergency vehicle routing restored on secondary terrestrial backbone.",
+    description:
+      "Emergency vehicle routing restored on secondary terrestrial backbone.",
     registeredIncidentsCount: 1,
   },
   {
@@ -154,7 +178,8 @@ export const EVENT_TIMELINE: TimelineEvent[] = [
     category: "System Status",
     severity: "normal",
     intensity: 25,
-    description: "District grid frequency stabilized to 50.02 Hz nominal.",
+    description:
+      "District grid frequency stabilized to 50.02 Hz nominal.",
     registeredIncidentsCount: 0,
   },
   {
@@ -165,7 +190,8 @@ export const EVENT_TIMELINE: TimelineEvent[] = [
     category: "System Status",
     severity: "normal",
     intensity: 15,
-    description: "Automated post-incident diagnostics verified zero active breaker faults.",
+    description:
+      "Automated post-incident diagnostics verified zero active breaker faults.",
     registeredIncidentsCount: 0,
   },
 ];
@@ -178,6 +204,87 @@ interface CrisisTimelineProps {
   setSelectedIncident?: (incident: Incident | null) => void;
 }
 
+type TimelinePoint = {
+  event: TimelineEvent;
+  seconds: number;
+  position: number;
+};
+
+type IncidentCluster = {
+  position: number;
+  events: TimelineEvent[];
+  count: number;
+};
+
+const PLAYBACK_SPEED = 10;
+const CLUSTER_THRESHOLD_PERCENT = 1.8;
+
+function parseTimelineTime(value: string): number {
+  const clean = value.split(":").slice(0, 3);
+
+  const hours = Number(clean[0] ?? 0);
+  const minutes = Number(clean[1] ?? 0);
+  const seconds = Number(clean[2] ?? 0);
+
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+function formatTimelineTime(totalSeconds: number): string {
+  const rounded = Math.max(0, Math.floor(totalSeconds));
+
+  const hours = Math.floor(rounded / 3600);
+  const minutes = Math.floor((rounded % 3600) / 60);
+  const seconds = rounded % 60;
+
+  return [hours, minutes, seconds]
+    .map((value) => String(value).padStart(2, "0"))
+    .join(":");
+}
+
+function formatShortTimelineTime(totalSeconds: number): string {
+  const rounded = Math.max(0, Math.floor(totalSeconds));
+
+  const hours = Math.floor(rounded / 3600);
+  const minutes = Math.floor((rounded % 3600) / 60);
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+    2,
+    "0"
+  )}`;
+}
+
+function severityClass(severity: TimelineEvent["severity"]) {
+  switch (severity) {
+    case "critical":
+      return "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]";
+
+    case "warning":
+      return "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.65)]";
+
+    case "info":
+      return "bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.55)]";
+
+    default:
+      return "bg-zinc-500";
+  }
+}
+
+function severityTextClass(severity: TimelineEvent["severity"]) {
+  switch (severity) {
+    case "critical":
+      return "text-red-400";
+
+    case "warning":
+      return "text-amber-400";
+
+    case "info":
+      return "text-blue-400";
+
+    default:
+      return "text-zinc-400";
+  }
+}
+
 export function CrisisTimeline({
   selectedTime,
   setSelectedTime,
@@ -186,252 +293,775 @@ export function CrisisTimeline({
 }: CrisisTimelineProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
+  const [hoverPosition, setHoverPosition] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Auto playback ticker
+  const scrubberRef = useRef<HTMLDivElement | null>(null);
+  const playbackRef = useRef<number | null>(null);
+  const lastFrameRef = useRef<number | null>(null);
+  const currentSecondsRef = useRef<number>(0);
+
+  const timelinePoints = useMemo<TimelinePoint[]>(() => {
+    const start = parseTimelineTime(EVENT_TIMELINE[0].fullTime);
+    const end = parseTimelineTime(
+      EVENT_TIMELINE[EVENT_TIMELINE.length - 1].fullTime
+    );
+
+    const duration = Math.max(1, end - start);
+
+    return EVENT_TIMELINE.map((event) => {
+      const seconds = parseTimelineTime(event.fullTime);
+      const position = ((seconds - start) / duration) * 100;
+
+      return {
+        event,
+        seconds,
+        position: Math.max(0, Math.min(100, position)),
+      };
+    });
+  }, []);
+
+  const startSeconds = timelinePoints[0]?.seconds ?? 0;
+  const endSeconds =
+    timelinePoints[timelinePoints.length - 1]?.seconds ?? startSeconds + 1;
+
+  const durationSeconds = Math.max(1, endSeconds - startSeconds);
+
+  const selectedSeconds = useMemo(() => {
+    const selectedEvent = EVENT_TIMELINE.find(
+      (event) => event.time === selectedTime
+    );
+
+    return selectedEvent
+      ? parseTimelineTime(selectedEvent.fullTime)
+      : parseTimelineTime("08:47:00");
+  }, [selectedTime]);
+
   useEffect(() => {
-    if (!isPlaying) return;
-    const interval = setInterval(() => {
-      setSelectedTime((prevTime: string) => {
-        const currentIndex = EVENT_TIMELINE.findIndex((s) => s.time === prevTime);
-        const nextIndex = (currentIndex + 1) % EVENT_TIMELINE.length;
-        const nextEvent = EVENT_TIMELINE[nextIndex];
+    currentSecondsRef.current = selectedSeconds;
+  }, [selectedSeconds]);
 
-        if (setSelectedIncident && nextEvent.incidentId) {
-          const inc = MOCK_INCIDENTS.find((i) => i.id === nextEvent.incidentId);
-          if (inc) setSelectedIncident(inc);
+  const selectedPosition =
+    ((selectedSeconds - startSeconds) / durationSeconds) * 100;
+
+  const waveformPoints = useMemo(() => {
+    const width = 1000;
+    const baseline = 92;
+    const amplitude = 65;
+
+    return timelinePoints.map((point, index) => {
+      const x = (point.position / 100) * width;
+
+      const previous =
+        timelinePoints[Math.max(0, index - 1)]?.event.intensity ??
+        point.event.intensity;
+
+      const next =
+        timelinePoints[Math.min(timelinePoints.length - 1, index + 1)]?.event
+          .intensity ?? point.event.intensity;
+
+      const smoothedIntensity =
+        point.event.intensity * 0.55 + previous * 0.225 + next * 0.225;
+
+      const y =
+        baseline -
+        (Math.max(0, Math.min(100, smoothedIntensity)) / 100) * amplitude;
+
+      return { x, y };
+    });
+  }, [timelinePoints]);
+
+  const waveformPath = useMemo(() => {
+    if (waveformPoints.length === 0) return "";
+
+    if (waveformPoints.length === 1) {
+      const point = waveformPoints[0];
+
+      return `M ${point.x} 92 L ${point.x} ${point.y} L ${point.x} 92 Z`;
+    }
+
+    let path = `M ${waveformPoints[0].x} 92 `;
+    path += `L ${waveformPoints[0].x} ${waveformPoints[0].y} `;
+
+    for (let i = 0; i < waveformPoints.length - 1; i++) {
+      const current = waveformPoints[i];
+      const next = waveformPoints[i + 1];
+
+      const midpointX = (current.x + next.x) / 2;
+
+      path += `C ${midpointX} ${current.y}, ${midpointX} ${next.y}, ${next.x} ${next.y} `;
+    }
+
+    const last = waveformPoints[waveformPoints.length - 1];
+
+    path += `L ${last.x} 92 Z`;
+
+    return path;
+  }, [waveformPoints]);
+
+  const incidentEvents = useMemo(
+    () => timelinePoints.filter((point) => point.event.incidentId),
+    [timelinePoints]
+  );
+
+  const incidentClusters = useMemo<IncidentCluster[]>(() => {
+    const clusters: IncidentCluster[] = [];
+
+    for (const point of incidentEvents) {
+      const previous = clusters[clusters.length - 1];
+
+      if (
+        previous &&
+        Math.abs(previous.position - point.position) <
+        CLUSTER_THRESHOLD_PERCENT
+      ) {
+        previous.events.push(point.event);
+        previous.count +=
+          point.event.registeredIncidentsCount ??
+          (point.event.incidentId ? 1 : 0);
+
+        previous.position =
+          previous.events.reduce((sum, event) => {
+            const timelinePoint = timelinePoints.find(
+              (item) => item.event.id === event.id
+            );
+
+            return sum + (timelinePoint?.position ?? 0);
+          }, 0) / previous.events.length;
+      } else {
+        clusters.push({
+          position: point.position,
+          events: [point.event],
+          count:
+            point.event.registeredIncidentsCount ??
+            (point.event.incidentId ? 1 : 0),
+        });
+      }
+    }
+
+    return clusters;
+  }, [incidentEvents, timelinePoints]);
+
+  const activeEvent = useMemo(() => {
+    let closest = timelinePoints[0];
+
+    for (const point of timelinePoints) {
+      if (
+        Math.abs(point.seconds - selectedSeconds) <
+        Math.abs(closest.seconds - selectedSeconds)
+      ) {
+        closest = point;
+      }
+    }
+
+    return closest?.event ?? EVENT_TIMELINE[0];
+  }, [selectedSeconds, timelinePoints]);
+
+  const hoverEvent = useMemo(() => {
+    if (hoveredEventId) {
+      return EVENT_TIMELINE.find((event) => event.id === hoveredEventId);
+    }
+
+    if (hoverPosition == null) return null;
+
+    let closest = timelinePoints[0];
+
+    for (const point of timelinePoints) {
+      if (
+        Math.abs(point.position - hoverPosition) <
+        Math.abs(closest.position - hoverPosition)
+      ) {
+        closest = point;
+      }
+    }
+
+    return closest?.event ?? null;
+  }, [hoveredEventId, hoverPosition, timelinePoints]);
+
+  const hoverTime = useMemo(() => {
+    if (hoverPosition == null) return "";
+
+    const seconds =
+      startSeconds + (hoverPosition / 100) * durationSeconds;
+
+    return formatTimelineTime(seconds);
+  }, [hoverPosition, startSeconds, durationSeconds]);
+
+  const setTimeFromSeconds = (seconds: number) => {
+    const clamped = Math.max(startSeconds, Math.min(endSeconds, seconds));
+
+    currentSecondsRef.current = clamped;
+
+    const exactOrClosest = timelinePoints.reduce((closest, point) => {
+      return Math.abs(point.seconds - clamped) <
+        Math.abs(closest.seconds - clamped)
+        ? point
+        : closest;
+    }, timelinePoints[0]);
+
+    if (exactOrClosest) {
+      setSelectedTime(exactOrClosest.event.time);
+
+      if (setSelectedIncident && exactOrClosest.event.incidentId) {
+        const incident = MOCK_INCIDENTS.find(
+          (item) => item.id === exactOrClosest.event.incidentId
+        );
+
+        if (incident) {
+          setSelectedIncident(incident);
         }
-
-        return nextEvent.time;
-      });
-    }, 2200);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, setSelectedTime, setSelectedIncident]);
-
-  const handleSelectEvent = (event: TimelineEvent) => {
-    setIsPlaying(false);
-    setSelectedTime(event.time);
-    if (setSelectedIncident && event.incidentId) {
-      const inc = MOCK_INCIDENTS.find((i) => i.id === event.incidentId);
-      if (inc) setSelectedIncident(inc);
+      }
     }
   };
 
-  const activeEvent = EVENT_TIMELINE.find((e) => e.time === selectedTime) || EVENT_TIMELINE[4];
+  const getSecondsFromPointer = (clientX: number) => {
+    const element = scrubberRef.current;
 
-  // Helper to count registered incidents matching timestamp or assigned fallback
-  const getIncidentDetailsForTime = (time: string, explicitCount?: number) => {
-    const matched = MOCK_INCIDENTS.filter((inc) => inc.timestamp.startsWith(time));
-    const count = explicitCount ?? (matched.length > 0 ? matched.length : 0);
-    return { count, incidents: matched };
+    if (!element) return startSeconds;
+
+    const rect = element.getBoundingClientRect();
+
+    const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+    const position = rect.width === 0 ? 0 : x / rect.width;
+
+    return startSeconds + position * durationSeconds;
   };
 
+  const getPositionFromPointer = (clientX: number) => {
+    const element = scrubberRef.current;
+
+    if (!element) return 0;
+
+    const rect = element.getBoundingClientRect();
+
+    if (rect.width === 0) return 0;
+
+    return Math.max(
+      0,
+      Math.min(100, ((clientX - rect.left) / rect.width) * 100)
+    );
+  };
+
+  const handleTimelinePointerDown = (
+    event: React.PointerEvent<HTMLDivElement>
+  ) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    setIsPlaying(false);
+    setIsDragging(true);
+
+    const seconds = getSecondsFromPointer(event.clientX);
+
+    setTimeFromSeconds(seconds);
+  };
+
+  const handleTimelinePointerMove = (
+    event: React.PointerEvent<HTMLDivElement>
+  ) => {
+    const position = getPositionFromPointer(event.clientX);
+
+    setHoverPosition(position);
+
+    if (!isDragging) return;
+
+    const seconds = getSecondsFromPointer(event.clientX);
+
+    setTimeFromSeconds(seconds);
+  };
+
+  const handleTimelinePointerUp = (
+    event: React.PointerEvent<HTMLDivElement>
+  ) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    setIsDragging(false);
+  };
+
+  const handleTimelinePointerLeave = () => {
+    if (!isDragging) {
+      setHoverPosition(null);
+      setHoveredEventId(null);
+    }
+  };
+
+  const handleSelectEvent = (event: TimelineEvent) => {
+    setIsPlaying(false);
+
+    const seconds = parseTimelineTime(event.fullTime);
+
+    currentSecondsRef.current = seconds;
+
+    setSelectedTime(event.time);
+
+    if (setSelectedIncident && event.incidentId) {
+      const incident = MOCK_INCIDENTS.find(
+        (item) => item.id === event.incidentId
+      );
+
+      if (incident) {
+        setSelectedIncident(incident);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!isPlaying) {
+      if (playbackRef.current !== null) {
+        cancelAnimationFrame(playbackRef.current);
+        playbackRef.current = null;
+      }
+
+      lastFrameRef.current = null;
+
+      return;
+    }
+
+    const animate = (timestamp: number) => {
+      if (lastFrameRef.current == null) {
+        lastFrameRef.current = timestamp;
+      }
+
+      const deltaSeconds =
+        ((timestamp - lastFrameRef.current) / 1000) * PLAYBACK_SPEED;
+
+      lastFrameRef.current = timestamp;
+
+      const nextSeconds = currentSecondsRef.current + deltaSeconds;
+
+      if (nextSeconds >= endSeconds) {
+        currentSecondsRef.current = endSeconds;
+        setTimeFromSeconds(endSeconds);
+        setIsPlaying(false);
+
+        playbackRef.current = null;
+        lastFrameRef.current = null;
+
+        return;
+      }
+
+      currentSecondsRef.current = nextSeconds;
+
+      const closest = timelinePoints.reduce((closestPoint, point) => {
+        return Math.abs(point.seconds - nextSeconds) <
+          Math.abs(closestPoint.seconds - nextSeconds)
+          ? point
+          : closestPoint;
+      }, timelinePoints[0]);
+
+      setSelectedTime(closest.event.time);
+
+      if (closest.event.incidentId && setSelectedIncident) {
+        const incident = MOCK_INCIDENTS.find(
+          (item) => item.id === closest.event.incidentId
+        );
+
+        if (incident) {
+          setSelectedIncident(incident);
+        }
+      }
+
+      playbackRef.current = requestAnimationFrame(animate);
+    };
+
+    playbackRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (playbackRef.current !== null) {
+        cancelAnimationFrame(playbackRef.current);
+        playbackRef.current = null;
+      }
+
+      lastFrameRef.current = null;
+    };
+  }, [
+    isPlaying,
+    endSeconds,
+    timelinePoints,
+    setSelectedTime,
+    setSelectedIncident,
+  ]);
+
+  const resetTimeline = () => {
+    setIsPlaying(false);
+
+    const resetEvent =
+      EVENT_TIMELINE.find((event) => event.id === "EV-0847") ??
+      EVENT_TIMELINE[0];
+
+    const resetSeconds = parseTimelineTime(resetEvent.fullTime);
+
+    currentSecondsRef.current = resetSeconds;
+
+    setSelectedTime(resetEvent.time);
+
+    if (setSelectedIncident && resetEvent.incidentId) {
+      const incident = MOCK_INCIDENTS.find(
+        (item) => item.id === resetEvent.incidentId
+      );
+
+      if (incident) {
+        setSelectedIncident(incident);
+      }
+    }
+  };
+
+  const handleMarkerClick = (
+    event: React.MouseEvent,
+    cluster: IncidentCluster
+  ) => {
+    event.stopPropagation();
+
+    const target = cluster.events[0];
+
+    if (target) {
+      handleSelectEvent(target);
+    }
+  };
+
+  const axisLabels = useMemo(() => {
+    const count = 6;
+
+    return Array.from({ length: count }, (_, index) => {
+      const position = (index / (count - 1)) * 100;
+
+      const seconds =
+        startSeconds + (position / 100) * durationSeconds;
+
+      return {
+        position,
+        label: formatShortTimelineTime(seconds),
+      };
+    });
+  }, [startSeconds, durationSeconds]);
+
+  const playheadPosition = Math.max(
+    0,
+    Math.min(100, selectedPosition)
+  );
+
   return (
-    <div className="bg-[#18191c] text-zinc-300 border-t border-zinc-800 px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4 font-mono select-none">
-      {/* NLE Transport Controls */}
-      <div className="flex items-center gap-3 shrink-0 w-full md:w-auto justify-between md:justify-start">
-        <div className="flex items-center gap-2">
+    <div className="w-full bg-[#18191c] text-zinc-300 border-t border-zinc-800 px-4 py-3 select-none">
+      <div className="flex items-center gap-4 w-full">
+        {/* Transport */}
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             size="icon"
-            variant="outline"
-            className="min-h-[44px] min-w-[44px] h-11 w-11 bg-zinc-800/80 border-zinc-700 text-zinc-200 hover:bg-zinc-700 hover:text-white"
-            onClick={() => setIsPlaying(!isPlaying)}
-            title={isPlaying ? "Pause Timeline (Space)" : "Play Timeline (Space)"}
+            variant="ghost"
+            className="h-9 w-9 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+            onClick={() => setIsPlaying((value) => !value)}
+            title={isPlaying ? "Pause Timeline" : "Play Timeline"}
           >
             {isPlaying ? (
-              <Pause className="w-5 h-5" />
+              <Pause className="w-4 h-4" />
             ) : (
-              <Play className="w-5 h-5 fill-current ml-0.5" />
+              <Play className="w-4 h-4 fill-current ml-0.5" />
             )}
           </Button>
 
           <Button
             size="icon"
             variant="ghost"
-            className="min-h-[44px] min-w-[44px] h-11 w-11 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-            onClick={() => {
-              setIsPlaying(false);
-              setSelectedTime("08:47");
-              const crisisInc = MOCK_INCIDENTS.find((i) => i.id === "INC-0847-01");
-              if (crisisInc && setSelectedIncident) setSelectedIncident(crisisInc);
-            }}
-            title="Reset Playhead to 08:47:00:00"
+            className="h-9 w-9 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+            onClick={resetTimeline}
+            title="Reset timeline"
           >
-            <RotateCcw className="w-5 h-5" />
+            <RotateCcw className="w-4 h-4" />
           </Button>
+
+          <div className="hidden sm:flex items-center gap-2 pl-1 min-w-[82px]">
+            <Clock className="w-3.5 h-3.5 text-zinc-600" />
+
+            <span className="font-mono text-xs text-zinc-300 tabular-nums">
+              {formatTimelineTime(selectedSeconds)}
+            </span>
+          </div>
         </div>
 
-        {/* NLE Timecode & Playhead Display */}
-        <div className="flex items-center gap-2 text-xs">
-          <Clock className="w-5 h-5 text-zinc-400" />
-          <span className="text-zinc-400 uppercase tracking-wider text-xs font-semibold">TC:</span>
-          <span className="text-zinc-100 font-mono font-bold tracking-wider bg-zinc-900 px-3 py-1.5 rounded border border-zinc-700 text-xs shadow-sm">
-            {activeEvent.fullTime}
-          </span>
+        {/* Timeline */}
+        <div className="flex-1 min-w-0">
+          <div
+            ref={scrubberRef}
+            className="relative h-[76px] w-full cursor-pointer touch-none"
+            onPointerDown={handleTimelinePointerDown}
+            onPointerMove={handleTimelinePointerMove}
+            onPointerUp={handleTimelinePointerUp}
+            onPointerCancel={handleTimelinePointerUp}
+            onPointerLeave={handleTimelinePointerLeave}
+            onPointerEnter={(event) => {
+              setHoverPosition(getPositionFromPointer(event.clientX));
+            }}
+          >
+            {/* Hover timestamp preview */}
+            {hoverPosition !== null && (
+              <div
+                className="absolute bottom-full mb-2 -translate-x-1/2 z-40 pointer-events-none"
+                style={{
+                  left: `${hoverPosition}%`,
+                }}
+              >
+                <div className="rounded-md border border-zinc-700 bg-zinc-950/95 backdrop-blur px-2.5 py-1.5 shadow-xl">
+                  <div className="font-mono text-[11px] font-semibold text-zinc-200">
+                    {hoverTime}
+                  </div>
+
+                  {hoverEvent?.incidentId && (
+                    <div className="mt-1 flex items-center gap-1.5 whitespace-nowrap">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${severityClass(
+                          hoverEvent.severity
+                        )}`}
+                      />
+
+                      <span className="text-[10px] text-zinc-300">
+                        {hoverEvent.registeredIncidentsCount ??
+                          1}{" "}
+                        {(
+                          hoverEvent.registeredIncidentsCount ?? 1
+                        ) === 1
+                          ? "incident"
+                          : "incidents"}
+                      </span>
+
+                      <span className="max-w-[180px] truncate text-[10px] text-zinc-500">
+                        {hoverEvent.title}
+                      </span>
+                    </div>
+                  )}
+
+                  {hoverEvent?.subEvents &&
+                    hoverEvent.subEvents.length > 0 && (
+                      <div className="mt-0.5 text-[9px] text-zinc-500">
+                        {hoverEvent.subEvents.length} related events
+                      </div>
+                    )}
+                </div>
+              </div>
+            )}
+
+            {/* Incident annotation strip */}
+            <div className="absolute left-0 right-0 top-0 h-5">
+              {incidentClusters.map((cluster, index) => {
+                const primaryEvent = cluster.events[0];
+
+                if (!primaryEvent) return null;
+
+                return (
+                  <button
+                    key={`${primaryEvent.id}-${index}`}
+                    type="button"
+                    onClick={(event) =>
+                      handleMarkerClick(event, cluster)
+                    }
+                    onPointerEnter={(event) => {
+                      event.stopPropagation();
+                      setHoveredEventId(primaryEvent.id);
+                      setHoverPosition(cluster.position);
+                    }}
+                    onPointerLeave={(event) => {
+                      event.stopPropagation();
+                      setHoveredEventId(null);
+                    }}
+                    className="absolute top-1 -translate-x-1/2 flex items-center justify-center p-1.5 rounded-full focus:outline-none"
+                    style={{
+                      left: `${cluster.position}%`,
+                    }}
+                    title={primaryEvent.title}
+                  >
+                    <span
+                      className={`block h-1.5 w-1.5 rounded-full transition-transform ${severityClass(primaryEvent.severity)
+                        } ${hoveredEventId === primaryEvent.id
+                          ? "scale-[1.8]"
+                          : ""
+                        }`}
+                    />
+
+                    {cluster.count > 1 && (
+                      <span
+                        className={`absolute left-2.5 -top-1 min-w-[15px] h-[15px] px-1 rounded-full border border-zinc-700 bg-zinc-900 text-[8px] leading-[13px] font-mono font-bold ${severityTextClass(
+                          primaryEvent.severity
+                        )}`}
+                      >
+                        {cluster.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* SVG waveform */}
+            <div className="absolute inset-x-0 top-5 bottom-2">
+              <svg
+                viewBox="0 0 1000 100"
+                preserveAspectRatio="none"
+                className="absolute inset-0 h-full w-full overflow-visible"
+              >
+                <defs>
+                  <linearGradient
+                    id="timelineActivityGradient"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="0%"
+                      stopColor="currentColor"
+                      stopOpacity="0.22"
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor="currentColor"
+                      stopOpacity="0.025"
+                    />
+                  </linearGradient>
+                </defs>
+
+                {/* Base activity waveform */}
+                <path
+                  d={waveformPath}
+                  fill="url(#timelineActivityGradient)"
+                  className="text-zinc-300"
+                />
+
+                {/* Subtle baseline */}
+                <line
+                  x1="0"
+                  y1="92"
+                  x2="1000"
+                  y2="92"
+                  stroke="currentColor"
+                  strokeOpacity="0.12"
+                  strokeWidth="1"
+                  vectorEffect="non-scaling-stroke"
+                  className="text-zinc-300"
+                />
+
+                {/* Incident-specific highlights */}
+                {incidentEvents.map((point) => {
+                  const waveformPoint = waveformPoints.find(
+                    (_, index) =>
+                      timelinePoints[index]?.event.id ===
+                      point.event.id
+                  );
+
+                  if (!waveformPoint) return null;
+
+                  const radius =
+                    point.event.severity === "critical"
+                      ? 14
+                      : point.event.severity === "warning"
+                        ? 10
+                        : 7;
+
+                  const opacity =
+                    point.event.severity === "critical"
+                      ? 0.12
+                      : point.event.severity === "warning"
+                        ? 0.07
+                        : 0.045;
+
+                  const color =
+                    point.event.severity === "critical"
+                      ? "#ef4444"
+                      : point.event.severity === "warning"
+                        ? "#f59e0b"
+                        : "#60a5fa";
+
+                  return (
+                    <circle
+                      key={`glow-${point.event.id}`}
+                      cx={waveformPoint.x}
+                      cy={waveformPoint.y}
+                      r={radius}
+                      fill={color}
+                      opacity={opacity}
+                    />
+                  );
+                })}
+              </svg>
+
+              {/* Playhead */}
+              <div
+                className="absolute top-0 bottom-0 w-px bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.65)] pointer-events-none"
+                style={{
+                  left: `${playheadPosition}%`,
+                }}
+              >
+                <div className="absolute -top-1.5 -left-[4px] h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+
+                <div className="absolute bottom-[-2px] -left-[3px] h-1.5 w-1.5 rounded-full bg-red-500" />
+              </div>
+
+              {/* Hover position indicator */}
+              {hoverPosition !== null && !isDragging && (
+                <div
+                  className="absolute top-1 bottom-1 w-px bg-white/20 pointer-events-none"
+                  style={{
+                    left: `${hoverPosition}%`,
+                  }}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Time axis */}
+          <div className="relative h-5 w-full">
+            {axisLabels.map((label, index) => (
+              <span
+                key={`${label.label}-${index}`}
+                className={`absolute -translate-x-1/2 font-mono text-[9px] tabular-nums ${index === 0
+                    ? "text-zinc-500"
+                    : index === axisLabels.length - 1
+                      ? "text-zinc-500"
+                      : "text-zinc-600"
+                  }`}
+                style={{
+                  left: `${label.position}%`,
+                }}
+              >
+                {label.label}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* High Density Sleek White Line Timeline Track */}
-      <div className="w-full max-w-2xl flex flex-col justify-end pt-1">
-        {/* Track Container */}
-        <div className="relative bg-zinc-950/90 border border-zinc-800 rounded p-1.5 overflow-hidden shadow-inner">
-          {/* Background Ruler Grid (Dense Thin Lines) */}
-          <div className="absolute inset-0 flex justify-between pointer-events-none px-2 py-1 opacity-25">
-            {Array.from({ length: 48 }).map((_, i) => (
-              <div key={i} className="w-[1px] h-full bg-white/40" />
-            ))}
-          </div>
-
-          {/* Bar Clips Track (Thin White Lines, Close Spacing) */}
-          <div className="relative flex items-end justify-between gap-[3px] h-[44px] px-1 z-10">
-            {EVENT_TIMELINE.map((event) => {
-              const isSelected = selectedTime === event.time;
-              const isHovered = hoveredEventId === event.id;
-              const { count: incidentCount, incidents } = getIncidentDetailsForTime(
-                event.time,
-                event.registeredIncidentsCount
-              );
-
-              // Height based on intensity
-              const heightPercent = Math.max(25, event.intensity);
-
-              return (
-                <div
-                  key={event.id}
-                  onMouseEnter={() => setHoveredEventId(event.id)}
-                  onMouseLeave={() => setHoveredEventId(null)}
-                  onClick={() => handleSelectEvent(event)}
-                  className="relative flex-1 flex flex-col items-center justify-end h-full cursor-pointer group"
-                >
-                  {/* Clean High-Tech Hover Card showing registered incidents */}
-                  {isHovered && (
-                    <div className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 z-50 min-w-[230px] max-w-[280px] p-2.5 bg-zinc-950/95 border border-zinc-700/80 rounded-md shadow-2xl backdrop-blur-md text-zinc-300 font-sans text-xs space-y-1.5 pointer-events-none">
-                      <div className="flex items-center justify-between border-b border-zinc-800/90 pb-1.5 font-mono text-[10px]">
-                        <span className="text-zinc-200 font-semibold tracking-wider">{event.fullTime}</span>
-                        <div className="flex items-center gap-1">
-                          {incidentCount > 0 ? (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-tight uppercase bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1">
-                              <AlertTriangle className="w-2.5 h-2.5 text-red-400" />
-                              {incidentCount} {incidentCount === 1 ? "Incident" : "Incidents"} Registered
-                            </span>
-                          ) : (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium tracking-tight uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                              <ShieldCheck className="w-2.5 h-2.5 text-emerald-400" />
-                              0 Incidents (Nominal)
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="font-semibold text-zinc-100 text-[11px] leading-tight flex items-center justify-between gap-2">
-                        <span>{event.title}</span>
-                        <span className="text-[9px] uppercase px-1 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
-                          {event.category}
-                        </span>
-                      </div>
-
-                      <div className="text-[10px] text-zinc-400 leading-snug line-clamp-2">
-                        {event.description}
-                      </div>
-
-                      {/* Display breakdown of simultaneous events if any */}
-                      {event.subEvents && event.subEvents.length > 0 && (
-                        <div className="pt-1.5 border-t border-zinc-800/80 space-y-1">
-                          <div className="text-[9px] font-mono uppercase text-amber-400 font-semibold tracking-wider">
-                            Simultaneous Events ({event.subEvents.length})
-                          </div>
-                          <div className="space-y-1">
-                            {event.subEvents.map((sub, idx) => (
-                              <div key={idx} className="bg-zinc-900/90 p-1.5 rounded border border-zinc-800 space-y-0.5">
-                                <div className="flex items-center justify-between text-[10px] font-medium text-zinc-200">
-                                  <span>{sub.title}</span>
-                                  <span className="text-[9px] px-1 rounded bg-red-950/80 text-red-400 border border-red-800/40 uppercase font-mono">
-                                    {sub.severity}
-                                  </span>
-                                </div>
-                                <div className="text-[9.5px] text-zinc-400 leading-tight">{sub.description}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Display breakdown of registered incidents if any */}
-                      {incidents.length > 0 && (
-                        <div className="pt-1.5 border-t border-zinc-800/80 space-y-1">
-                          <div className="text-[9px] font-mono uppercase text-zinc-500 tracking-wider">
-                            Active Signals ({incidents.length})
-                          </div>
-                          <div className="space-y-0.5 max-h-24 overflow-y-auto">
-                            {incidents.map((inc) => (
-                              <div
-                                key={inc.id}
-                                className="flex items-center justify-between text-[10px] text-zinc-300 bg-zinc-900/90 px-1.5 py-0.5 rounded border border-zinc-800"
-                              >
-                                <span className="truncate max-w-[170px] font-medium">{inc.title}</span>
-                                <span
-                                  className={`text-[9px] px-1 rounded uppercase font-mono ${
-                                    inc.severity === "critical"
-                                      ? "text-red-400 bg-red-950/60"
-                                      : inc.severity === "warning"
-                                      ? "text-amber-400 bg-amber-950/60"
-                                      : "text-blue-400 bg-blue-950/60"
-                                  }`}
-                                >
-                                  {inc.severity}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Playhead Needle Line (Selected Event) */}
-                  {isSelected && (
-                    <div className="absolute -top-2 bottom-0 w-[2px] bg-white z-20 pointer-events-none shadow-[0_0_12px_rgba(255,255,255,0.9)]">
-                      <div className="absolute -top-1 -left-[3px] w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] border-t-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
-                    </div>
-                  )}
-
-                  {/* Sleek Professional Thin White Line Bar */}
-                  <div
-                    style={{ height: `${heightPercent}%` }}
-                    className={`w-full max-w-[3px] rounded-t-[1px] transition-all duration-150 ${
-                      isSelected
-                        ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]"
-                        : isHovered
-                        ? "bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)] scale-y-105"
-                        : "bg-white/40 hover:bg-white/80"
-                    }`}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Minimal Timecode Axis */}
-        <div className="w-full pt-1 px-2 flex items-center justify-between font-mono text-xs text-zinc-400">
-          {EVENT_TIMELINE.map((event) => {
-            const isSelected = selectedTime === event.time;
-
-            return (
-              <button
-                key={`tc-${event.id}`}
-                onClick={() => handleSelectEvent(event)}
-                className={`min-h-[44px] min-w-[28px] px-1 flex items-center justify-center transition-colors focus:outline-none ${
-                  isSelected ? "text-white font-bold tracking-wider underline underline-offset-4 decoration-2 decoration-blue-500" : "hover:text-zinc-100 text-zinc-400 font-semibold"
+      {/* Current event context */}
+      <div className="hidden lg:flex shrink-0 items-center gap-2 max-w-[240px]">
+        {activeEvent.incidentId ? (
+          <>
+            <AlertTriangle
+              className={`h-3.5 w-3.5 ${activeEvent.severity === "critical"
+                  ? "text-red-400"
+                  : activeEvent.severity === "warning"
+                    ? "text-amber-400"
+                    : "text-blue-400"
                 }`}
+            />
+
+            <div className="min-w-0">
+              <div
+                className={`font-mono text-[9px] uppercase tracking-wider ${severityTextClass(
+                  activeEvent.severity
+                )}`}
               >
-                {event.time}
-              </button>
-            );
-          })}
-        </div>
+                {activeEvent.severity}
+              </div>
+
+              <div className="truncate text-[10px] text-zinc-400">
+                {activeEvent.title}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="font-mono text-[9px] uppercase tracking-wider text-zinc-600">
+            Nominal
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

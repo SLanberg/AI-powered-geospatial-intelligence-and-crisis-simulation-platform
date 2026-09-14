@@ -359,7 +359,7 @@ export function AIAssistant({ isOpen, onClose, context, onClearContext }: AIAssi
   const [selectedModel, setSelectedModel] = useState<string>("qwen2.5:7b");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const idCounterRef = useRef(2);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -881,7 +881,7 @@ export function AIAssistant({ isOpen, onClose, context, onClearContext }: AIAssi
 
           <div className="flex flex-col bg-background border border-border rounded-xl p-3 focus-within:border-primary transition-all shadow-sm">
             <textarea
-              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+              ref={inputRef}
               id="ai-assistant-input"
               value={chatInput}
               onChange={(e) => handleInputChange(e.target.value)}

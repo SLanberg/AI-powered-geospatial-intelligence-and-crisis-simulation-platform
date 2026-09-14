@@ -3,12 +3,11 @@ import { Grip, Minus, Radio, Sparkles, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 
-import type { ClusterPoint, Incident } from "../data";
+import type { Incident } from "../data";
 
 interface TelemetryFeedProps {
   filteredIncidents: Incident[];
   setSelectedIncident: (incident: Incident | null) => void;
-  setSelectedCluster: (cluster: ClusterPoint | null) => void;
   flyTo: (latitude: number, longitude: number, zoom: number) => void;
   isMinimized: boolean;
   onToggleMinimize: () => void;
@@ -20,7 +19,6 @@ interface TelemetryFeedProps {
 export function TelemetryFeed({
   filteredIncidents,
   setSelectedIncident,
-  setSelectedCluster,
   flyTo,
   isMinimized,
   onToggleMinimize,
@@ -134,7 +132,6 @@ export function TelemetryFeed({
               onClick={() => {
                 onSelectIncident?.(incident);
                 setSelectedIncident(incident);
-                setSelectedCluster(null);
                 flyTo(incident.lat, incident.lng, 14.8);
               }}
               className="w-full rounded-lg border border-border bg-muted/30 p-2 text-left transition-colors hover:bg-muted/60"

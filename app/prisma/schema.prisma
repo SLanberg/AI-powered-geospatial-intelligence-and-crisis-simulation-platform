@@ -10,24 +10,89 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  role      String   @default("CITIZEN") // e.g. CITIZEN, ADMIN, OFFICIAL
-  signals   Signal[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String?
+  role         String        @default("CITIZEN") // CITIZEN | OFFICIAL | ADMIN
+  signals      Signal[]
+  reports      Report[]
+  instructions Instruction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Event {
+  id          String    @id @default(uuid())
+  type        String    // POWER_OUTAGE | CYBERATTACK | STORM
+  title       String
+  description String
+  districtId  String
+  severity    String    // CRITICAL | HIGH | MEDIUM
+  startedAt   DateTime
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model Infrastructure {
+  id         String  @id @default(uuid())
+  type       String  // SHELTER | PHARMACY | WATER_POINT | BASE_STATION | SUBSTATION
+  name       String
+  address    String
+  lat        Float
+  lng        Float
+  districtId String
+  status     String  @default("OPERATIONAL") // OPERATIONAL | OFFLINE | DEGRADED
+  notes      String?
 }
 
 model Signal {
   id          String   @id @default(uuid())
   title       String
   description String
-  status      String   @default("OPEN") // e.g. OPEN, IN_PROGRESS, RESOLVED
+  status      String   @default("OPEN") // OPEN | IN_PROGRESS | RESOLVED | FLAGGED
   latitude    Float?
   longitude   Float?
+  districtId  String?
+  reportCount Int      @default(0)
+  confidence  Float    @default(1.0)
   authorId    String
   author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reports     Report[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Report {
+  id          String    @id @default(uuid())
+  type        String    // NO_WATER | PHARMACY_CLOSED | ROAD_BLOCKED | WATER_CONTAMINATED | OTHER
+  description String
+  lat         Float
+  lng         Float
+  districtId  String
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id])
+  confidence  Float     @default(1.0) // 0–1; low = likely fake/noise
+  flagged     Boolean   @default(false)
+  queuedAt    DateTime  // device clock — when the user hit send
+  receivedAt  DateTime? // server clock — null while still offline-queued
+  status      String    @default("QUEUED") // QUEUED | RECEIVED | GRADED
+  signalId    String?
+  signal      Signal?   @relation(fields: [signalId], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+model Instruction {
+  id               String   @id @default(uuid())
+  title            String
+  body             String
+  districtId       String
+  geoFenceLat      Float?
+  geoFenceLng      Float?
+  geoFenceRadiusKm Float?
+  issuedAt         DateTime
+  issuedById       String
+  issuedBy         User     @relation(fields: [issuedById], references: [id])
+  confirmations    Int      @default(0)
+  status           String   @default("SENT") // SENT | ACKNOWLEDGED
+  createdAt        DateTime @default(now())
 }

@@ -11,15 +11,29 @@ export interface Incident {
   nodeId: string;
 }
 
-export interface ClusterPoint {
-  id: string;
-  name: string;
-  incidentCount: number;
-  lat: number;
-  lng: number;
-  radiusKm: number;
-  primaryCategory: string;
+export interface OperationalAssessment {
+  riskLevel: "Low" | "Medium" | "High" | "Critical";
+  riskScore: number;
+  currentState: string;
+  likelyNext: string;
+  recommendedStrategy: string;
+  probability: number;
+  impact: string;
+  confidence: number;
+  actionWindow: string;
 }
+
+export const OPERATIONAL_ASSESSMENT: OperationalAssessment = {
+  riskLevel: "Critical",
+  riskScore: 86,
+  currentState: "Two critical infrastructure failures are active in the central district and one backup system is degrading.",
+  likelyNext: "Operational instability is likely to spread into adjacent residential and transit zones unless feeders are isolated within the next 10–15 minutes.",
+  recommendedStrategy: "Prioritize isolation of the central feeder, reroute emergency traffic, and dispatch mobile teams to the highest-risk clusters.",
+  probability: 82,
+  impact: "High disruption to power continuity, junction flow, and emergency dispatch capacity.",
+  confidence: 88,
+  actionWindow: "10–15 mins",
+};
 
 export const CRISIS_TIMESTAMP = "08:47:00";
 
@@ -107,36 +121,6 @@ export const MOCK_INCIDENTS: Incident[] = [
   }
 ];
 
-export const MOCK_CLUSTERS: ClusterPoint[] = [
-  {
-    id: "CL-01",
-    name: "Old Town & Central Grid Cluster",
-    incidentCount: 3,
-    lat: 59.4378,
-    lng: 24.7490,
-    radiusKm: 1.2,
-    primaryCategory: "Grid & Signal Interruption"
-  },
-  {
-    id: "CL-02",
-    name: "Ülemiste Tech District Cluster",
-    incidentCount: 2,
-    lat: 59.4220,
-    lng: 24.7930,
-    radiusKm: 1.8,
-    primaryCategory: "Power Infrastructure"
-  },
-  {
-    id: "CL-03",
-    name: "Harbor Communications Cluster",
-    incidentCount: 1,
-    lat: 59.4460,
-    lng: 24.7650,
-    radiusKm: 0.9,
-    primaryCategory: "Fiber Gateway"
-  }
-];
-
 export interface TallinnDistrict {
   id: string;
   name: string;
@@ -203,4 +187,3 @@ export const TALLINN_DISTRICTS: TallinnDistrict[] = [
     description: "Acoustic sensor array zone & western residential power ring"
   }
 ];
-

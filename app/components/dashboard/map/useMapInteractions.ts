@@ -1,11 +1,10 @@
 import { useCallback } from "react";
 import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
 
-import type { ClusterPoint, Incident } from "../data";
+import type { Incident } from "../data";
 
 interface UseMapInteractionsOptions {
   incidentById: Map<string, Incident>;
-  clusterById: Map<string, ClusterPoint>;
   flyTo: (
     latitude: number,
     longitude: number,
@@ -14,15 +13,12 @@ interface UseMapInteractionsOptions {
     bearing?: number,
   ) => void;
   setSelectedIncident: (incident: Incident | null) => void;
-  setSelectedCluster: (cluster: ClusterPoint | null) => void;
 }
 
 export function useMapInteractions({
   incidentById,
-  clusterById,
   flyTo,
   setSelectedIncident,
-  setSelectedCluster,
 }: UseMapInteractionsOptions) {
   return useCallback(
     (event: MapLayerMouseEvent) => {
@@ -30,7 +26,6 @@ export function useMapInteractions({
 
       if (!feature) {
         setSelectedIncident(null);
-        setSelectedCluster(null);
         return;
       }
 
@@ -47,24 +42,13 @@ export function useMapInteractions({
         const incident = incidentById.get(incidentId);
 
         if (incident) {
-          setSelectedCluster(null);
           setSelectedIncident(incident);
           flyTo(incident.lat, incident.lng, 14.8);
         }
 
         return;
       }
-
-      if (layerId === "cluster-circles" || layerId === "cluster-labels") {
-        const clusterId = String(properties?.id ?? "");
-        const cluster = clusterById.get(clusterId);
-
-        if (cluster) {
-          setSelectedIncident(null);
-          setSelectedCluster(cluster);
-        }
-      }
     },
-    [clusterById, flyTo, incidentById, setSelectedCluster, setSelectedIncident],
+    [flyTo, incidentById, setSelectedIncident],
   );
 }
