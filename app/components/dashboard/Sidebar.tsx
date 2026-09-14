@@ -16,6 +16,7 @@ interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   isOpen?: boolean;
+  onToggle?: () => void;
 }
 
 export function Sidebar({

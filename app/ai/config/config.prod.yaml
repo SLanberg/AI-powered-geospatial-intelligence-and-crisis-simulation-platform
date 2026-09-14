@@ -1,0 +1,11 @@
+# Environment overrides for Production
+app:
+  environment: "prod"
+
+development:
+  debug: false
+  verbose_errors: false
+
+production:
+  health_checks:
+    enabled: true

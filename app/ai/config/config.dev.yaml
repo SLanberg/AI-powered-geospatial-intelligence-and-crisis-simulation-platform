@@ -1,0 +1,7 @@
+# Environment overrides for Development
+app:
+  environment: "dev"
+
+development:
+  debug: true
+  verbose_errors: true
