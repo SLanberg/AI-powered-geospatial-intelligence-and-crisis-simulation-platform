@@ -10,6 +10,7 @@ import React, {
 
 import Map, {
   Layer,
+  Marker,
   MapRef,
   NavigationControl,
   FullscreenControl,
@@ -205,23 +206,27 @@ const INCIDENT_PULSE: LayerProps = {
       "match",
       ["get", "severity"],
       "critical",
-      "#f43f5e",
+      "#ef4444",
       "warning",
       "#f59e0b",
+      "normal",
+      "#10b981",
       "#3b82f6",
     ],
 
-    "circle-opacity": 0.12,
+    "circle-opacity": 0.25,
 
-    "circle-stroke-width": 1,
+    "circle-stroke-width": 1.5,
 
     "circle-stroke-color": [
       "match",
       ["get", "severity"],
       "critical",
-      "#f43f5e",
+      "#ef4444",
       "warning",
       "#f59e0b",
+      "normal",
+      "#10b981",
       "#3b82f6",
     ],
   },
@@ -237,26 +242,28 @@ const INCIDENT_CIRCLES: LayerProps = {
       ["linear"],
       ["zoom"],
       8,
-      4,
+      5,
       12,
-      6,
+      7,
       16,
-      9,
+      10,
     ],
 
     "circle-color": [
       "match",
       ["get", "severity"],
       "critical",
-      "#f43f5e",
+      "#ef4444",
       "warning",
       "#f59e0b",
+      "normal",
+      "#10b981",
       "#3b82f6",
     ],
 
     "circle-stroke-color": "#ffffff",
 
-    "circle-stroke-width": 1,
+    "circle-stroke-width": 2,
 
     "circle-opacity": 0.95,
   },
@@ -548,7 +555,7 @@ export function MapContainer({
   const mapRef = useRef<MapRef | null>(null);
 
   const [mapTheme, setMapTheme] =
-    useState<MapTheme>("satellite");
+    useState<MapTheme>("dark");
 
   const [is3D, setIs3D] =
     useState(false);
@@ -824,6 +831,29 @@ export function MapContainer({
                     {...INCIDENT_LABELS}
                   />
                 </Source>
+
+                {/* Live Tactical HTML Markers with double borders & animate-ping */}
+                {filteredIncidents
+                  .filter((inc) => inc.severity === "critical")
+                  .map((inc) => (
+                    <Marker
+                      key={`marker-${inc.id}`}
+                      latitude={inc.lat}
+                      longitude={inc.lng}
+                      anchor="center"
+                      onClick={(e) => {
+                        e.originalEvent.stopPropagation();
+                        setSelectedIncident(inc);
+                      }}
+                    >
+                      <div className="relative flex items-center justify-center cursor-pointer group p-2 min-h-[44px] min-w-[44px]">
+                        <span className="absolute inline-flex h-9 w-9 rounded-full bg-red-500/40 animate-ping" />
+                        <span className="relative flex h-5 w-5 items-center justify-center rounded-full bg-red-600 border-2 border-background shadow-lg shadow-red-500/50 ring-2 ring-red-500/60">
+                          <span className="h-1.5 w-1.5 rounded-full bg-white font-bold" />
+                        </span>
+                      </div>
+                    </Marker>
+                  ))}
 
                 {/* -------------------------------------------------------- */}
                 {/* Selected incident                                        */}

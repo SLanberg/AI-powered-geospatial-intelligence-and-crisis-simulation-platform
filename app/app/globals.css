@@ -83,7 +83,7 @@
   --secondary-foreground: #18191c;
 
   --muted: #e4e8ee;
-  --muted-foreground: #5a6474;
+  --muted-foreground: #334155;
 
   --accent: #dce1ea;
   --accent-foreground: #18191c;
@@ -134,8 +134,7 @@
   --secondary-foreground: #e2e6ec;
 
   --muted: #25282e;
-  --muted-foreground: #8e96a3;
-
+  --muted-foreground: #f8fafc;
   --accent: #2a2d34;
   --accent-foreground: #f0f2f5;
 

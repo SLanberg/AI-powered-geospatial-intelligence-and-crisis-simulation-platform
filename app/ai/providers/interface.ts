@@ -1,4 +1,4 @@
-import { AiConfig, ChatMessage } from "../types";
+import { ChatMessage, ModelCapabilities } from "../types";
 
 export interface ProviderResponse {
   content: string;
@@ -12,6 +12,7 @@ export interface ProviderResponse {
 
 export interface ModelProvider {
   name: string;
+  getCapabilities(modelName?: string): ModelCapabilities;
   chatComplete(
     messages: ChatMessage[],
     tools?: Array<{ name: string; description: string; parameters: Record<string, unknown> }>,
@@ -23,3 +24,4 @@ export interface ModelProvider {
     options?: { modelOverride?: string; temperatureOverride?: number }
   ): Promise<ReadableStream<Uint8Array>>;
 }
+

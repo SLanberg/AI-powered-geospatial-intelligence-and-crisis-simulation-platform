@@ -8,6 +8,10 @@
 export * from "./types";
 export * from "./config";
 export * from "./harness";
+export * from "./capabilities";
+export * from "./utils/retry";
+export * from "./cost/manager";
+export * from "./mcp/manager";
 export * from "./safety/guardrails";
 export * from "./observability/logger";
 export * from "./tools/registry";
@@ -18,6 +22,7 @@ export * from "./providers/interface";
 export * from "./providers/openai";
 export * from "./providers/ollama";
 export * from "./providers/mock";
+
 
 import { AgentHarness } from "./harness";
 import { loadAiConfig } from "./config";

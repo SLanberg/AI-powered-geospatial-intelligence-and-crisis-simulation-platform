@@ -7,15 +7,38 @@ export interface ReasoningConfig {
   effort: "low" | "medium" | "high";
 }
 
+export interface RetryConfig {
+  enabled: boolean;
+  max_attempts: number;
+  initial_delay_ms: number;
+  max_delay_ms: number;
+  backoff_multiplier: number;
+  jitter: boolean;
+}
+
+export interface ModelCapabilities {
+  tool_calling: boolean;
+  structured_output: boolean;
+  reasoning: boolean;
+  streaming: boolean;
+  vision: boolean;
+  embeddings: boolean;
+  supported_params: Array<
+    "reasoning.effort" | "temperature" | "top_p" | "max_output_tokens" | "tools" | "response_format"
+  >;
+}
+
 export interface ModelConfig {
   provider: "openai" | "ollama" | "mock" | string;
   name: string;
   temperature: number;
   top_p: number;
   max_output_tokens: number;
+  max_context_tokens?: number;
   reasoning: ReasoningConfig;
   timeout_seconds: number;
   max_retries: number;
+  retry?: RetryConfig;
 }
 
 export interface AgentConfig {
@@ -30,6 +53,8 @@ export interface AgentConfig {
     retrieval: boolean;
     memory: boolean;
     planning: boolean;
+    reasoning?: boolean;
+    structured_output?: boolean;
   };
   output: {
     format: "json" | "text" | "markdown";
@@ -37,9 +62,20 @@ export interface AgentConfig {
   };
 }
 
+export type ToolExecutionMode = "parallel" | "sequential";
+export type ToolCategory = "read_only" | "write" | "external_action" | "non_idempotent";
+
+export interface ToolExecutionPolicy {
+  mode: ToolExecutionMode;
+  requires_confirmation: boolean;
+  idempotent: boolean;
+  category: ToolCategory;
+}
+
 export interface ToolPermission {
   enabled: boolean;
   read_only: boolean;
+  execution?: Partial<ToolExecutionPolicy>;
 }
 
 export interface ToolsConfig {
@@ -68,13 +104,20 @@ export interface McpServerConfig {
   };
 }
 
+export interface McpSecurityConfig {
+  allow_remote_servers: boolean;
+  require_authentication: boolean;
+  allowed_hosts: string[];
+  allowed_transports: string[];
+  max_response_size_mb: number;
+  timeout_seconds: number;
+  max_tool_calls_per_request: number;
+}
+
 export interface McpConfig {
   enabled: boolean;
   servers: Record<string, McpServerConfig>;
-  security: {
-    allow_remote_servers: boolean;
-    require_authentication: boolean;
-  };
+  security: McpSecurityConfig;
 }
 
 export interface RetrievalConfig {
@@ -297,3 +340,4 @@ export interface AgentRunResult {
   executionTimeMs: number;
   warnings?: string[];
 }
+

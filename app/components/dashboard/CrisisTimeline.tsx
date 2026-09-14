@@ -227,28 +227,28 @@ export function CrisisTimeline({
   };
 
   return (
-    <div className="bg-[#18191c] text-zinc-300 border-t border-zinc-800 px-4 py-2.5 flex flex-col md:flex-row items-center justify-between gap-4 font-mono select-none">
+    <div className="bg-[#18191c] text-zinc-300 border-t border-zinc-800 px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4 font-mono select-none">
       {/* NLE Transport Controls */}
       <div className="flex items-center gap-3 shrink-0 w-full md:w-auto justify-between md:justify-start">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <Button
             size="icon"
             variant="outline"
-            className="h-7 w-7 bg-zinc-800/80 border-zinc-700 text-zinc-200 hover:bg-zinc-700 hover:text-white"
+            className="min-h-[44px] min-w-[44px] h-11 w-11 bg-zinc-800/80 border-zinc-700 text-zinc-200 hover:bg-zinc-700 hover:text-white"
             onClick={() => setIsPlaying(!isPlaying)}
             title={isPlaying ? "Pause Timeline (Space)" : "Play Timeline (Space)"}
           >
             {isPlaying ? (
-              <Pause className="w-3.5 h-3.5" />
+              <Pause className="w-5 h-5" />
             ) : (
-              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+              <Play className="w-5 h-5 fill-current ml-0.5" />
             )}
           </Button>
 
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+            className="min-h-[44px] min-w-[44px] h-11 w-11 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
             onClick={() => {
               setIsPlaying(false);
               setSelectedTime("08:47");
@@ -257,15 +257,15 @@ export function CrisisTimeline({
             }}
             title="Reset Playhead to 08:47:00:00"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-5 h-5" />
           </Button>
         </div>
 
         {/* NLE Timecode & Playhead Display */}
         <div className="flex items-center gap-2 text-xs">
-          <Clock className="w-3.5 h-3.5 text-zinc-400" />
-          <span className="text-zinc-500 uppercase tracking-wider text-[10px]">TC:</span>
-          <span className="text-zinc-100 font-mono font-semibold tracking-wider bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
+          <Clock className="w-5 h-5 text-zinc-400" />
+          <span className="text-zinc-400 uppercase tracking-wider text-xs font-semibold">TC:</span>
+          <span className="text-zinc-100 font-mono font-bold tracking-wider bg-zinc-900 px-3 py-1.5 rounded border border-zinc-700 text-xs shadow-sm">
             {activeEvent.fullTime}
           </span>
         </div>
@@ -413,7 +413,7 @@ export function CrisisTimeline({
         </div>
 
         {/* Minimal Timecode Axis */}
-        <div className="w-full pt-1.5 px-3 flex items-center justify-between font-mono text-[10px] text-zinc-500">
+        <div className="w-full pt-1 px-2 flex items-center justify-between font-mono text-xs text-zinc-400">
           {EVENT_TIMELINE.map((event) => {
             const isSelected = selectedTime === event.time;
 
@@ -421,8 +421,8 @@ export function CrisisTimeline({
               <button
                 key={`tc-${event.id}`}
                 onClick={() => handleSelectEvent(event)}
-                className={`transition-colors focus:outline-none ${
-                  isSelected ? "text-white font-bold tracking-wider" : "hover:text-zinc-200 text-zinc-400"
+                className={`min-h-[44px] min-w-[28px] px-1 flex items-center justify-center transition-colors focus:outline-none ${
+                  isSelected ? "text-white font-bold tracking-wider underline underline-offset-4 decoration-2 decoration-blue-500" : "hover:text-zinc-100 text-zinc-400 font-semibold"
                 }`}
               >
                 {event.time}

@@ -1,5 +1,6 @@
-import { AiConfig, ChatMessage } from "../types";
+import { AiConfig, ChatMessage, ModelCapabilities } from "../types";
 import { ModelProvider, ProviderResponse } from "./interface";
+import { getModelCapabilities, resolveModelConfig } from "../capabilities";
 
 export class OpenAiProvider implements ModelProvider {
   name = "openai";
@@ -9,37 +10,43 @@ export class OpenAiProvider implements ModelProvider {
     this.config = config;
   }
 
+  getCapabilities(modelName?: string): ModelCapabilities {
+    return getModelCapabilities("openai", modelName || this.config.model.name);
+  }
+
   async chatComplete(
     messages: ChatMessage[],
     tools?: Array<{ name: string; description: string; parameters: Record<string, unknown> }>,
     options?: { modelOverride?: string; temperatureOverride?: number }
   ): Promise<ProviderResponse> {
     const apiKey = process.env.OPENAI_API_KEY;
-    const model = options?.modelOverride || this.config.model.name;
-    const temperature = options?.temperatureOverride ?? this.config.model.temperature;
-    const reasoning = this.config.model.reasoning;
-
     if (!apiKey) {
       throw new Error("OPENAI_API_KEY environment variable is missing.");
     }
 
+    const resolved = resolveModelConfig(this.config, options?.modelOverride, options?.temperatureOverride);
+
     const payload: Record<string, unknown> = {
-      model,
+      model: resolved.modelName,
       messages: messages.map((m) => ({
         role: m.role,
         content: m.content,
         name: m.name,
       })),
-      temperature,
-      top_p: this.config.model.top_p,
-      max_tokens: this.config.model.max_output_tokens,
+      max_tokens: resolved.max_output_tokens,
     };
 
-    if (reasoning.enabled) {
-      payload.reasoning_effort = reasoning.effort;
+    if (resolved.temperature !== undefined) {
+      payload.temperature = resolved.temperature;
+    }
+    if (resolved.top_p !== undefined) {
+      payload.top_p = resolved.top_p;
+    }
+    if (resolved.reasoningEffort !== undefined) {
+      payload.reasoning_effort = resolved.reasoningEffort;
     }
 
-    if (tools && tools.length > 0) {
+    if (tools && tools.length > 0 && resolved.capabilities.tool_calling) {
       payload.tools = tools.map((t) => ({
         type: "function",
         function: {
@@ -108,3 +115,4 @@ export class OpenAiProvider implements ModelProvider {
     }
   }
 }
+

@@ -37,6 +37,14 @@ model:
   # Request behavior
   timeout_seconds: 120
   max_retries: 3
+  max_context_tokens: 32000
+  retry:
+    enabled: true
+    max_attempts: 3
+    initial_delay_ms: 500
+    max_delay_ms: 5000
+    backoff_multiplier: 2
+    jitter: true
 
 # -------------------------------------------------------------------
 # AGENT
@@ -86,6 +94,7 @@ tools:
     - "query_gis"
     - "get_weather"
     - "search_infrastructure"
+    - "create_incident"
 
   permissions:
 
@@ -96,6 +105,11 @@ tools:
     get_incident:
       enabled: true
       read_only: true
+
+    create_incident:
+      enabled: true
+      read_only: false
+
 
     query_gis:
       enabled: true
@@ -148,6 +162,16 @@ mcp:
   security:
     allow_remote_servers: false
     require_authentication: true
+    allowed_hosts:
+      - "localhost"
+      - "127.0.0.1"
+      - "api.tallinn-grid.ee"
+    allowed_transports:
+      - "stdio"
+      - "http"
+    max_response_size_mb: 5
+    timeout_seconds: 30
+    max_tool_calls_per_request: 20
 
 # -------------------------------------------------------------------
 # RAG / RETRIEVAL
@@ -332,8 +356,8 @@ cost:
     max_tool_calls_per_request: 30
 
   budgets:
-    daily_usd: 25
-    monthly_usd: 500
+    daily_usd: 1
+    monthly_usd: 10
 
 # -------------------------------------------------------------------
 # CACHING

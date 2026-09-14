@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { AlertTriangle, MapPin, Search } from "lucide-react";
+import { AlertTriangle, MapPin, Search, ShieldAlert, ArrowUpDown, Filter } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -21,9 +21,10 @@ interface IncidentMatrixProps {
 export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
   const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortAsc, setSortAsc] = useState<boolean>(false);
 
   const filteredIncidents = useMemo(() => {
-    return MOCK_INCIDENTS.filter((inc) => {
+    let result = MOCK_INCIDENTS.filter((inc) => {
       const matchesSeverity =
         severityFilter === "all" || inc.severity === severityFilter;
       const matchesQuery =
@@ -34,45 +35,68 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
         inc.category.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesSeverity && matchesQuery;
     });
-  }, [severityFilter, searchQuery]);
+
+    return result.sort((a, b) => {
+      if (sortAsc) return a.timestamp.localeCompare(b.timestamp);
+      return b.timestamp.localeCompare(a.timestamp);
+    });
+  }, [severityFilter, searchQuery, sortAsc]);
+
+  const getThreatBadgeClass = (severity: string) => {
+    switch (severity.toLowerCase()) {
+      case "critical":
+      case "emergency":
+        return "bg-teal-500/20 text-teal-400 border-teal-500/50 font-mono font-semibold text-xs tracking-wider uppercase";
+      case "warning":
+      case "attention":
+        return "bg-amber-500/20 text-amber-400 border-amber-500/50 font-mono font-semibold text-xs tracking-wider uppercase";
+      case "normal":
+      case "safe":
+        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/50 font-mono font-semibold text-xs tracking-wider uppercase";
+      default:
+        return "bg-blue-500/20 text-blue-400 border-blue-500/50 font-mono font-semibold text-xs tracking-wider uppercase";
+    }
+  };
 
   return (
     <div className="w-full bg-card border border-border rounded-xl overflow-hidden shadow-2xl p-5 font-sans text-card-foreground space-y-4">
-      {/* Header & Controls */}
+      {/* Header & Control Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-rose-950/60 border border-rose-800/60 flex items-center justify-center text-rose-400">
-            <AlertTriangle className="w-4 h-4" />
+        <div className="flex items-center gap-3">
+          <div className="relative flex items-center justify-center h-10 w-10 rounded-lg bg-teal-500/20 border-teal-500/30 shadow-lg text-red-400">
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-teal-500/20"></span>
+            </span>
+            <AlertTriangle className="w-5 h-5 text-teal-400" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-sm tracking-wider uppercase text-card-foreground font-sans">
-                Tallinn Incident Log Matrix
+              <h3 className="font-bold text-base tracking-wider uppercase text-foreground font-sans">
+                High-Density Incident Matrix
               </h3>
-              <Badge
-                variant="outline"
-                className="font-mono text-[10px] bg-rose-950/60 text-rose-300 border-rose-900"
-              >
-                {filteredIncidents.length} EVENTS
+              <Badge className="bg-teal-500/20 text-teal-400 border-teal-500/50 font-mono text-xs font-semibold px-2.5 py-0.5">
+                {filteredIncidents.length} CRITICAL TELEMETRY EVENTS
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Active telemetry anomalies captured during the 08:47 grid event window
+            <p className="text-xs font-semibold text-foreground/90">
+              Live anomaly feeds and tactical dispatch control matrix
             </p>
           </div>
         </div>
 
-        {/* Severity Filter Tabs & Search */}
-        <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
-          <div className="flex items-center bg-muted border border-border rounded-lg p-0.5">
+        {/* Filters & Search */}
+        <div className="flex flex-wrap items-center gap-3 font-mono text-xs">
+          <div className="flex items-center bg-muted/90 border border-border rounded-lg p-1 gap-1">
+            <Filter className="w-5 h-5 ml-2 mr-1 text-foreground/70" />
             {["all", "critical", "warning", "info"].map((sev) => (
               <button
                 key={sev}
                 onClick={() => setSeverityFilter(sev)}
-                className={`px-2.5 py-1 rounded text-[11px] capitalize transition-colors ${
+                className={`min-h-[44px] px-3.5 py-2 rounded-md font-semibold text-xs capitalize transition-all min-w-[64px] flex items-center justify-center ${
                   severityFilter === sev
-                    ? "bg-primary/20 text-primary border border-primary/40 font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-teal-600 text-white shadow-sm ring-1 ring-blue-400/50"
+                    : "text-teal-400 hover:text-white hover:bg-teal-600"
                 }`}
               >
                 {sev}
@@ -81,104 +105,111 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
           </div>
 
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-foreground/70" />
             <input
               type="text"
-              placeholder="Search nodes, IDs..."
+              placeholder="Search nodes, IDs, categories..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-muted border border-border rounded-lg pl-8 pr-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary w-44"
+              className="bg-muted/90 border border-border rounded-lg pl-10 pr-3 min-h-[44px] text-xs font-semibold text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-blue-500 w-60"
             />
           </div>
         </div>
       </div>
 
-      {/* Incident Table */}
-      <div className="rounded-lg border border-border overflow-hidden bg-muted/30">
+      {/* Dense Incident Table */}
+      <div className="rounded-lg border border-border overflow-hidden bg-card">
         <Table>
-          <TableHeader className="bg-muted/80 border-b border-border">
+          <TableHeader className="bg-muted/90 border-b border-border">
             <TableRow className="hover:bg-transparent border-border">
-              <TableHead className="font-mono text-[11px] text-muted-foreground">
+              <TableHead className="font-mono font-bold text-xs text-foreground uppercase tracking-wider">
+                THREAT LEVEL
+              </TableHead>
+              <TableHead className="font-mono font-bold text-xs text-foreground uppercase tracking-wider">
                 INCIDENT ID
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-muted-foreground">
-                TIMESTAMP
+              <TableHead className="font-mono font-bold text-xs text-foreground uppercase tracking-wider cursor-pointer select-none" onClick={() => setSortAsc(!sortAsc)}>
+                <div className="flex items-center gap-1">
+                  TIMESTAMP
+                  <ArrowUpDown className="w-5 h-5 text-foreground/70" />
+                </div>
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-muted-foreground">
-                SEVERITY
+              <TableHead className="font-mono font-bold text-xs text-foreground uppercase tracking-wider">
+                INCIDENT TELEMETRY & DESCRIPTION
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-muted-foreground">
-                INCIDENT SUMMARY
-              </TableHead>
-              <TableHead className="font-mono text-[11px] text-muted-foreground">
+              <TableHead className="font-mono font-bold text-xs text-foreground uppercase tracking-wider">
                 CATEGORY
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-muted-foreground">
-                TALLINN NODE
+              <TableHead className="font-mono font-bold text-xs text-foreground uppercase tracking-wider">
+                NODE LOCATION
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-muted-foreground text-right">
-                ACTION
+              <TableHead className="font-mono font-bold text-xs text-foreground uppercase tracking-wider text-right">
+                TACTICAL ACTION
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredIncidents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground font-mono text-xs">
-                  NO INCIDENTS MATCHING FILTER CRITERIA
+                <TableCell colSpan={7} className="text-center py-10 text-foreground font-mono font-semibold text-xs">
+                  NO CRITICAL INCIDENTS MATCHING FILTER CRITERIA
                 </TableCell>
               </TableRow>
             ) : (
-              filteredIncidents.map((inc) => (
-                <TableRow
-                  key={inc.id}
-                  className="border-border/60 hover:bg-muted/50 transition-colors"
-                >
-                  <TableCell className="font-mono text-xs text-primary font-semibold">
-                    {inc.id}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-card-foreground">
-                    {inc.timestamp}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        inc.severity === "critical"
-                          ? "destructive"
-                          : "outline"
-                      }
-                      className="text-[9px] px-1.5 py-0.5 font-mono uppercase"
-                    >
-                      {inc.severity}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium text-xs text-card-foreground">
-                      {inc.title}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground line-clamp-1">
-                      {inc.description}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs text-card-foreground">
-                    {inc.category}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {inc.nodeId}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => onSelectIncident(inc)}
-                      className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10 font-mono"
-                    >
-                      <MapPin className="w-3.5 h-3.5 mr-1" />
-                      Locate Map
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
+              filteredIncidents.map((inc) => {
+                const isCritical = inc.severity.toLowerCase() === "critical" || inc.severity.toLowerCase() === "emergency";
+                return (
+                  <TableRow
+                    key={inc.id}
+                    className="border-border/60 hover:bg-muted/60 transition-colors"
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {isCritical && (
+                          <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                          </span>
+                        )}
+                        <Badge className={getThreatBadgeClass(inc.severity)}>
+                          {inc.severity}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-blue-400 font-bold">
+                      {inc.id}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs font-semibold text-foreground">
+                      {inc.timestamp}
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-bold text-xs text-foreground">
+                        {inc.title}
+                      </div>
+                      <div className="text-xs font-semibold text-foreground/80 line-clamp-1">
+                        {inc.description}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs font-semibold text-foreground">
+                      {inc.category}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs font-semibold text-foreground">
+                      {inc.nodeId}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="default"
+                        variant="ghost"
+                        onClick={() => onSelectIncident(inc)}
+                        className="min-h-[44px] px-3.5 text-xs text-teal-400 hover:text-white hover:bg-teal-600 font-mono font-bold flex items-center justify-center ml-auto border border-teal-500/30 hover:border-teal-500 rounded-md"
+                      >
+                        <MapPin className="w-5 h-5 mr-1.5" />
+                        Locate Map
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -186,3 +217,5 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
     </div>
   );
 }
+
+
