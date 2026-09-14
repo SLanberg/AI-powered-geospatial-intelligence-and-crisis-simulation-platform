@@ -24,7 +24,7 @@ import Map, {
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { Car, Siren, Bus, MapPin, Target, Anchor, X } from "lucide-react";
+import { Car, Siren, Bus, MapPin, Target, Anchor, X, Plane } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 import type { FlightVector } from "@/app/api/flights/route";
@@ -43,6 +43,7 @@ import { MapIncidentPopup } from "./map/MapIncidentPopup";
 import { useMapInteractions } from "./map/useMapInteractions";
 import { MapObjectVector } from "./map/MapObjectVector";
 import { clusterEmergencyServices } from "./map/useDecluttering";
+import { MakiIcon, getMakiIconNameForIncident } from "./map/MakiIcon";
 
 import {
   MOCK_INCIDENTS,
@@ -495,6 +496,106 @@ interface MapContainerProps {
   onVehicleCountChange?: (count: number) => void;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Memoized Marker Components for High-Performance Map Rendering              */
+/* -------------------------------------------------------------------------- */
+
+const FlightMarkerItem = React.memo(function FlightMarkerItem({
+  flight,
+  isSelected,
+  onSelect,
+}: {
+  flight: FlightVector;
+  isSelected: boolean;
+  onSelect: (flight: FlightVector) => void;
+}) {
+  const isHeli = flight.callsign.includes("HELI") || flight.altitude < 300;
+  const isMil = flight.callsign.includes("MIL") || flight.callsign.includes("NATO");
+  const airType = isHeli ? "helicopter" : isMil ? "military" : "plane";
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onSelect(flight);
+    },
+    [flight, onSelect]
+  );
+
+  return (
+    <Marker
+      latitude={flight.lat}
+      longitude={flight.lng}
+      anchor="center"
+    >
+      <div
+        className="relative group cursor-pointer transition-transform hover:scale-110 hover:z-40 will-change-transform"
+        onClick={handleClick}
+      >
+        {isSelected && (
+          <span className="absolute -inset-1.5 rounded-full bg-amber-400/40 animate-ping pointer-events-none" />
+        )}
+        <MapObjectVector
+          domain="air"
+          type={airType}
+          heading={flight.heading}
+          status="normal"
+          size={30}
+          isSelected={isSelected}
+        />
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap bg-slate-900/90 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg backdrop-blur-xs">
+          {flight.callsign || flight.id} ({Math.round(flight.altitude)}m)
+        </div>
+      </div>
+    </Marker>
+  );
+});
+
+const VesselMarkerItem = React.memo(function VesselMarkerItem({
+  vessel,
+  isSelected,
+  onSelect,
+}: {
+  vessel: VesselData;
+  isSelected: boolean;
+  onSelect: (vessel: VesselData) => void;
+}) {
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onSelect(vessel);
+    },
+    [vessel, onSelect]
+  );
+
+  return (
+    <Marker
+      latitude={vessel.lat}
+      longitude={vessel.lng}
+      anchor="center"
+    >
+      <div
+        className="relative group cursor-pointer transition-transform hover:scale-110 hover:z-40 will-change-transform"
+        onClick={handleClick}
+      >
+        {isSelected && (
+          <span className="absolute -inset-1.5 rounded-full bg-cyan-400/40 animate-ping pointer-events-none" />
+        )}
+        <MapObjectVector
+          domain="maritime"
+          type={vessel.shipCategory}
+          heading={vessel.heading}
+          status="normal"
+          size={30}
+          isSelected={isSelected}
+        />
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap bg-slate-900/90 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg backdrop-blur-xs">
+          {vessel.name || `MMSI ${vessel.mmsi}`} ({vessel.sog} kts)
+        </div>
+      </div>
+    </Marker>
+  );
+});
+
 export function MapContainer({
   showIncidents,
   crisisActive,
@@ -774,6 +875,68 @@ export function MapContainer({
   }, []);
 
   /* ---------------------------------------------------------------------- */
+  /* Real-time Movement Ticks for Flights and Maritime Vessels               */
+  /* ---------------------------------------------------------------------- */
+
+  useEffect(() => {
+    const moveInterval = setInterval(() => {
+      // 1. Advance flights based on heading and velocity (m/s)
+      setFlights((prevFlights) => {
+        if (!prevFlights || prevFlights.length === 0) return prevFlights;
+        return prevFlights.map((f) => {
+          if (!f.velocity || f.velocity <= 0 || f.isGround) return f;
+          const headingRad = (f.heading * Math.PI) / 180;
+          const distMeters = f.velocity * 1.0; // 1s step
+          const dLat = (distMeters * Math.cos(headingRad)) / 111320;
+          const dLng = (distMeters * Math.sin(headingRad)) / (111320 * Math.cos((f.lat * Math.PI) / 180));
+          return {
+            ...f,
+            lat: f.lat + dLat,
+            lng: f.lng + dLng,
+          };
+        });
+      });
+
+      // 2. Advance vessels based on heading/cog and sog (knots)
+      setVessels((prevVessels) => {
+        if (!prevVessels || prevVessels.length === 0) return prevVessels;
+        return prevVessels.map((v) => {
+          if (!v.sog || v.sog <= 0) return v;
+          const speedMs = v.sog * 0.514444; // knots to m/s
+          const headingToUse = (v.heading && v.heading !== 511) ? v.heading : (v.cog || 0);
+          const headingRad = (headingToUse * Math.PI) / 180;
+          const distMeters = speedMs * 1.0; // 1s step
+          const dLat = (distMeters * Math.cos(headingRad)) / 111320;
+          const dLng = (distMeters * Math.sin(headingRad)) / (111320 * Math.cos((v.lat * Math.PI) / 180));
+          return {
+            ...v,
+            lat: v.lat + dLat,
+            lng: v.lng + dLng,
+          };
+        });
+      });
+    }, 1000);
+
+    return () => clearInterval(moveInterval);
+  }, []);
+
+  const handleFlightSelect = useCallback((selected: FlightVector) => {
+    setSelectedFlight(selected);
+    setSelectedVessel(null);
+    setSelectedEmergencyService(null);
+    setSelectedIncident(null);
+    setSelectedVehicle(null);
+  }, []);
+
+  const handleVesselSelect = useCallback((selected: VesselData) => {
+    setSelectedVessel(selected);
+    setSelectedFlight(null);
+    setSelectedEmergencyService(null);
+    setSelectedIncident(null);
+    setSelectedVehicle(null);
+  }, []);
+
+  /* ---------------------------------------------------------------------- */
   /* Update parent counters                                                 */
   /* ---------------------------------------------------------------------- */
 
@@ -829,6 +992,66 @@ export function MapContainer({
     isMapReady,
     viewState.zoom,
   ]);
+
+  /* ---------------------------------------------------------------------- */
+  /* Viewport bounds filtering for HTML DOM markers to maintain 60 FPS       */
+  /* ---------------------------------------------------------------------- */
+
+  const visibleFlights = useMemo(() => {
+    if (!activeShowFlights || flights.length === 0) return [];
+    if (flights.length <= 8) return flights;
+
+    if (mapRef.current) {
+      const bounds = mapRef.current.getBounds();
+      if (bounds) {
+        const west = bounds.getWest() - 0.15;
+        const east = bounds.getEast() + 0.15;
+        const south = bounds.getSouth() - 0.1;
+        const north = bounds.getNorth() + 0.1;
+        return flights.filter(
+          (f) =>
+            f.id === selectedFlight?.id ||
+            (f.lat >= south && f.lat <= north && f.lng >= west && f.lng <= east)
+        );
+      }
+    }
+    const latSpan = Math.max(0.12, 180 / Math.pow(2, viewState.zoom));
+    const lngSpan = Math.max(0.24, 360 / Math.pow(2, viewState.zoom));
+    return flights.filter(
+      (f) =>
+        f.id === selectedFlight?.id ||
+        (Math.abs(f.lat - viewState.latitude) <= latSpan &&
+         Math.abs(f.lng - viewState.longitude) <= lngSpan)
+    );
+  }, [flights, activeShowFlights, viewState.latitude, viewState.longitude, viewState.zoom, selectedFlight?.id]);
+
+  const visibleVessels = useMemo(() => {
+    if (!activeShowVehicles || vessels.length === 0) return [];
+    if (vessels.length <= 8) return vessels;
+
+    if (mapRef.current) {
+      const bounds = mapRef.current.getBounds();
+      if (bounds) {
+        const west = bounds.getWest() - 0.15;
+        const east = bounds.getEast() + 0.15;
+        const south = bounds.getSouth() - 0.1;
+        const north = bounds.getNorth() + 0.1;
+        return vessels.filter(
+          (v) =>
+            v.mmsi === selectedVessel?.mmsi ||
+            (v.lat >= south && v.lat <= north && v.lng >= west && v.lng <= east)
+        );
+      }
+    }
+    const latSpan = Math.max(0.12, 180 / Math.pow(2, viewState.zoom));
+    const lngSpan = Math.max(0.24, 360 / Math.pow(2, viewState.zoom));
+    return vessels.filter(
+      (v) =>
+        v.mmsi === selectedVessel?.mmsi ||
+        (Math.abs(v.lat - viewState.latitude) <= latSpan &&
+         Math.abs(v.lng - viewState.longitude) <= lngSpan)
+    );
+  }, [vessels, activeShowVehicles, viewState.latitude, viewState.longitude, viewState.zoom, selectedVessel?.mmsi]);
 
   /* ---------------------------------------------------------------------- */
   /* Selected vehicle route                                                  */
@@ -1302,6 +1525,7 @@ export function MapContainer({
           {isClient ? (
             <Map
               ref={mapRef}
+              reuseMaps={true}
               mapLib={maplibregl}
               initialViewState={
                 viewState
@@ -1363,107 +1587,81 @@ export function MapContainer({
 
               {showIncidents && (
                 <>
-                  <Source
-                    id="incidents"
-                    type="geojson"
-                    data={incidentGeoJSON}
-                  >
-                    {/*
-                     * Only warning + normal incidents are rendered here.
-                     *
-                     * Critical incidents are excluded by the layer filter
-                     * and rendered exclusively by the React Marker below.
-                     */}
-                    <Layer
-                      {...INCIDENT_CIRCLES}
-                    />
-                  </Source>
+                  {/* Minimal Tactical Incident Markers with Maki Icons */}
+                  {filteredIncidents.map((inc) => {
+                    const isCritical = inc.severity === "critical";
+                    const isWarning = inc.severity === "warning";
+                    const isSelected = selectedIncident?.id === inc.id;
+                    const makiIconName = getMakiIconNameForIncident(inc);
 
-                  {/* ------------------------------------------------ */}
-                  {/* Critical incident markers                        */}
-                  {/* ------------------------------------------------ */}
+                    // Minimal tactical color palette
+                    const dotBg = isCritical
+                      ? "bg-red-600 border-white text-white"
+                      : isWarning
+                      ? "bg-amber-500 border-white text-slate-950"
+                      : "bg-emerald-500 border-white text-slate-950";
 
-                  {filteredIncidents
-                    .filter(
-                      (inc) =>
-                        inc.severity ===
-                        "critical",
-                    )
-                    .map((inc) => (
+                    return (
                       <Marker
-                        key={`critical-marker-${inc.id}`}
+                        key={`incident-maki-marker-${inc.id}`}
                         latitude={inc.lat}
                         longitude={inc.lng}
                         anchor="center"
                         onClick={(e) => {
                           e.originalEvent.stopPropagation();
-
-                          setSelectedIncident(
-                            inc,
-                          );
+                          setSelectedIncident(inc);
                         }}
                       >
-                        <div className="relative cursor-pointer group">
-                          {/* Soft static glow */}
+                        <div
+                          className={`relative cursor-pointer group flex flex-col items-center select-none ${
+                            isSelected ? "z-50" : "z-30"
+                          }`}
+                        >
+                          {/* Minimal Tactical Dot Container */}
                           <div
-                            className="absolute inset-0 rounded-full blur-md"
-                            style={{
-                              backgroundColor:
-                                "rgba(255, 59, 48, 0.35)",
-                              transform:
-                                "scale(1.45)",
-                            }}
-                          />
-
-                          {/* Single critical point */}
-                          <div
-                            className="
-                              relative
-                              h-7
-                              w-7
+                            className={`
+                              flex
+                              items-center
+                              justify-center
+                              h-6
+                              w-6
                               rounded-full
-                              border-2
-                              border-white
-                              bg-[#FF3B30]
-                              shadow-lg
-                              shadow-red-500/40
+                              border
+                              shadow-sm
                               transition-transform
                               group-hover:scale-110
-                            "
-                          />
+                              ${dotBg}
+                              ${isSelected ? "ring-2 ring-white ring-offset-1 ring-offset-slate-950 scale-110" : ""}
+                            `}
+                          >
+                            <MakiIcon name={makiIconName} size={13} />
+                          </div>
 
-                          {/* Persistent label */}
+                          {/* Minimal Tactical Node ID Label */}
                           <div
-                            className="
-                              absolute
-                              left-1/2
-                              top-9
-                              -translate-x-1/2
+                            className={`
+                              mt-0.5
                               whitespace-nowrap
                               rounded
+                              bg-slate-900/90
                               border
-                              border-red-500/40
-                              bg-slate-950/90
-                              px-1.5
-                              py-0.5
+                              border-slate-700/60
+                              px-1
+                              py-0.2
                               font-mono
                               text-[9px]
-                              font-bold
-                              tracking-wide
-                              text-red-100
+                              font-medium
+                              text-slate-200
                               shadow-sm
-                            "
+                              ${isSelected ? "border-white/60 text-white font-bold" : ""}
+                            `}
                           >
-                            CRITICAL ·{" "}
                             {inc.nodeId}
                           </div>
                         </div>
                       </Marker>
-                    ))}
-
-                  {/* ------------------------------------------------ */}
-                  {/* Selected incident                                */}
-                  {/* ------------------------------------------------ */}
+                    );
+                  })}
 
                   <Source
                     id="selected-incident"
@@ -1491,8 +1689,8 @@ export function MapContainer({
                   longitude={
                     selectedIncident.lng
                   }
-                  anchor="top"
-                  offset={16}
+                  anchor="left"
+                  offset={36}
                   closeButton={false}
                   closeOnClick={false}
                   onClose={() =>
@@ -1785,106 +1983,48 @@ export function MapContainer({
                 )}
 
               {/* ------------------------------------------------------ */}
-              {/* WebGL Airspace Flights                                */}
+              {/* WebGL background layers for Flights & Vessels          */}
               {/* ------------------------------------------------------ */}
 
               {activeShowFlights && (
-                <Source
-                  id="flights"
-                  type="geojson"
-                  data={flightsGeoJSON}
-                >
-                  <Layer
-                    {...FLIGHT_CIRCLES}
-                  />
+                <Source id="flights" type="geojson" data={flightsGeoJSON}>
+                  <Layer {...FLIGHT_CIRCLES} />
                 </Source>
               )}
-
-              {/* ------------------------------------------------------ */}
-              {/* WebGL Maritime AIS Vessels                            */}
-              {/* ------------------------------------------------------ */}
 
               {activeShowVehicles && (
-                <Source
-                  id="vessels"
-                  type="geojson"
-                  data={vesselsGeoJSON}
-                >
-                  <Layer
-                    {...VESSEL_CIRCLES}
-                  />
+                <Source id="vessels" type="geojson" data={vesselsGeoJSON}>
+                  <Layer {...VESSEL_CIRCLES} />
                 </Source>
               )}
 
               {/* ------------------------------------------------------ */}
-              {/* Selected flight marker                                 */}
+              {/* Airspace Flights Icons (Viewport Culled)               */}
               {/* ------------------------------------------------------ */}
 
               {activeShowFlights &&
-                selectedFlight && (
-                  <Marker
-                    latitude={
-                      selectedFlight.lat
-                    }
-                    longitude={
-                      selectedFlight.lng
-                    }
-                    anchor="center"
-                  >
-                    <div className="relative flex items-center justify-center p-2 cursor-pointer scale-125 z-30">
-                      <span className="absolute inline-flex h-8 w-8 rounded-full bg-amber-400/40 animate-ping" />
-
-                      <MapObjectVector
-                        domain="air"
-                        type={
-                          selectedFlight.callsign.includes(
-                            "HELI",
-                          ) ||
-                            selectedFlight.altitude <
-                            300
-                            ? "helicopter"
-                            : "plane"
-                        }
-                        heading={
-                          selectedFlight.heading
-                        }
-                        status="normal"
-                        isSelected={true}
-                      />
-                    </div>
-                  </Marker>
-                )}
+                visibleFlights.map((f) => (
+                  <FlightMarkerItem
+                    key={`flight-${f.id}`}
+                    flight={f}
+                    isSelected={selectedFlight?.id === f.id}
+                    onSelect={handleFlightSelect}
+                  />
+                ))}
 
               {/* ------------------------------------------------------ */}
-              {/* Selected vessel marker                                 */}
+              {/* Maritime AIS Vessels Icons (Viewport Culled)          */}
               {/* ------------------------------------------------------ */}
 
               {activeShowVehicles &&
-                selectedVessel && (
-                  <Marker
-                    latitude={
-                      selectedVessel.lat
-                    }
-                    longitude={
-                      selectedVessel.lng
-                    }
-                    anchor="center"
-                  >
-                    <div className="relative flex items-center justify-center p-2 cursor-pointer scale-125 z-30">
-                      <span className="absolute inline-flex h-8 w-8 rounded-full bg-cyan-400/40 animate-ping" />
-
-                      <MapObjectVector
-                        domain="maritime"
-                        type="vessel"
-                        heading={
-                          selectedVessel.heading
-                        }
-                        status="normal"
-                        isSelected={true}
-                      />
-                    </div>
-                  </Marker>
-                )}
+                visibleVessels.map((v) => (
+                  <VesselMarkerItem
+                    key={`vessel-${v.mmsi}`}
+                    vessel={v}
+                    isSelected={selectedVessel?.mmsi === v.mmsi}
+                    onSelect={handleVesselSelect}
+                  />
+                ))}
 
               {/* ------------------------------------------------------ */}
               {/* AIS Vessel Popup                                       */}
@@ -1898,8 +2038,8 @@ export function MapContainer({
                   longitude={
                     selectedVessel.lng
                   }
-                  anchor="bottom"
-                  offset={20}
+                  anchor="left"
+                  offset={36}
                   closeButton={false}
                   closeOnClick={false}
                   onClose={() =>
@@ -1998,6 +2138,82 @@ export function MapContainer({
               )}
 
               {/* ------------------------------------------------------ */}
+              {/* Airspace Flight Popup                                  */}
+              {/* ------------------------------------------------------ */}
+
+              {selectedFlight && (
+                <Popup
+                  latitude={selectedFlight.lat}
+                  longitude={selectedFlight.lng}
+                  anchor="left"
+                  offset={36}
+                  closeButton={false}
+                  closeOnClick={false}
+                  onClose={() => setSelectedFlight(null)}
+                >
+                  <div className="bg-popover/95 backdrop-blur text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[260px] animate-in fade-in-50 zoom-in-95">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="space-y-1">
+                        <div className="flex gap-2 items-center">
+                          <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/50 uppercase font-semibold text-[10px] tracking-wider">
+                            <Plane className="w-3 h-3 mr-1 inline" />
+                            {selectedFlight.callsign.includes("HELI") || selectedFlight.altitude < 300
+                              ? "Helicopter"
+                              : selectedFlight.callsign.includes("MIL")
+                              ? "Military"
+                              : "Commercial"}
+                          </Badge>
+
+                          <span className="font-mono text-xs font-semibold text-muted-foreground">
+                            {selectedFlight.country}
+                          </span>
+                        </div>
+
+                        <h4 className="font-bold text-sm text-foreground leading-tight pt-1 font-mono">
+                          {selectedFlight.callsign || selectedFlight.id}
+                        </h4>
+                      </div>
+
+                      <button
+                        onClick={() => setSelectedFlight(null)}
+                        className="h-11 w-11 p-3 -mr-2 -mt-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
+                        aria-label="Close popup"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <p className="text-xs font-medium mt-2 leading-relaxed text-foreground/90">
+                      Alt {Math.round(selectedFlight.altitude)} m ({Math.round(selectedFlight.altitude * 3.28084)} ft) · Speed {Math.round(selectedFlight.velocity * 3.6)} km/h ({Math.round(selectedFlight.velocity * 1.94384)} kts) · Heading {selectedFlight.heading}°
+                    </p>
+
+                    <div className="mt-2 text-xs font-mono text-amber-300 bg-amber-950/40 p-2 rounded border border-amber-800/40 flex justify-between">
+                      <span>Vertical Rate:</span>
+                      <span className="text-foreground font-semibold">
+                        {selectedFlight.verticalRate > 0 ? `+${selectedFlight.verticalRate} m/s` : `${selectedFlight.verticalRate} m/s`}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-border/80 font-mono text-[11px] font-semibold text-muted-foreground flex justify-between items-center">
+                      <span>
+                        ICAO24:{" "}
+                        <strong className="text-foreground font-bold uppercase">
+                          {selectedFlight.id}
+                        </strong>
+                      </span>
+
+                      <span>
+                        STATUS:{" "}
+                        <strong className="text-foreground font-bold uppercase">
+                          {selectedFlight.isGround ? "ON GROUND" : "AIRBORNE"}
+                        </strong>
+                      </span>
+                    </div>
+                  </div>
+                </Popup>
+              )}
+
+              {/* ------------------------------------------------------ */}
               {/* Vehicle Popup                                          */}
               {/* ------------------------------------------------------ */}
 
@@ -2009,8 +2225,8 @@ export function MapContainer({
                   longitude={
                     selectedVehicle.lng
                   }
-                  anchor="bottom"
-                  offset={20}
+                  anchor="left"
+                  offset={36}
                   closeButton={false}
                   closeOnClick={false}
                   onClose={() =>
@@ -2147,8 +2363,8 @@ export function MapContainer({
                   longitude={
                     selectedEmergencyService.lng
                   }
-                  anchor="top"
-                  offset={14}
+                  anchor="left"
+                  offset={36}
                   closeButton={false}
                   closeOnClick={false}
                   onClose={() =>

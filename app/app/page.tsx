@@ -6,6 +6,7 @@ import { MapContainer } from "@/components/dashboard/MapContainer";
 import { IncidentMatrix } from "@/components/dashboard/IncidentMatrix";
 import { AIAssistant } from "@/components/dashboard/AIAssistant";
 import { TelemetryFeed } from "@/components/dashboard/map/TelemetryFeed";
+import { MediaFeed } from "@/components/dashboard/MediaFeed";
 
 import { Incident, MOCK_INCIDENTS } from "@/components/dashboard/data";
 import {
@@ -192,6 +193,10 @@ export default function NeuralCityDashboard() {
         ) : activeTab === "incidents" ? (
           <div className="w-full flex-1">
             <IncidentMatrix onSelectIncident={handleSelectIncidentFromMatrix} />
+          </div>
+        ) : activeTab === "media" ? (
+          <div className="w-full flex-1">
+            <MediaFeed />
           </div>
         ) : (
           /* Telemetry & Diagnostics Full Panel */

@@ -12,8 +12,8 @@ import type { EmergencyService, EmergencyServiceType } from "../emergencyService
 type Cfg = { color: string; label: string };
 
 const CONFIGS: Record<EmergencyServiceType, Cfg> = {
-  hospital: { color: "#FF3B30", label: "Medical" },
-  clinic: { color: "#FF3B30", label: "Medical" },
+  hospital: { color: "#F472B6", label: "Medical" },
+  clinic: { color: "#F472B6", label: "Medical" },
   police: { color: "#007AFF", label: "Police" },
   fire_station: { color: "#FF9500", label: "Fire & rescue" },
 };

@@ -4,6 +4,7 @@ export interface Incident {
   timestamp: string;
   severity: "critical" | "warning" | "info";
   category: "Grid Failure" | "Traffic Flow" | "Telecom Node" | "Emergency Dispatch" | "Sensor Anomaly";
+  makiIcon: "lightning" | "caution" | "traffic-light" | "emergency-phone" | "communications-tower" | "waveform" | string;
   lat: number;
   lng: number;
   description: string;
@@ -53,6 +54,7 @@ export const MOCK_INCIDENTS: Incident[] = [
     timestamp: "08:47:05",
     severity: "critical",
     category: "Grid Failure",
+    makiIcon: "lightning",
     lat: 59.4372,
     lng: 24.7453,
     description: "Primary transformer isolation relay triggered unexpectedly. Cascading frequency drop detected in Old Town district.",
@@ -65,6 +67,7 @@ export const MOCK_INCIDENTS: Incident[] = [
     timestamp: "08:47:01",
     severity: "critical",
     category: "Grid Failure",
+    makiIcon: "caution",
     lat: 59.4215,
     lng: 24.7958,
     description: "Voltage spike exceeding 420kV tolerances. Automated circuit breaker isolated tech park sectors B & C.",
@@ -77,6 +80,7 @@ export const MOCK_INCIDENTS: Incident[] = [
     timestamp: "08:47:18",
     severity: "warning",
     category: "Traffic Flow",
+    makiIcon: "traffic-light",
     lat: 59.4365,
     lng: 24.7562,
     description: "Optical traffic sensors lost heartbeat connection. Junction defaulted to fail-safe amber pulse state.",
@@ -89,6 +93,7 @@ export const MOCK_INCIDENTS: Incident[] = [
     timestamp: "08:47:30",
     severity: "warning",
     category: "Emergency Dispatch",
+    makiIcon: "emergency-phone",
     lat: 59.4402,
     lng: 24.7378,
     description: "Emergency vehicle priority routing server experienced a 1.4s packet drop. Secondary routing route initiated.",
@@ -101,6 +106,7 @@ export const MOCK_INCIDENTS: Incident[] = [
     timestamp: "08:46:50",
     severity: "info",
     category: "Telecom Node",
+    makiIcon: "communications-tower",
     lat: 59.4450,
     lng: 24.7680,
     description: "Subsea link telemetry reporting elevated ping (48ms vs baseline 4ms). Traffic rerouted through terrestrial backbone.",
@@ -113,6 +119,7 @@ export const MOCK_INCIDENTS: Incident[] = [
     timestamp: "08:47:42",
     severity: "warning",
     category: "Sensor Anomaly",
+    makiIcon: "waveform",
     lat: 59.4260,
     lng: 24.7240,
     description: "Environmental acoustic sensor array detected low-frequency micro-vibrations prior to power trip.",

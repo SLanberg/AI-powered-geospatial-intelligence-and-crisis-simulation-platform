@@ -11,6 +11,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { MOCK_INCIDENTS, type Incident } from "./data";
+import { MakiIcon, getMakiIconNameForIncident } from "./map/MakiIcon";
 
 export interface TimelineSubEvent {
   title: string;
@@ -1033,14 +1034,21 @@ export function CrisisTimeline({
       <div className="hidden lg:flex shrink-0 items-center gap-2 max-w-[240px]">
         {activeEvent.incidentId ? (
           <>
-            <AlertTriangle
-              className={`h-3.5 w-3.5 ${activeEvent.severity === "critical"
-                  ? "text-red-400"
-                  : activeEvent.severity === "warning"
-                    ? "text-amber-400"
-                    : "text-blue-400"
-                }`}
-            />
+            {(() => {
+              const activeInc = MOCK_INCIDENTS.find(i => i.id === activeEvent.incidentId);
+              const makiName = activeInc ? getMakiIconNameForIncident(activeInc) : "caution";
+              return (
+                <div className={`p-1 rounded bg-muted/80 border border-border flex items-center justify-center shrink-0 ${
+                  activeEvent.severity === "critical"
+                    ? "text-red-400 border-red-500/30"
+                    : activeEvent.severity === "warning"
+                      ? "text-amber-400 border-amber-500/30"
+                      : "text-blue-400 border-blue-500/30"
+                }`}>
+                  <MakiIcon name={makiName} size={14} />
+                </div>
+              );
+            })()}
 
             <div className="min-w-0">
               <div

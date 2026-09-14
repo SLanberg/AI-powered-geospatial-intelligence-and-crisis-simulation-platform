@@ -41,7 +41,7 @@ export function EmergencyServicePopup({
     hospital: {
       badgeLabel: "hospital",
       badgeClass:
-        "bg-red-500/20 text-red-400 border-red-500/50 uppercase font-semibold text-[10px] tracking-wider",
+        "bg-pink-500/20 text-pink-300 border-pink-500/50 uppercase font-semibold text-[10px] tracking-wider",
       icon: <Plus className="w-3 h-3 mr-1 inline stroke-[3]" />,
     },
     clinic: {
@@ -73,38 +73,38 @@ export function EmergencyServicePopup({
   };
 
   return (
-    <div className="bg-popover/95 backdrop-blur text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[260px] animate-in fade-in-50 zoom-in-95">
+    <div className="bg-popover/95 backdrop-blur text-popover-foreground p-4 rounded-xl border border-border shadow-2xl w-80 max-w-[calc(100vw-2rem)] animate-in fade-in-50 zoom-in-95 overflow-hidden box-border">
       {/* Header: Badge, Hours, Title & Close Button */}
-      <div className="flex justify-between items-start gap-3">
-        <div className="space-y-1">
-          <div className="flex gap-2 items-center">
-            <Badge className={current.badgeClass}>
+      <div className="flex justify-between items-start gap-2.5">
+        <div className="space-y-1 min-w-0 flex-1">
+          <div className="flex gap-2 items-center flex-wrap min-w-0">
+            <Badge className={`shrink-0 ${current.badgeClass}`}>
               {current.icon}
               {current.badgeLabel}
             </Badge>
 
-            <span className="font-mono text-xs font-semibold text-muted-foreground">
+            <span className="font-mono text-xs font-semibold text-muted-foreground shrink-0">
               {service.hours}
             </span>
           </div>
 
-          <h4 className="font-bold text-sm text-foreground leading-tight pt-1">
+          <h4 className="font-bold text-sm text-foreground leading-tight pt-1 break-words">
             {service.name}
           </h4>
         </div>
 
-        {/* 44x44px touch area close button with h-5 w-5 icon */}
+        {/* Close button aligned safely within card padding */}
         <button
           onClick={onClose}
-          className="h-11 w-11 p-3 -mr-2 -mt-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
+          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors shrink-0 -mr-1 -mt-1"
           aria-label="Close popup"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
       </div>
 
       {/* Description / Category & Location */}
-      <p className="text-xs font-medium mt-2 leading-relaxed text-foreground/90">
+      <p className="text-xs font-medium mt-2 leading-relaxed text-foreground/90 break-words">
         {service.category} · {service.address}, {service.district}
       </p>
 

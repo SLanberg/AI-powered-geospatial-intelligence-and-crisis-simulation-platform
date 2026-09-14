@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MOCK_INCIDENTS, Incident } from "./data";
+import { MakiIcon, getMakiIconNameForIncident } from "./map/MakiIcon";
 
 interface IncidentMatrixProps {
   onSelectIncident: (incident: Incident) => void;
@@ -177,14 +178,19 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-blue-400 font-bold">
-                      {inc.id}
+                      <div className="flex items-center gap-2">
+                        <div className="p-1 rounded bg-muted border border-border flex items-center justify-center shrink-0">
+                          <MakiIcon name={getMakiIconNameForIncident(inc)} size={14} className="text-teal-400" />
+                        </div>
+                        <span>{inc.id}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="font-mono text-xs font-semibold text-foreground">
                       {inc.timestamp}
                     </TableCell>
                     <TableCell>
-                      <div className="font-bold text-xs text-foreground">
-                        {inc.title}
+                      <div className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                        <span>{inc.title}</span>
                       </div>
                       <div className="text-xs font-semibold text-foreground/80 line-clamp-1">
                         {inc.description}

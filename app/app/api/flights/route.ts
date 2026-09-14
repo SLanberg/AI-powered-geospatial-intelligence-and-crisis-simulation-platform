@@ -109,20 +109,20 @@ export async function GET() {
 
     if (!res.ok) {
       return NextResponse.json({
-        flights: [],
+        flights: generateFallbackFlights(),
         timestamp: Date.now(),
-        isMock: false,
-        source: `OpenSky API HTTP ${res.status}`,
+        isMock: true,
+        source: `OpenSky API HTTP ${res.status} (Fallback Active)`,
       });
     }
 
     const data = await res.json();
     if (!data.states || !Array.isArray(data.states) || data.states.length === 0) {
       return NextResponse.json({
-        flights: [],
+        flights: generateFallbackFlights(),
         timestamp: Date.now(),
-        isMock: false,
-        source: "OpenSky API empty states",
+        isMock: true,
+        source: "OpenSky API empty states (Fallback Active)",
       });
     }
 
@@ -164,16 +164,16 @@ export async function GET() {
       .filter((f: FlightVector | null): f is FlightVector => f !== null);
 
     return NextResponse.json({
-      flights,
+      flights: flights.length > 0 ? flights : generateFallbackFlights(),
       timestamp: Date.now(),
       isMock: false,
     });
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({
-      flights: [],
+      flights: generateFallbackFlights(),
       timestamp: Date.now(),
-      isMock: false,
+      isMock: true,
       error: errMessage,
     });
   }

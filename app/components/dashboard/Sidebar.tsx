@@ -7,6 +7,7 @@ import {
   Activity,
   Radio,
   Cpu,
+  Newspaper,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,7 @@ export function Sidebar({
       badgeVariant: "destructive" as const,
     },
     { id: "telemetry", label: "Telemetry", icon: Activity, badge: null },
+    { id: "media", label: "Media", icon: Newspaper, badge: "LIVE" },
   ];
 
   if (!isOpen) return null;
