@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MOCK_INCIDENTS, Incident } from "./data";
+import { MOCK_INCIDENTS, Incident, fetchIncidentsFromDb } from "./data";
 import { MakiIcon, getMakiIconNameForIncident } from "./map/MakiIcon";
 
 interface IncidentMatrixProps {
@@ -26,6 +26,8 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
   useEffect(() => {
+    fetchIncidentsFromDb().then((list) => setIncidentList([...list]));
+
     const handleUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<Incident[]>;
       if (customEvent.detail) {

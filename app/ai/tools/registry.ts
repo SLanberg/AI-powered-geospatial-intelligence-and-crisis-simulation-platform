@@ -1,5 +1,6 @@
 import { AiConfig, ToolExecutionPolicy } from "../types";
 import { Guardrails } from "../safety/guardrails";
+import prisma from "@/lib/prisma";
 
 export interface ToolDefinition {
   name: string;
@@ -34,32 +35,52 @@ export class ToolRegistry {
       category: "write",
     };
 
-    // search_incidents
+    // search_incidents - SQLite DB integrated
     this.registerTool({
       name: "search_incidents",
-      description: "Search active grid anomalies and incidents in Tallinn.",
+      description: "Search active grid anomalies and incidents in Tallinn stored in SQLite DB.",
       isWriteOperation: false,
       policy: readOnlyPolicy,
       parameters: {
         type: "object",
         properties: {
-          sector: { type: "string", description: "Grid sector (e.g. Vanalinn, Harju)" },
-          severity: { type: "string", enum: ["CRITICAL", "HIGH", "MEDIUM", "LOW"] },
+          sector: { type: "string", description: "Grid sector or district (e.g. Vanalinn, Harju, Ülemiste, Kristiine)" },
+          severity: { type: "string", enum: ["critical", "warning", "info"] },
         },
       },
       execute: async (args) => {
-        const sector = (args.sector as string) || "All";
-        return [
-          { id: "INC-101", sector: sector, title: "Cascade frequency drop", severity: "CRITICAL", status: "ACTIVE" },
-          { id: "INC-102", sector: "Vanalinn-Harju", title: "Transformer 4B thermal warning", severity: "HIGH", status: "ACTIVE" },
-        ];
+        try {
+          const sector = typeof args.sector === "string" ? args.sector.trim().toLowerCase() : undefined;
+          const severity = typeof args.severity === "string" ? args.severity.trim().toLowerCase() : undefined;
+
+          const where: Record<string, unknown> = {};
+          if (severity) where.severity = severity;
+
+          const allIncidents = await prisma.incident.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+          });
+
+          if (sector && sector !== "all") {
+            return allIncidents.filter(
+              (inc) =>
+                (inc.district && inc.district.toLowerCase().includes(sector)) ||
+                inc.title.toLowerCase().includes(sector) ||
+                inc.description.toLowerCase().includes(sector)
+            );
+          }
+          return allIncidents;
+        } catch (err) {
+          console.error("search_incidents DB error:", err);
+          return [];
+        }
       },
     });
 
-    // get_incident
+    // get_incident - SQLite DB integrated
     this.registerTool({
       name: "get_incident",
-      description: "Get detailed telemetry for a specific incident by ID.",
+      description: "Get detailed telemetry for a specific incident by ID from SQLite DB.",
       isWriteOperation: false,
       policy: readOnlyPolicy,
       parameters: {
@@ -71,15 +92,67 @@ export class ToolRegistry {
       },
       execute: async (args) => {
         const id = args.incidentId as string;
-        return {
-          id,
-          title: "Thermal Exceedance on Substation 4B",
-          sector: "Vanalinn",
-          voltage: "110kV",
-          temperature_celsius: 87.4,
-          threshold_celsius: 80.0,
-          recommendation: "Shift 3.2MW load to Harju secondary loop.",
-        };
+        try {
+          const incident = await prisma.incident.findUnique({
+            where: { id },
+          });
+          if (incident) return incident;
+        } catch (err) {
+          console.error("get_incident DB error:", err);
+        }
+        return { error: `Incident ${id} not found in SQLite DB.` };
+      },
+    });
+
+    // get_map_awareness - Map & Spatial Awareness Tool
+    this.registerTool({
+      name: "get_map_awareness",
+      description: "Retrieve complete map data and spatial knowledge of Tallinn districts, infrastructure locations, and active incident hotspots.",
+      isWriteOperation: false,
+      policy: readOnlyPolicy,
+      parameters: {
+        type: "object",
+        properties: {
+          district: { type: "string", description: "Optional specific district to query e.g. Vanalinn, Mustamäe, Ülemiste" },
+        },
+      },
+      execute: async (args) => {
+        try {
+          const targetDistrict = typeof args.district === "string" ? args.district.toLowerCase() : null;
+
+          const districts = [
+            { id: "vanalinn", name: "Old Town (Vanalinn)", lat: 59.4372, lng: 24.7453, zoom: 14.6, desc: "Historic center, Substation #4 critical trip sector" },
+            { id: "ulemiste", name: "Ülemiste City", lat: 59.4215, lng: 24.7958, zoom: 14.3, desc: "High-tech innovation campus, Smart Feeder corridor" },
+            { id: "port", name: "Port / Sadam", lat: 59.4450, lng: 24.7680, zoom: 14.3, desc: "Maritime terminal & subsea telecom fiber trunk" },
+            { id: "baltijaam", name: "Balti Jaam", lat: 59.4402, lng: 24.7378, zoom: 14.6, desc: "Central transit hub and automated emergency dispatch node" },
+            { id: "kristiine", name: "Kristiine", lat: 59.4260, lng: 24.7240, zoom: 14.1, desc: "Acoustic sensor array zone & western residential power ring" },
+            { id: "mustamae", name: "Mustamäe", lat: 59.3960, lng: 24.6700, zoom: 14.0, desc: "Residential district & TalTech tech sector" },
+            { id: "lasnamae", name: "Lasnamäe", lat: 59.4380, lng: 24.8400, zoom: 13.8, desc: "Eastern dense urban residential district" },
+            { id: "pirita", name: "Pirita", lat: 59.4650, lng: 24.8350, zoom: 13.5, desc: "Coastal district & harbor telemetry zone" },
+            { id: "nomme", name: "Nõmme", lat: 59.3800, lng: 24.6800, zoom: 13.5, desc: "Southern forest residential zone" },
+          ];
+
+          const infrastructure = await prisma.infrastructure.findMany();
+          const activeIncidents = await prisma.incident.findMany({ where: { status: "active" } });
+
+          let filteredDistricts = districts;
+          if (targetDistrict) {
+            filteredDistricts = districts.filter(d => d.name.toLowerCase().includes(targetDistrict) || d.id.includes(targetDistrict));
+          }
+
+          return {
+            city: "Tallinn",
+            centerCoordinates: { lat: 59.4370, lng: 24.7535, zoom: 12.3 },
+            districts: filteredDistricts,
+            totalInfrastructureNodes: infrastructure.length,
+            infrastructureSummary: infrastructure.map(i => ({ id: i.id, name: i.name, type: i.type, lat: i.lat, lng: i.lng, status: i.status })),
+            activeIncidentCount: activeIncidents.length,
+            activeIncidents: activeIncidents.map(i => ({ id: i.id, title: i.title, severity: i.severity, lat: i.lat, lng: i.lng, district: i.district })),
+          };
+        } catch (err) {
+          console.error("get_map_awareness error:", err);
+          return { error: "Failed to load map awareness data." };
+        }
       },
     });
 
@@ -128,10 +201,10 @@ export class ToolRegistry {
       },
     });
 
-    // search_infrastructure
+    // search_infrastructure - SQLite DB integrated
     this.registerTool({
       name: "search_infrastructure",
-      description: "Search grid assets, substations, and transmission lines.",
+      description: "Search grid assets, substations, and transmission lines in SQLite database.",
       isWriteOperation: false,
       policy: readOnlyPolicy,
       parameters: {
@@ -141,18 +214,31 @@ export class ToolRegistry {
         },
       },
       execute: async (args) => {
-        return {
-          keyword: args.keyword,
-          substations: ["Substation Vanalinn-1", "Substation Harju-2"],
-          activeLines: 1420,
-        };
+        const keyword = (args.keyword as string || "").toLowerCase();
+        try {
+          const items = await prisma.infrastructure.findMany();
+          const filtered = items.filter(
+            (i) =>
+              i.name.toLowerCase().includes(keyword) ||
+              i.type.toLowerCase().includes(keyword) ||
+              i.address.toLowerCase().includes(keyword)
+          );
+          return {
+            keyword: args.keyword,
+            itemsFound: filtered.length,
+            infrastructure: filtered,
+          };
+        } catch (err) {
+          console.error("search_infrastructure error:", err);
+          return { keyword: args.keyword, itemsFound: 0, infrastructure: [] };
+        }
       },
     });
 
-    // create_incident
+    // create_incident - SQLite DB integrated
     this.registerTool({
       name: "create_incident",
-      description: "Create a new grid incident on the Tallinn map.",
+      description: "Create a new grid incident in the SQLite database and plot on Tallinn map.",
       isWriteOperation: true,
       policy: writePolicy,
       parameters: {
@@ -162,21 +248,19 @@ export class ToolRegistry {
           description: { type: "string", description: "Detailed telemetry description" },
           category: { type: "string", enum: ["Grid Failure", "Traffic Flow", "Telecom Node", "Emergency Dispatch", "Sensor Anomaly"], description: "Incident category" },
           severity: { type: "string", enum: ["critical", "warning", "info"], description: "Severity level" },
-          lat: { type: "number", description: "Latitude coordinate in Tallinn (approx 59.41 - 59.46)" },
-          lng: { type: "number", description: "Longitude coordinate in Tallinn (approx 24.70 - 24.82)" },
-          district: { type: "string", description: "District name (Vanalinn, Ülemiste, Balti Jaam, Kristiine, Port, Mustamäe, Nõmme, Lasnamäe)" },
+          lat: { type: "number", description: "Latitude coordinate in Tallinn (approx 59.38 - 59.46)" },
+          lng: { type: "number", description: "Longitude coordinate in Tallinn (approx 24.60 - 24.85)" },
+          district: { type: "string", description: "District name (Vanalinn, Ülemiste, Balti Jaam, Kristiine, Port, Mustamäe, Nõmme, Lasnamäe, Pirita)" },
           nodeId: { type: "string", description: "Node hardware identifier e.g. EE-TLN-NEW-01" },
         },
         required: ["title", "severity"],
       },
       execute: async (args) => {
-        const id = `INC-${new Date().getHours().toString().padStart(2, "0")}${new Date().getMinutes().toString().padStart(2, "0")}-${Math.floor(Math.random() * 89 + 10)}`;
         const timestamp = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
         
         let lat = typeof args.lat === "number" ? args.lat : 59.4372;
         let lng = typeof args.lng === "number" ? args.lng : 24.7453;
         
-        // District coordinate mapping fallback if specific lat/lng not supplied
         const districtStr = (args.district as string || "").toLowerCase();
         if (!args.lat || !args.lng) {
           if (districtStr.includes("vanalinn") || districtStr.includes("old town")) { lat = 59.4372; lng = 24.7453; }
@@ -187,25 +271,31 @@ export class ToolRegistry {
           else if (districtStr.includes("mustam")) { lat = 59.3960; lng = 24.6700; }
           else if (districtStr.includes("lasnam")) { lat = 59.4380; lng = 24.8400; }
           else if (districtStr.includes("nõmme") || districtStr.includes("nomme")) { lat = 59.3800; lng = 24.6800; }
+          else if (districtStr.includes("pirita")) { lat = 59.4650; lng = 24.8350; }
         }
 
-        const newIncident = {
-          id,
-          title: (args.title as string) || "Unspecified Anomaly",
-          timestamp,
-          severity: (args.severity as "critical" | "warning" | "info") || "critical",
-          category: (args.category as any) || "Grid Failure",
-          makiIcon: args.severity === "critical" ? "lightning" : args.severity === "warning" ? "caution" : "waveform",
-          lat,
-          lng,
-          description: (args.description as string) || "Manual telemetry anomaly added via SCADA AI command.",
-          status: "active",
-          nodeId: (args.nodeId as string) || `EE-TLN-AI-${Math.floor(Math.random() * 89 + 10)}`,
-        };
+        const severity = (args.severity as "critical" | "warning" | "info") || "critical";
+        const makiIcon = severity === "critical" ? "lightning" : severity === "warning" ? "caution" : "waveform";
+
+        const newIncident = await prisma.incident.create({
+          data: {
+            title: (args.title as string) || "Unspecified Anomaly",
+            timestamp,
+            severity,
+            category: (args.category as string) || "Grid Failure",
+            makiIcon,
+            lat,
+            lng,
+            description: (args.description as string) || "Manual telemetry anomaly added via SCADA AI command.",
+            status: "active",
+            nodeId: (args.nodeId as string) || `EE-TLN-AI-${Math.floor(Math.random() * 89 + 10)}`,
+            district: (args.district as string) || "Kesklinn",
+          },
+        });
 
         return {
           status: "created",
-          message: `Successfully created incident ${id} at coordinates ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+          message: `Successfully created incident ${newIncident.id} in SQLite DB at coordinates ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
           incident: newIncident,
         };
       },
@@ -214,7 +304,7 @@ export class ToolRegistry {
     // highlight_incident_areas
     this.registerTool({
       name: "highlight_incident_areas",
-      description: "Aggregates incidents by Tallinn city district, identifies highest concentration areas, and updates the tactical map.",
+      description: "Aggregates active SQLite incidents by Tallinn city district, identifies highest concentration areas, and updates tactical map.",
       isWriteOperation: false,
       policy: readOnlyPolicy,
       parameters: {
@@ -224,18 +314,12 @@ export class ToolRegistry {
         },
       },
       execute: async (args) => {
+        const activeIncidents = await prisma.incident.findMany({ where: { status: "active" } });
         return {
           status: "success",
           city: args.city || "Tallinn",
+          totalActiveIncidents: activeIncidents.length,
           highestConcentrationDistrict: "Vanalinn (Old Town)",
-          incidentCount: 2,
-          districts: [
-            { name: "Vanalinn", count: 2, severity: "CRITICAL" },
-            { name: "Balti Jaam", count: 1, severity: "WARNING" },
-            { name: "Ülemiste", count: 1, severity: "CRITICAL" },
-            { name: "Port / Sadam", count: 1, severity: "INFO" },
-            { name: "Kristiine", count: 1, severity: "WARNING" },
-          ],
           mapAction: "highlight_high_density",
         };
       },

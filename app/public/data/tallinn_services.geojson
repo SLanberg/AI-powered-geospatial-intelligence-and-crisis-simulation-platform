@@ -3,7 +3,7 @@
   "features": [
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.6980, 59.3970] },
+      "geometry": { "type": "Point", "coordinates": [24.7015, 59.3977] },
       "properties": {
         "id": "hosp-perh",
         "name": "Põhja-Eesti Regionaalhaigla (PERH)",
@@ -23,7 +23,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7570, 59.4282] },
+      "geometry": { "type": "Point", "coordinates": [24.7563, 59.4277] },
       "properties": {
         "id": "hosp-itk",
         "name": "Ida-Tallinna Keskhaigla (ITK)",
@@ -43,7 +43,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7042, 59.4355] },
+      "geometry": { "type": "Point", "coordinates": [24.6913, 59.4299] },
       "properties": {
         "id": "hosp-ltkh",
         "name": "Lääne-Tallinna Keskhaigla (LTKH)",
@@ -63,7 +63,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.6975, 59.3944] },
+      "geometry": { "type": "Point", "coordinates": [24.7016, 59.3960] },
       "properties": {
         "id": "hosp-laste",
         "name": "Tallinna Lastehaigla",
@@ -83,7 +83,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7352, 59.4124] },
+      "geometry": { "type": "Point", "coordinates": [24.7335, 59.4187] },
       "properties": {
         "id": "hosp-magdaleena",
         "name": "ITK Magdaleena Tervisemaja",
@@ -102,7 +102,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7128, 59.4440] },
+      "geometry": { "type": "Point", "coordinates": [24.7093, 59.4361] },
       "properties": {
         "id": "hosp-pelgulinna",
         "name": "Pelgulinna Sünnitusmaja",
@@ -121,7 +121,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7020, 59.4005] },
+      "geometry": { "type": "Point", "coordinates": [24.7069, 59.4024] },
       "properties": {
         "id": "hosp-kiirabi-hq",
         "name": "Tallinna Kiirabi Peamaja",
@@ -141,7 +141,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7335, 59.4312] },
+      "geometry": { "type": "Point", "coordinates": [24.7322, 59.4321] },
       "properties": {
         "id": "hosp-wismari",
         "name": "Wismari Haigla",
@@ -159,7 +159,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7548, 59.4208] },
+      "geometry": { "type": "Point", "coordinates": [24.7528, 59.4181] },
       "properties": {
         "id": "hosp-confido",
         "name": "Confido Meditsiinikeskus",
@@ -177,7 +177,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.6644, 59.4042] },
+      "geometry": { "type": "Point", "coordinates": [24.6684, 59.4001] },
       "properties": {
         "id": "clinic-mustamae",
         "name": "Mustamäe Tervisekeskus",
@@ -195,7 +195,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.8720, 59.4501] },
+      "geometry": { "type": "Point", "coordinates": [24.8634, 59.4488] },
       "properties": {
         "id": "clinic-lasnamae",
         "name": "Lasnamäe Tervisemaja",
@@ -213,7 +213,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7380, 59.4082] },
+      "geometry": { "type": "Point", "coordinates": [24.7369, 59.4089] },
       "properties": {
         "id": "pol-ppa-hq",
         "name": "Politsei- ja Piirivalveameti Peamaja (PPA HQ)",
@@ -232,11 +232,11 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.6985, 59.4418] },
+      "geometry": { "type": "Point", "coordinates": [24.6983, 59.4357] },
       "properties": {
         "id": "pol-kesklinn",
-        "name": "Põhja Prefektuur / Kesklinna politseijaoskond",
-        "shortName": "PPA Kesklinn",
+        "name": "Põhja Prefektuur / Kolde politseimaja",
+        "shortName": "PPA Kolde",
         "amenity": "police",
         "type": "police",
         "category": "Regional Police Station",
@@ -251,15 +251,15 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7150, 59.4012] },
+      "geometry": { "type": "Point", "coordinates": [24.7087, 59.3964] },
       "properties": {
         "id": "pol-rahumae",
-        "name": "PPA Lõuna politseijaoskond",
+        "name": "PPA Lääne-Harju politseijaoskond (Rahumäe)",
         "shortName": "PPA Rahumäe",
         "amenity": "police",
         "type": "police",
         "category": "Police Precinct & Rapid Response",
-        "address": "Rahumäe tee 6",
+        "address": "Rahumäe tee 6/1",
         "district": "Kristiine",
         "city": "Tallinn",
         "phone": "+372 612 5600",
@@ -270,7 +270,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.8450, 59.4348] },
+      "geometry": { "type": "Point", "coordinates": [24.8385, 59.4367] },
       "properties": {
         "id": "pol-ida-harju",
         "name": "PPA Ida-Harju politseijaoskond",
@@ -289,26 +289,26 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.6540, 59.4140] },
+      "geometry": { "type": "Point", "coordinates": [24.7077, 59.4146] },
       "properties": {
         "id": "pol-laane-harju",
-        "name": "PPA Lääne-Harju politseijaoskond",
-        "shortName": "PPA Mustamäe",
+        "name": "PPA Tammsaare teenindus",
+        "shortName": "PPA Tammsaare",
         "amenity": "police",
         "type": "police",
-        "category": "Police Precinct & Traffic Supervision",
-        "address": "Ehitajate tee 109a",
+        "category": "Police & Border Guard Service Center",
+        "address": "A. H. Tammsaare tee 47",
         "district": "Mustamäe",
         "city": "Tallinn",
-        "phone": "+372 612 5700",
+        "phone": "+372 612 3000",
         "emergency": "112",
         "status": "active",
-        "hours": "24/7 Active Patrols"
+        "hours": "Mon-Fri 09:00-17:00"
       }
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7170, 59.4340] },
+      "geometry": { "type": "Point", "coordinates": [24.7176, 59.4326] },
       "properties": {
         "id": "pol-mupo",
         "name": "Tallinna Munitsipaalpolitsei Amet (MUPO)",
@@ -327,7 +327,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.8010, 59.4132] },
+      "geometry": { "type": "Point", "coordinates": [24.8326, 59.4132] },
       "properties": {
         "id": "pol-airport",
         "name": "PPA Lennujaama Piiripunkt",
@@ -345,7 +345,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7610, 59.4445] },
+      "geometry": { "type": "Point", "coordinates": [24.7608, 59.4449] },
       "properties": {
         "id": "pol-port",
         "name": "PPA Vanasadama Piiripunkt",
@@ -363,7 +363,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7675, 59.4358] },
+      "geometry": { "type": "Point", "coordinates": [24.7638, 59.4351] },
       "properties": {
         "id": "fire-kesklinn",
         "name": "Kesklinna Päästekomando & Päästeamet HQ",
@@ -383,7 +383,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.7115, 59.4328] },
+      "geometry": { "type": "Point", "coordinates": [24.7152, 59.4319] },
       "properties": {
         "id": "fire-lillekula",
         "name": "Lilleküla Päästekomando",
@@ -403,7 +403,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.6885, 59.3888] },
+      "geometry": { "type": "Point", "coordinates": [24.6839, 59.3873] },
       "properties": {
         "id": "fire-nomme",
         "name": "Nõmme Päästekomando",
@@ -411,7 +411,7 @@
         "amenity": "fire_station",
         "type": "fire_station",
         "category": "Rescue & Fire Brigade",
-        "address": "Jaama tn 2",
+        "address": "Jaama tn 4",
         "district": "Nõmme",
         "city": "Tallinn",
         "phone": "+372 628 2200",
@@ -423,27 +423,27 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.6590, 59.3905] },
+      "geometry": { "type": "Point", "coordinates": [24.9540, 59.4920] },
       "properties": {
         "id": "fire-mustamae",
-        "name": "Mustamäe Päästekomando",
-        "shortName": "Mustamäe Pääste",
+        "name": "Muuga Päästekomando (Põhja Päästekeskus)",
+        "shortName": "Muuga Pääste",
         "amenity": "fire_station",
         "type": "fire_station",
-        "category": "Rescue & Fire Brigade",
-        "address": "Akadeemia tee 50",
-        "district": "Mustamäe",
-        "city": "Tallinn",
+        "category": "Industrial & Port Fire Brigade",
+        "address": "Veose 1",
+        "district": "Muuga / Maardu",
+        "city": "Tallinn Suburbs",
         "phone": "+372 628 2250",
         "emergency": "112",
         "status": "active",
         "hours": "24/7 Emergency Ready",
-        "vehicles": "2 Engines, 1 Heavy Rescue"
+        "vehicles": "2 Engines, 1 Heavy Hazmat Unit"
       }
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.8690, 59.4695] },
+      "geometry": { "type": "Point", "coordinates": [24.8410, 59.4683] },
       "properties": {
         "id": "fire-pirita",
         "name": "Pirita Päästekomando",
@@ -451,7 +451,7 @@
         "amenity": "fire_station",
         "type": "fire_station",
         "category": "Rescue, Water Rescue & Fire Brigade",
-        "address": "Kloostrimetsa tee 56",
+        "address": "Kloostrimetsa tee 22",
         "district": "Pirita",
         "city": "Tallinn",
         "phone": "+372 628 2300",
@@ -463,10 +463,10 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.8785, 59.4335] },
+      "geometry": { "type": "Point", "coordinates": [24.8616, 59.4346] },
       "properties": {
         "id": "fire-lasnamae",
-        "name": "Lasnamäe Päästekomando",
+        "name": "Lasnamäe Päästekomando & Häirekeskus",
         "shortName": "Lasnamäe Pääste",
         "amenity": "fire_station",
         "type": "fire_station",
@@ -483,7 +483,7 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [24.6890, 59.4580] },
+      "geometry": { "type": "Point", "coordinates": [24.6779, 59.4557] },
       "properties": {
         "id": "fire-kopli",
         "name": "Kopli Päästekomando",

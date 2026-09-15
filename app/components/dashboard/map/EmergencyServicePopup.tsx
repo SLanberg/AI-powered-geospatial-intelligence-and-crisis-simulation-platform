@@ -12,6 +12,7 @@ import {
   Navigation,
   ExternalLink,
   Check,
+  Camera,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -140,6 +141,38 @@ export function EmergencyServicePopup({
         </div>
       )}
 
+      {/* Google Maps Satellite Imagery View */}
+      <div className="relative mt-2.5 rounded-lg overflow-hidden border border-border/80 bg-black/40 group">
+        <iframe
+          title={`Google Maps Satellite view of ${service.name}`}
+          width="100%"
+          height="120"
+          className="w-full h-28 border-0 rounded-lg filter contrast-[1.05] brightness-95 transition-all"
+          loading="lazy"
+          src={`https://maps.google.com/maps?q=${service.lat},${service.lng}&t=k&z=18&ie=UTF8&iwloc=&output=embed`}
+        />
+        <div className="absolute bottom-1.5 right-1.5 flex gap-1 z-10">
+          <a
+            href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${service.lat},${service.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-2 py-0.5 bg-background/90 hover:bg-background text-foreground text-[10px] font-mono font-medium rounded border border-border/80 shadow flex items-center gap-1 backdrop-blur transition-colors"
+          >
+            <Camera className="w-3 h-3 text-sky-400" />
+            Street View
+          </a>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${service.name}, ${service.address}, Tallinn`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-2 py-0.5 bg-background/90 hover:bg-background text-foreground text-[10px] font-mono font-medium rounded border border-border/80 shadow flex items-center gap-1 backdrop-blur transition-colors"
+          >
+            <ExternalLink className="w-3 h-3 text-emerald-400" />
+            Google Maps
+          </a>
+        </div>
+      </div>
+
       {/* Action buttons: Center View, External Map, Copy Coordinates */}
       <div className="mt-2.5 flex items-center gap-1.5">
         {onCenter && (
@@ -157,25 +190,8 @@ export function EmergencyServicePopup({
         <Button
           size="sm"
           variant="outline"
-          onClick={() => {
-            window.open(
-              `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                `${service.name}, ${service.address}, Tallinn`
-              )}`,
-              "_blank"
-            );
-          }}
-          className="h-7 px-2 text-[11px] border-border/80 hover:bg-accent hover:text-accent-foreground"
-          title="Open in Maps"
-        >
-          <ExternalLink className="w-3 h-3" />
-        </Button>
-
-        <Button
-          size="sm"
-          variant="outline"
           onClick={handleCopyCoords}
-          className="h-7 px-2 text-[11px] border-border/80 hover:bg-accent hover:text-accent-foreground font-mono"
+          className="h-7 px-2.5 text-[11px] border-border/80 hover:bg-accent hover:text-accent-foreground font-mono flex items-center gap-1"
           title="Copy Coordinates"
         >
           {copied ? (
@@ -183,6 +199,7 @@ export function EmergencyServicePopup({
           ) : (
             <MapPin className="w-3 h-3 text-muted-foreground" />
           )}
+          <span>Coords</span>
         </Button>
       </div>
 

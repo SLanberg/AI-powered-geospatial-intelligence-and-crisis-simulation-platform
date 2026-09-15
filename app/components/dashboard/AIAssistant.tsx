@@ -51,7 +51,7 @@ interface SlashCommand {
 }
 
 const SLASH_COMMANDS: SlashCommand[] = [
-  { cmd: "/add_incident", desc: "Add a new telemetry incident to Tallinn map & Heatmap", insertText: "Добавь инцидент: Авария на трансформаторе в Мустамяэ, высокий уровень опасности" },
+  { cmd: "/add_incident", desc: "Add a new telemetry incident to Tallinn map & Heatmap", insertText: "Add incident: Transformer failure in Mustamäe, critical hazard level" },
   { cmd: "/density", desc: "Identify & map high incident concentration areas in Tallinn", insertText: "Show me the areas of Tallinn with the highest concentration of incidents." },
   { cmd: "/status", desc: "SCADA telemetry & grid status summary", insertText: "/status --summary" },
   { cmd: "/rebalance", desc: "Initiate transformer load rebalance simulation", insertText: "/rebalance --sector Vanalinn-Harju" },
@@ -62,7 +62,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
 ];
 
 const QUICK_CHIPS = [
-  { label: "/add_incident", prompt: "Добавь новый инцидент: Поломка светофора в центре Таллинна" },
+  { label: "/add_incident", prompt: "Add new incident: Traffic light malfunction in central Tallinn" },
   { label: "/density", prompt: "Show me the areas of Tallinn with the highest concentration of incidents." },
   { label: "/status", prompt: "/status --summary" },
   { label: "/rebalance", prompt: "/rebalance --sector Vanalinn-Harju" },
@@ -523,14 +523,26 @@ export function AIAssistant({ isOpen, onClose, context, onClearContext, onMapAct
     const assistantMsgId = `a-${idCounterRef.current++}`;
 
     const isConcentrationQuery =
-      /highest concentration|concentration of incidents|incident concentration|highest incident|most incidents|incident hotspots|incident density|\/density|heatmap|оверлей|overlay|концентрация|плотность|подсветк|обведи|обвести/i.test(
+      /highest concentration|concentration of incidents|incident concentration|highest incident|most incidents|incident hotspots|incident density|\/density|heatmap|overlay/i.test(
         rawText
       );
 
-    const isAddIncidentQuery =
-      /\/add_incident|добавь|добавить|создай|создать|инцидент|авари|добавление|поломка|происшествие|пожар|взрыв|grid incident|create incident|add incident/i.test(
+    const isQuestionOrQuery =
+      /\b(what|which|where|who|how|why|when|show|list|tell|count|most|least|sever|severe|severity|details|status|info|information)\b/i.test(
+        rawText
+      ) || rawText.includes("?");
+
+    const hasExplicitAddVerb =
+      /\/add_incident|\/create_incident/i.test(rawText) ||
+      /\b(add|create|register|report|log|post)\s+(a\s+|an\s+|new\s+)?(incident|accident|failure|outage|hazard|event|anomaly|issue|fire|breakdown|telemetry|record)\b/i.test(
         rawText
       );
+
+    const isSimpleConfirmation = /^(yes|yeah|confirm|proceed|create it|do it|create in database)$/i.test(rawText.trim());
+    const lastAssistantMsg = chatMessages.filter((m) => m.role === "assistant").pop()?.content || "";
+    const isConfirmationForCreation = isSimpleConfirmation && /create|add|register/i.test(lastAssistantMsg);
+
+    const isAddIncidentQuery = !isQuestionOrQuery && (hasExplicitAddVerb || isConfirmationForCreation);
 
     const userMsg: ChatMessage = {
       id: userMsgId,
@@ -564,30 +576,121 @@ export function AIAssistant({ isOpen, onClose, context, onClearContext, onMapAct
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // Local Helper to parse natural text in Russian/English into a Tallinn Incident
-    const handleLocalIncidentCreation = (input: string) => {
+    // Helper to parse incident structure or metadata from text, current AI output & message history
+    const parseIncidentFromContext = (input: string, history: ChatMessage[] = [], aiOutput: string = "") => {
+      const isSimpleConfirmation = /^(yes|yeah|confirm|proceed|create it|do it|create in database)$/i.test(input.trim());
+
+      const textsToSearch: string[] = [input];
+      if (aiOutput) textsToSearch.push(aiOutput);
+
+      if (isSimpleConfirmation) {
+        for (let i = history.length - 1; i >= Math.max(0, history.length - 5); i--) {
+          textsToSearch.push(history[i].content);
+        }
+      }
+      const combinedText = textsToSearch.join("\n\n");
+
+      let extractedTitle: string | undefined;
+      let extractedLat: number | undefined;
+      let extractedLng: number | undefined;
+      let extractedSeverity: "critical" | "warning" | "info" | undefined;
+      let extractedCategory: "Grid Failure" | "Traffic Flow" | "Telecom Node" | "Emergency Dispatch" | "Sensor Anomaly" | undefined;
+      let extractedDistrict: string | undefined;
+      let extractedDescription: string | undefined;
+      let extractedNodeId: string | undefined;
+
+      // 1. Attempt JSON block parsing ({ "INCIDENT_CREATED": { ... } } or similar)
+      const jsonMatch = combinedText.match(/\{[\s\S]*?"INCIDENT_CREATED"[\s\S]*?\}/) || combinedText.match(/\{[\s\S]*?"title"[\s\S]*?"lat"[\s\S]*?\}/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          const obj = parsed.INCIDENT_CREATED || parsed.incident || parsed;
+          if (obj && typeof obj === "object") {
+            if (obj.title) extractedTitle = String(obj.title);
+            if (obj.lat !== undefined) extractedLat = typeof obj.lat === "number" ? obj.lat : parseFloat(obj.lat);
+            if (obj.lng !== undefined) extractedLng = typeof obj.lng === "number" ? obj.lng : parseFloat(obj.lng);
+            if (obj.district) extractedDistrict = String(obj.district);
+            if (obj.description) extractedDescription = String(obj.description);
+            if (obj.nodeId && obj.nodeId !== "N/A") extractedNodeId = String(obj.nodeId);
+            if (obj.severity) {
+              const s = String(obj.severity).toLowerCase();
+              if (s.includes("crit") || s.includes("high") || s.includes("fire") || s.includes("emerg")) extractedSeverity = "critical";
+              else if (s.includes("warn") || s.includes("amber") || s.includes("med")) extractedSeverity = "warning";
+              else if (s.includes("info") || s.includes("low")) extractedSeverity = "info";
+            }
+            if (obj.category) {
+              const c = String(obj.category).toLowerCase();
+              if (c.includes("fire") || c.includes("safety") || c.includes("dispatch") || c.includes("emerg")) extractedCategory = "Emergency Dispatch";
+              else if (c.includes("traffic") || c.includes("road")) extractedCategory = "Traffic Flow";
+              else if (c.includes("telecom") || c.includes("comm")) extractedCategory = "Telecom Node";
+              else if (c.includes("sensor")) extractedCategory = "Sensor Anomaly";
+              else extractedCategory = "Grid Failure";
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // 2. Regex fallbacks for explicit field labels (e.g. Latitude: 59.4270° N, Longitude: 24.7780° E)
+      if (!extractedLat) {
+        const latM = combinedText.match(/(?:lat|latitude)[:\s=]*([56][0-9]\.[0-9]+)/i);
+        if (latM) extractedLat = parseFloat(latM[1]);
+      }
+      if (!extractedLng) {
+        const lngM = combinedText.match(/(?:lng|long|longitude)[:\s=]*([23][0-9]\.[0-9]+)/i);
+        if (lngM) extractedLng = parseFloat(lngM[1]);
+      }
+      if (!extractedTitle) {
+        const titleM = combinedText.match(/(?:title|title:|\"title\":)[:\s=]*["']?([^\n\r"'}]+)["']?/i);
+        if (titleM && titleM[1].trim().length > 3) extractedTitle = titleM[1].trim();
+      }
+      if (!extractedDistrict) {
+        const distM = combinedText.match(/(?:district|district:|\"district\":)[:\s=]*["']?([^\n\r"'}]+)["']?/i);
+        if (distM && distM[1].trim().length > 2) extractedDistrict = distM[1].trim();
+      }
+
+      return {
+        title: extractedTitle,
+        lat: extractedLat,
+        lng: extractedLng,
+        severity: extractedSeverity,
+        category: extractedCategory,
+        district: extractedDistrict,
+        description: extractedDescription,
+        nodeId: extractedNodeId,
+      };
+    };
+
+    // Local Helper to parse natural text in English into a Tallinn Incident
+    const handleLocalIncidentCreation = (input: string, history: ChatMessage[] = [], aiOutput: string = "") => {
+      const extracted = parseIncidentFromContext(input, history, aiOutput);
       const lower = input.toLowerCase();
-      
+
       // 1. Severity Detection
-      let severity: "critical" | "warning" | "info" = "critical";
-      if (lower.includes("warning") || lower.includes("предупреждени") || lower.includes("средн") || lower.includes("amber") || lower.includes("желт") || lower.includes("незначительн")) {
-        severity = "warning";
-      } else if (lower.includes("info") || lower.includes("инфо") || lower.includes("низк") || lower.includes("low") || lower.includes("планов") || lower.includes("проверк")) {
-        severity = "info";
-      } else if (lower.includes("авари") || lower.includes("взрыв") || lower.includes("отключени") || lower.includes("пожар") || lower.includes("критич") || lower.includes("сбой") || lower.includes("пробой")) {
-        severity = "critical";
+      let severity: "critical" | "warning" | "info" = extracted.severity || "critical";
+      if (!extracted.severity) {
+        if (lower.includes("warning") || lower.includes("amber") || lower.includes("moderate")) {
+          severity = "warning";
+        } else if (lower.includes("info") || lower.includes("low") || lower.includes("planned") || lower.includes("check")) {
+          severity = "info";
+        } else if (lower.includes("critical") || lower.includes("fire") || lower.includes("on fire") || lower.includes("explosion") || lower.includes("outage") || lower.includes("failure")) {
+          severity = "critical";
+        }
       }
 
       // 2. Category Detection
-      let category: "Grid Failure" | "Traffic Flow" | "Telecom Node" | "Emergency Dispatch" | "Sensor Anomaly" = "Grid Failure";
-      if (lower.includes("светофор") || lower.includes("трафик") || lower.includes("пробк") || lower.includes("traffic") || lower.includes("дорог") || lower.includes("машин") || lower.includes("транспорт")) {
-        category = "Traffic Flow";
-      } else if (lower.includes("связь") || lower.includes("интернет") || lower.includes("вышка") || lower.includes("telecom") || lower.includes("оптика") || lower.includes("сервер") || lower.includes("кабель")) {
-        category = "Telecom Node";
-      } else if (lower.includes("скорая") || lower.includes("диспетчер") || lower.includes("dispatch") || lower.includes("мчс") || lower.includes("полици") || lower.includes("спасател")) {
-        category = "Emergency Dispatch";
-      } else if (lower.includes("датчик") || lower.includes("сенсор") || lower.includes("vibration") || lower.includes("шум") || lower.includes("температур") || lower.includes("акустик")) {
-        category = "Sensor Anomaly";
+      let category: "Grid Failure" | "Traffic Flow" | "Telecom Node" | "Emergency Dispatch" | "Sensor Anomaly" = extracted.category || "Grid Failure";
+      if (!extracted.category) {
+        if (lower.includes("fire") || lower.includes("ambulance") || lower.includes("dispatch") || lower.includes("emergency") || lower.includes("police") || lower.includes("rescue")) {
+          category = "Emergency Dispatch";
+        } else if (lower.includes("traffic") || lower.includes("road") || lower.includes("car") || lower.includes("transport") || lower.includes("signal")) {
+          category = "Traffic Flow";
+        } else if (lower.includes("telecom") || lower.includes("internet") || lower.includes("tower") || lower.includes("fiber") || lower.includes("server") || lower.includes("cable")) {
+          category = "Telecom Node";
+        } else if (lower.includes("sensor") || lower.includes("vibration") || lower.includes("noise") || lower.includes("temperature") || lower.includes("acoustic")) {
+          category = "Sensor Anomaly";
+        }
       }
 
       // 3. Tallinn Gazetteer Dictionary
@@ -599,63 +702,61 @@ export function AIAssistant({ isOpen, onClose, context, onClearContext, onMapAct
       }
 
       const GAZETTEER: GazetteerEntry[] = [
-        { keywords: ["аэропорт", "аэропорта", "lennujaam", "airport", "lennart meri"], lat: 59.4135, lng: 24.8050, districtName: "Tallinn Airport (Lennujaam)" },
-        { keywords: ["юлемисте", "ulemiste", "ülemiste", "технопарк", "suur-sõjamäe", "lõõtsa", "valukoja"], lat: 59.4215, lng: 24.7958, districtName: "Ülemiste City" },
-        { keywords: ["мустамяэ", "mustamäe", "mustamae", "akadēmija", "эхитаяте", "ehitajate", "sõpruse", "сыпрусе", "таммсааре", "tammsaare"], lat: 59.3960, lng: 24.6700, districtName: "Mustamäe" },
-        { keywords: ["ласнамяэ", "lasnamäe", "lasnamae", "ласна", "laagna", "лаагна", "пунане", "punane", "нарва мнт", "пае", "pae"], lat: 59.4380, lng: 24.8400, districtName: "Lasnamäe" },
-        { keywords: ["ыйсмяэ", "õismäe", "oismae", "хааберсти", "haabersti", "ярвеотса", "jārveotsa"], lat: 59.4180, lng: 24.6450, districtName: "Õismäe / Haabersti" },
-        { keywords: ["какумяэ", "kakumäe", "kakumae", "рока", "rocca", "рочча"], lat: 59.4350, lng: 24.6150, districtName: "Kakumäe / Rocca al Mare" },
-        { keywords: ["пыхья", "põhja", "pohja", "каламая", "kalamaja", "копли", "kopli", "пелгулинн", "pelgulinn", "теллискиви", "telliskivi", "ноблесснер", "noblessner"], lat: 59.4480, lng: 24.7350, districtName: "Põhja-Tallinn / Kalamaja" },
-        { keywords: ["пирита", "pirita", "меривялья", "merivälja", "косе", "kose"], lat: 59.4650, lng: 24.8350, districtName: "Pirita" },
-        { keywords: ["нымме", "nõmme", "nomme", "пяэскюла", "pääsküla", "paaskula", "хиу", "hiiu", "мяннику", "mānniku"], lat: 59.3800, lng: 24.6800, districtName: "Nõmme" },
-        { keywords: ["кристийне", "kristiine", "тонди", "tondi", "лиллекюла", "lilleküla", "лиллекуль"], lat: 59.4260, lng: 24.7240, districtName: "Kristiine / Tondi" },
-        { keywords: ["порт", "sadam", "port", "вапасадам", "vanasadam", "бассейн", "круиз"], lat: 59.4450, lng: 24.7680, districtName: "Port / Vanasadam" },
-        { keywords: ["кадриорг", "kadriorg", "парк кадриорг", "вайдла", "weizenbergi"], lat: 59.4385, lng: 24.7780, districtName: "Kadriorg" },
-        { keywords: ["бальти яам", "balti jaam", "вокзал", "копли 1"], lat: 59.4402, lng: 24.7378, districtName: "Balti Jaam" },
-        { keywords: ["виру", "viru", "виру вяльяк", "площадь виру", "каупмехе"], lat: 59.4365, lng: 24.7562, districtName: "Viru Center / Kesklinn" },
-        { keywords: ["вабадузе", "vabaduse", "площадь свободы", "харью", "harju"], lat: 59.4345, lng: 24.7440, districtName: "Vabaduse Väljak" },
-        { keywords: ["лийвалайа", "liivalaia", "торнимяэ", "tornimäe", "равала", "rāvala"], lat: 59.4310, lng: 24.7570, districtName: "Kesklinn / Business Center" },
-        { keywords: ["ваналинн", "vanalinn", "старый город", "old town", "ратуша", "тоомпеа", "toompea"], lat: 59.4372, lng: 24.7453, districtName: "Vanalinn (Old Town)" }
+        { keywords: ["linnahall", "heliport", "helicopter"], lat: 59.4480, lng: 24.7533, districtName: "Tallinn Linnahall Heliport" },
+        { keywords: ["lennujaam", "airport", "lennart meri"], lat: 59.4135, lng: 24.8050, districtName: "Tallinn Airport (Lennujaam)" },
+        { keywords: ["ulemiste", "ülemiste", "suur-sõjamäe", "lõõtsa", "valukoja"], lat: 59.4215, lng: 24.7958, districtName: "Ülemiste City" },
+        { keywords: ["mustamäe", "mustamae", "akadēmija", "ehitajate", "sõpruse", "tammsaare"], lat: 59.3960, lng: 24.6700, districtName: "Mustamäe" },
+        { keywords: ["lasnamäe", "lasnamae", "laagna", "punane", "narva mnt", "pae"], lat: 59.4380, lng: 24.8400, districtName: "Lasnamäe" },
+        { keywords: ["õismäe", "oismae", "haabersti", "jārveotsa"], lat: 59.4180, lng: 24.6450, districtName: "Õismäe / Haabersti" },
+        { keywords: ["kakumäe", "kakumae", "rocca"], lat: 59.4350, lng: 24.6150, districtName: "Kakumäe / Rocca al Mare" },
+        { keywords: ["põhja", "pohja", "kalamaja", "kopli", "pelgulinn", "telliskivi", "noblessner"], lat: 59.4480, lng: 24.7350, districtName: "Põhja-Tallinn / Kalamaja" },
+        { keywords: ["pirita", "merivälja", "kose"], lat: 59.4650, lng: 24.8350, districtName: "Pirita" },
+        { keywords: ["nõmme", "nomme", "pääsküla", "paaskula", "hiiu", "mānniku"], lat: 59.3800, lng: 24.6800, districtName: "Nõmme" },
+        { keywords: ["kristiine", "tondi", "lilleküla"], lat: 59.4260, lng: 24.7240, districtName: "Kristiine / Tondi" },
+        { keywords: ["sadam", "port", "vanasadam", "cruise"], lat: 59.4450, lng: 24.7680, districtName: "Port / Vanasadam" },
+        { keywords: ["kadriorg", "weizenbergi"], lat: 59.4385, lng: 24.7780, districtName: "Kadriorg" },
+        { keywords: ["balti jaam", "baltijaam"], lat: 59.4402, lng: 24.7378, districtName: "Balti Jaam" },
+        { keywords: ["viru", "kesklinn"], lat: 59.4365, lng: 24.7562, districtName: "Viru Center / Kesklinn" },
+        { keywords: ["vabaduse", "harju"], lat: 59.4345, lng: 24.7440, districtName: "Vabaduse Väljak" },
+        { keywords: ["liivalaia", "tornimäe", "rāvala"], lat: 59.4310, lng: 24.7570, districtName: "Kesklinn / Business Center" },
+        { keywords: ["vanalinn", "old town", "toompea"], lat: 59.4372, lng: 24.7453, districtName: "Vanalinn (Old Town)" }
       ];
 
-      let lat = 59.4372;
-      let lng = 24.7453;
-      let districtName = "Kesklinn / Vanalinn";
-      let matched = false;
+      let lat = extracted.lat ?? 59.4372;
+      let lng = extracted.lng ?? 24.7453;
+      let districtName = extracted.district ?? "Kesklinn / Vanalinn";
+      let matched = extracted.lat !== undefined && extracted.lng !== undefined;
 
-      for (const entry of GAZETTEER) {
-        if (entry.keywords.some((kw) => lower.includes(kw))) {
-          lat = entry.lat;
-          lng = entry.lng;
-          districtName = entry.districtName;
-          matched = true;
-          break;
+      if (!matched) {
+        for (const entry of GAZETTEER) {
+          if (entry.keywords.some((kw) => lower.includes(kw) || (extracted.title && extracted.title.toLowerCase().includes(kw)))) {
+            lat = entry.lat + (Math.random() - 0.5) * 0.002;
+            lng = entry.lng + (Math.random() - 0.5) * 0.002;
+            districtName = entry.districtName;
+            matched = true;
+            break;
+          }
         }
       }
 
-      // Small spatial offset for realistic node clustering
-      lat += (Math.random() - 0.5) * 0.003;
-      lng += (Math.random() - 0.5) * 0.004;
+      let cleanTitle = extracted.title;
+      if (!cleanTitle) {
+        let rawSubject = input;
+        const compoundMatch = input.match(/(?:\/add_incident|\/create_incident)\s+(.+)$/i);
+        if (compoundMatch && compoundMatch[1]) {
+          rawSubject = compoundMatch[1].trim();
+        }
 
-      // 4. Clean Title Extraction (handles multi-command prompts like "покажи... и добавь инцидент в ...")
-      let rawSubject = input;
-      const compoundMatch = input.match(/(?:добавь|создай|зарегистрируй|\/add_incident)\s+(?:новый\s+)?(?:инцидент|аварию|происшествие)?\s*(?:для|в|на)?\s*(.+)$/i);
-      if (compoundMatch && compoundMatch[1]) {
-        rawSubject = compoundMatch[1].trim();
-      }
+        cleanTitle = rawSubject
+          .replace(/\/add_incident|\/create_incident|add|create|register|new|incident|accident|hazard|yes|create it|database/gi, "")
+          .replace(/^[:\s,\.\-—]+/, "")
+          .replace(/[\.\!]+$/, "")
+          .trim();
 
-      let cleanTitle = rawSubject
-        .replace(/\/add_incident|\/incident|добавь|добавить|создай|создать|зарегистрируй|зарегистрировать|новый|инцидент|аварию|происшествие/gi, "")
-        .replace(/^[:\s,\.\-—]+/, "")
-        .replace(/[\.\!]+$/, "")
-        .trim();
-
-      if (!cleanTitle || cleanTitle.length < 3) {
-        cleanTitle = `Anomaly at ${districtName}`;
-      } else {
-        cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
-        if (/^(таллинского|таллиннского|таллинского аэропорта|аэропорта)$/i.test(cleanTitle)) {
-          cleanTitle = `Инцидент в Таллинском аэропорту`;
+        if (!cleanTitle || cleanTitle.length < 3) {
+          cleanTitle = `Anomaly at ${districtName}`;
+        } else {
+          cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
         }
       }
 
@@ -670,12 +771,12 @@ export function AIAssistant({ isOpen, onClose, context, onClearContext, onMapAct
         makiIcon: severity === "critical" ? "lightning" : severity === "warning" ? "caution" : "waveform",
         lat,
         lng,
-        description: `Telemetry incident reported for ${districtName}. Sector telemetry node registered dynamically. Operator prompt: "${input}".`,
+        description: extracted.description || `Telemetry incident registered for ${districtName}. Operator prompt: "${input}".`,
         status: "active",
-        nodeId: `EE-TLN-${districtName.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 890 + 100)}`
+        nodeId: extracted.nodeId || `EE-TLN-${districtName.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 890 + 100)}`
       };
 
-      addDynamicIncident(newInc);
+      const updatedIncidents = addDynamicIncident(newInc);
 
       const action: MapAction = {
         type: "focus_district",
@@ -687,7 +788,7 @@ export function AIAssistant({ isOpen, onClose, context, onClearContext, onMapAct
         onMapAction(action);
       }
 
-      return `### ⚡ SCADA Incident Successfully Registered\n\nNew telemetry record created with precise spatial resolution:\n\n- **Incident ID:** \`${newInc.id}\`\n- **Title:** **${newInc.title}**\n- **Severity:** \`[${newInc.severity.toUpperCase()}]\`\n- **Category:** \`${newInc.category}\`\n- **District / Location:** **${districtName}**${matched ? " `[GEO MATCHED]`" : " `[DEFAULT CENTRAL GRID]`"}\n- **Coordinates:** \`${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E\`\n- **Telemetry Node:** \`${newInc.nodeId}\`\n- **Status:** \`[ACTIVE]\`\n\n🗺️ **Map & Heatmap Layer Synchronized:**\n- Visual incident vector added to live Leaflet/SCADA layer.\n- Camera re-centered to target location (\`${lat.toFixed(4)}°, ${lng.toFixed(4)}°\`, Zoom \`15.0x\`).\n- SCADA Heatmap density matrix automatically refreshed.`;
+      return `### ⚡ SCADA Incident Successfully Registered in Database & Map\n\nNew incident telemetry record created and persisted to database:\n\n- **Incident ID:** \`${newInc.id}\`\n- **Title:** **${newInc.title}**\n- **Severity:** \`[${newInc.severity.toUpperCase()}]\`\n- **Category:** \`${newInc.category}\`\n- **District / Location:** **${districtName}**${matched ? " `[GEO MATCHED]`" : ""}\n- **Coordinates:** \`${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E\`\n- **Telemetry Node:** \`${newInc.nodeId}\`\n- **Status:** \`[ACTIVE]\`\n\n🗺️ **Map & Incident Matrix Synchronized:**\n- Visual incident vector added to Leaflet map layer.\n- Incident matrix updated (Total Incidents: **${updatedIncidents.length}**).\n- Camera centered on target location (\`${lat.toFixed(4)}°, ${lng.toFixed(4)}°\`, Zoom \`15.0x\`).\n- Record saved to SQLite DB (\`/api/incidents\`).`;
     };
 
     try {
@@ -740,8 +841,11 @@ export function AIAssistant({ isOpen, onClose, context, onClearContext, onMapAct
           );
         }
 
-        if (isAddIncidentQuery) {
-          const creationReply = handleLocalIncidentCreation(rawText);
+        const isIncidentInResponse =
+          /INCIDENT_CREATED|\[ACTION:\s*CREATE_INCIDENT\]|\{"INCIDENT_CREATED"/i.test(accumulated);
+
+        if (isAddIncidentQuery || isIncidentInResponse) {
+          const creationReply = handleLocalIncidentCreation(rawText, chatMessages, accumulated);
           setChatMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantMsgId ? { ...msg, content: creationReply } : msg
@@ -754,8 +858,11 @@ export function AIAssistant({ isOpen, onClose, context, onClearContext, onMapAct
         const data = (await res.json()) as { content?: string; model?: string };
         let reply = data.content || "No response received from local AI engine.";
 
-        if (isAddIncidentQuery) {
-          reply = handleLocalIncidentCreation(rawText);
+        const isIncidentInResponse =
+          /INCIDENT_CREATED|\[ACTION:\s*CREATE_INCIDENT\]|\{"INCIDENT_CREATED"/i.test(reply);
+
+        if (isAddIncidentQuery || isIncidentInResponse) {
+          reply = handleLocalIncidentCreation(rawText, chatMessages, reply);
         } else if (isConcentrationQuery) {
           triggerConcentrationMapAction();
           reply = `### 📍 Tallinn Incident Concentration Analysis\n\nAggregating active SCADA incidents across city districts:\n\n| District | Incident Count | Concentration | Severity | Primary Grid Impact |\n| :--- | :---: | :--- | :--- | :--- |\n| **Old Town (Vanalinn)** | **2** | \`[HIGHEST DENSITY]\` | \`[CRITICAL]\` | Grid Substation #4 Trip & Viru Signal Freeze |\n| **Balti Jaam** | 1 | \`[ELEVATED]\` | \`[WARNING]\` | Emergency Priority Routing Timeout |\n| **Ülemiste City** | 1 | \`[MODERATE]\` | \`[CRITICAL]\` | Smart Feeder Voltage Spike (420kV) |\n| **Port / Sadam** | 1 | \`[MODERATE]\` | \`[INFO]\` | Subsea Telecom Gateway Latency |\n| **Kristiine** | 1 | \`[MODERATE]\` | \`[WARNING]\` | Low-Frequency Acoustic Sensor Anomaly |\n\n🎯 **Highest Incident Concentration:** **Old Town / Vanalinn** sector with **2 active incidents** (33.3% of total grid events).\n\n🗺️ **Map Action Executed:**\n- Visual density highlights applied to **Vanalinn** & **Balti Jaam** central grid sectors.\n- Tactical Map camera zoomed to Tallinn central district (\`59.4372° N, 24.7453° E\`, Zoom \`14.2x\`).`;
@@ -779,7 +886,7 @@ export function AIAssistant({ isOpen, onClose, context, onClearContext, onMapAct
           )
         );
       } else if (isAddIncidentQuery) {
-        const creationReply = handleLocalIncidentCreation(rawText);
+        const creationReply = handleLocalIncidentCreation(rawText, chatMessages);
         setChatMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMsgId
@@ -985,7 +1092,7 @@ export function AIAssistant({ isOpen, onClose, context, onClearContext, onMapAct
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-3.5 py-3 space-y-3 relative"
+          className="flex-1 overflow-y-auto px-3.5 py-3 space-y-3 relative select-text"
         >
           {chatMessages.map((msg) => (
             <div key={msg.id} className={`flex gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
@@ -1009,7 +1116,7 @@ export function AIAssistant({ isOpen, onClose, context, onClearContext, onMapAct
 
               <div className={`flex flex-col gap-1 max-w-[88%] ${msg.role === "user" ? "items-end" : "items-start"}`}>
                 <div
-                  className={`px-3 py-2 rounded-lg ${
+                  className={`px-3 py-2 rounded-lg select-text ${
                     msg.role === "user"
                       ? "bg-primary text-primary-foreground rounded-tr-none"
                       : msg.isError

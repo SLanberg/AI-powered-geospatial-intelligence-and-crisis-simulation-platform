@@ -16,10 +16,10 @@ export interface VesselData {
   timestamp: number;
 }
 
-// Bounding box / location center around Tallinn Bay
-// lat: ~59.45, lng: ~24.75, radius: ~30km
+// Bounding box / location center around Tallinn Bay & Gulf of Finland
+// lat: ~59.45, lng: ~24.75, radius: ~45km
 const DIGITRAFFIC_LOCATIONS_URL =
-  "https://meri.digitraffic.fi/api/ais/v1/locations?latitude=59.45&longitude=24.75&radius=30";
+  "https://meri.digitraffic.fi/api/ais/v1/locations?latitude=59.45&longitude=24.75&radius=45";
 const DIGITRAFFIC_VESSELS_URL = "https://meri.digitraffic.fi/api/ais/v1/vessels";
 
 // Cache vessel metadata to avoid spamming detail API
@@ -42,84 +42,119 @@ function getShipCategory(shipType: number): "yacht" | "cargo" | "tanker" | "pass
   return "other";
 }
 
+function getLinearVesselPos(
+  baseLat: number,
+  baseLng: number,
+  sogKnots: number,
+  headingDeg: number,
+  nowSec: number,
+  minLat = 59.35,
+  maxLat = 59.60,
+  minLng = 24.50,
+  maxLng = 25.00
+) {
+  const speedMs = sogKnots * 0.514444;
+  const hdgRad = (headingDeg * Math.PI) / 180;
+  const distMeters = speedMs * (nowSec % 86400);
+  const dLat = (distMeters * Math.cos(hdgRad)) / 111320;
+  const dLng = (distMeters * Math.sin(hdgRad)) / (111320 * Math.cos((baseLat * Math.PI) / 180));
+
+  let lat = baseLat + dLat;
+  let lng = baseLng + dLng;
+
+  const latSpan = maxLat - minLat;
+  const lngSpan = maxLng - minLng;
+  lat = minLat + ((((lat - minLat) % latSpan) + latSpan) % latSpan);
+  lng = minLng + ((((lng - minLng) % lngSpan) + lngSpan) % lngSpan);
+
+  return { lat, lng };
+}
+
 function generateFallbackVessels(): VesselData[] {
-  const now = Date.now();
-  const baseTime = Math.floor(now / 1000) / 10;
+  const nowMs = Date.now();
+  const nowSec = Math.floor(nowMs / 1000);
+
+  const v1 = getLinearVesselPos(59.467, 24.827, 12.4, 260, nowSec);
+  const v2 = getLinearVesselPos(59.485, 24.72, 9.2, 95, nowSec);
+  const v3 = getLinearVesselPos(59.452, 24.764, 21.0, 340, nowSec);
+  const v4 = getLinearVesselPos(59.51, 24.85, 14.5, 180, nowSec);
+  const v5 = getLinearVesselPos(59.435, 24.685, 11.0, 75, nowSec);
+
   return [
     {
       mmsi: 276869000,
       name: "Nordic Spirit (AIS Yacht)",
       shipType: 37,
       shipCategory: "yacht",
-      lat: 59.467 + Math.sin(baseTime * 0.04) * 0.008,
-      lng: 24.827 + Math.cos(baseTime * 0.04) * 0.012,
+      lat: v1.lat,
+      lng: v1.lng,
       sog: 12.4,
       cog: 260,
       heading: 260,
       navStatus: 0,
       destination: "Pirita Marina",
       callSign: "ESRQ",
-      timestamp: now,
+      timestamp: nowMs,
     },
     {
       mmsi: 230673000,
       name: "Baltic Breeze",
       shipType: 36,
       shipCategory: "yacht",
-      lat: 59.485 + Math.cos(baseTime * 0.05) * 0.01,
-      lng: 24.72 + Math.sin(baseTime * 0.05) * 0.015,
+      lat: v2.lat,
+      lng: v2.lng,
       sog: 9.2,
       cog: 95,
       heading: 95,
       navStatus: 0,
       destination: "Haven Kakumäe",
       callSign: "OG123",
-      timestamp: now,
+      timestamp: nowMs,
     },
     {
       mmsi: 276123450,
       name: "Tallink Megastar",
       shipType: 60,
       shipCategory: "passenger",
-      lat: 59.452 + Math.sin(baseTime * 0.03) * 0.015,
-      lng: 24.764 + Math.cos(baseTime * 0.03) * 0.02,
+      lat: v3.lat,
+      lng: v3.lng,
       sog: 21.0,
       cog: 340,
       heading: 340,
       navStatus: 0,
       destination: "Helsinki Harbour",
       callSign: "ESML",
-      timestamp: now,
+      timestamp: nowMs,
     },
     {
       mmsi: 276998877,
       name: "Tallinn Tanker Express",
       shipType: 80,
       shipCategory: "tanker",
-      lat: 59.51 + Math.cos(baseTime * 0.02) * 0.015,
-      lng: 24.85 + Math.sin(baseTime * 0.02) * 0.015,
+      lat: v4.lat,
+      lng: v4.lng,
       sog: 14.5,
       cog: 180,
       heading: 180,
       navStatus: 0,
       destination: "Muuga Harbour",
       callSign: "ESTT",
-      timestamp: now,
+      timestamp: nowMs,
     },
     {
       mmsi: 276554433,
       name: "Cargo Leader",
       shipType: 70,
       shipCategory: "cargo",
-      lat: 59.435 + Math.sin(baseTime * 0.04) * 0.01,
-      lng: 24.685 + Math.cos(baseTime * 0.04) * 0.015,
+      lat: v5.lat,
+      lng: v5.lng,
       sog: 11.0,
       cog: 75,
       heading: 75,
       navStatus: 0,
       destination: "Paldiski Port",
       callSign: "ESCL",
-      timestamp: now,
+      timestamp: nowMs,
     },
   ];
 }
@@ -135,7 +170,7 @@ export async function GET() {
         "Digitraffic-User": "CitySignal-Dashboard/1.0",
         "Accept-Encoding": "gzip",
       },
-      next: { revalidate: 15 },
+      cache: "no-store",
     });
 
     clearTimeout(timeoutId);

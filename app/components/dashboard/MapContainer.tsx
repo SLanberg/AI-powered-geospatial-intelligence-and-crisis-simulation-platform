@@ -49,6 +49,7 @@ import {
   MOCK_INCIDENTS,
   type Incident,
   type MapAction,
+  fetchIncidentsFromDb,
 } from "./data";
 
 import { AppleMapsMarker } from "./map/AppleMapsMarker";
@@ -62,6 +63,8 @@ import {
 
 import { TransportHubMarker } from "./map/TransportHubMarker";
 import { TransportHubPopup } from "./map/TransportHubPopup";
+
+import { getDistrictBoundariesGeoJSON } from "./districtBoundaries";
 import {
   TALLINN_TRANSPORT_HUBS,
   type TransportHub,
@@ -754,6 +757,8 @@ export function MapContainer({
   const [incidentList, setIncidentList] = useState<Incident[]>(MOCK_INCIDENTS);
 
   useEffect(() => {
+    fetchIncidentsFromDb().then((list) => setIncidentList([...list]));
+
     const handleUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<Incident[]>;
       if (customEvent.detail) {
@@ -935,7 +940,7 @@ export function MapContainer({
   }, [vessels, activeShowVehicles]);
 
   /* ---------------------------------------------------------------------- */
-  /* Fetch OpenSky flights                                                  */
+  /* Fetch OpenSky & live ADS-B flights                                     */
   /* ---------------------------------------------------------------------- */
 
   useEffect(() => {
@@ -952,9 +957,50 @@ export function MapContainer({
         if (
           isMounted &&
           data.flights &&
-          Array.isArray(data.flights)
+          Array.isArray(data.flights) &&
+          data.flights.length > 0
         ) {
-          setFlights(data.flights);
+          setFlights((prevFlights) => {
+            if (!prevFlights || prevFlights.length === 0) return data.flights;
+
+            const prevDict: Record<string, FlightVector> = {};
+            prevFlights.forEach((f) => {
+              prevDict[f.id] = f;
+              if (f.callsign) prevDict[f.callsign] = f;
+            });
+
+            const incomingIds = new Set<string>();
+
+            const updatedIncoming = data.flights.map((incoming: FlightVector) => {
+              incomingIds.add(incoming.id);
+              if (incoming.callsign) incomingIds.add(incoming.callsign);
+
+              const prev = prevDict[incoming.id] || (incoming.callsign ? prevDict[incoming.callsign] : undefined);
+              if (!prev) return incoming;
+
+              // Retain smooth current position from tick interval if coordinate delta is tiny
+              const latDelta = Math.abs(incoming.lat - prev.lat);
+              const lngDelta = Math.abs(incoming.lng - prev.lng);
+
+              return {
+                ...incoming,
+                lat: latDelta < 0.0005 ? prev.lat : incoming.lat,
+                lng: lngDelta < 0.0005 ? prev.lng : incoming.lng,
+              };
+            });
+
+            // Keep flights missing from current frame for up to 45 seconds to prevent flickering
+            const nowSec = Math.floor(Date.now() / 1000);
+            const retainedPrev = prevFlights.filter((prev) => {
+              if (incomingIds.has(prev.id) || (prev.callsign && incomingIds.has(prev.callsign))) {
+                return false;
+              }
+              const age = nowSec - (prev.timestamp || nowSec);
+              return age < 45;
+            });
+
+            return [...updatedIncoming, ...retainedPrev];
+          });
         }
       } catch (_err) {
         // silent fallback
@@ -965,7 +1011,7 @@ export function MapContainer({
 
     const interval = setInterval(
       fetchFlights,
-      10000,
+      6000,
     );
 
     return () => {
@@ -994,7 +1040,28 @@ export function MapContainer({
           data.vessels &&
           Array.isArray(data.vessels)
         ) {
-          setVessels(data.vessels);
+          setVessels((prevVessels) => {
+            if (!prevVessels || prevVessels.length === 0) return data.vessels;
+            const prevDict: Record<number, VesselData> = {};
+            prevVessels.forEach((v) => {
+              prevDict[v.mmsi] = v;
+            });
+            return data.vessels.map((incoming: VesselData) => {
+              const prev = prevDict[incoming.mmsi];
+              if (!prev) return incoming;
+              const dLat = incoming.lat - prev.lat;
+              const dLng = incoming.lng - prev.lng;
+              const distSq = dLat * dLat + dLng * dLng;
+              if (distSq < 0.002) {
+                return {
+                  ...incoming,
+                  lat: prev.lat,
+                  lng: prev.lng,
+                };
+              }
+              return incoming;
+            });
+          });
         }
       } catch (_err) {
         // silent fallback
@@ -1035,7 +1102,7 @@ export function MapContainer({
 
   useEffect(() => {
     const moveInterval = setInterval(() => {
-      // 1. Advance flights based on heading and velocity (m/s)
+      // 1. Advance flights based on heading and velocity (m/s) + vertical rate
       setFlights((prevFlights) => {
         if (!prevFlights || prevFlights.length === 0) return prevFlights;
         return prevFlights.map((f) => {
@@ -1044,10 +1111,20 @@ export function MapContainer({
           const distMeters = f.velocity * 1.0; // 1s step
           const dLat = (distMeters * Math.cos(headingRad)) / 111320;
           const dLng = (distMeters * Math.sin(headingRad)) / (111320 * Math.cos((f.lat * Math.PI) / 180));
+          const newLat = f.lat + dLat;
+          const newLng = f.lng + dLng;
+          const newAlt = Math.max(0, f.altitude + (f.verticalRate || 0) * 1.0);
+          
+          const newPoint: [number, number] = [Number(newLng.toFixed(5)), Number(newLat.toFixed(5))];
+          const currentPath: [number, number][] = f.path && f.path.length > 0 ? f.path : [[Number(f.lng.toFixed(5)), Number(f.lat.toFixed(5))]];
+          const updatedPath: [number, number][] = [...currentPath, newPoint].slice(-150);
+
           return {
             ...f,
-            lat: f.lat + dLat,
-            lng: f.lng + dLng,
+            lat: newLat,
+            lng: newLng,
+            altitude: newAlt,
+            path: updatedPath,
           };
         });
       });
@@ -1370,6 +1447,16 @@ export function MapContainer({
     [filteredIncidents]
   );
 
+  const districtBoundariesGeoJSON = useMemo(
+    () =>
+      getDistrictBoundariesGeoJSON(
+        mapAction?.highlightedDistricts,
+        mapAction?.targetDistrictId,
+        activeShowHeatmap
+      ),
+    [mapAction?.highlightedDistricts, mapAction?.targetDistrictId, activeShowHeatmap]
+  );
+
   const selectedIncidentGeoJSON =
     useMemo(
       () =>
@@ -1583,7 +1670,7 @@ export function MapContainer({
   /* ---------------------------------------------------------------------- */
 
   return (
-    <div className="w-full h-full flex flex-col flex-1 select-none">
+    <div className="w-full h-full flex flex-col flex-1 select-text">
       {/* ---------------------------------------------------------------- */}
       {/* Map                                                               */}
       {/* ---------------------------------------------------------------- */}
@@ -1800,8 +1887,48 @@ export function MapContainer({
               )}
 
               {/* ------------------------------------------------------ */}
-              {/* Heatmap Layer                                          */}
+              {/* District Boundary Polygons & District Heatmap Overlay  */}
               {/* ------------------------------------------------------ */}
+              {districtBoundariesGeoJSON.features.length > 0 && (
+                <Source
+                  id="district-polygons-source"
+                  type="geojson"
+                  data={districtBoundariesGeoJSON}
+                >
+                  {/* Glowing background stroke along district perimeter */}
+                  <Layer
+                    id="district-polygons-glow"
+                    type="line"
+                    paint={{
+                      "line-color": ["get", "strokeColor"],
+                      "line-width": 9,
+                      "line-opacity": 0.45,
+                      "line-blur": 4,
+                    }}
+                  />
+                  {/* Crisp primary boundary outline */}
+                  <Layer
+                    id="district-polygons-stroke"
+                    type="line"
+                    paint={{
+                      "line-color": ["get", "strokeColor"],
+                      "line-width": 3.5,
+                      "line-opacity": 0.95,
+                    }}
+                  />
+                  {/* Heatmap Area Fill covering entire district block */}
+                  <Layer
+                    id="district-polygons-fill"
+                    type="fill"
+                    paint={{
+                      "fill-color": ["get", "fillColor"],
+                      "fill-opacity": 0.4,
+                    }}
+                  />
+                </Source>
+              )}
+
+              {/* Incident Point Heatmap Layer (when heatmap toggled) */}
               {activeShowHeatmap && (
                 <Source
                   id="incidents-heatmap"
@@ -1812,65 +1939,59 @@ export function MapContainer({
                 </Source>
               )}
 
-              {/* ------------------------------------------------------ */}
-              {/* AI Map Action Highlight District Overlay Rings         */}
-              {/* ------------------------------------------------------ */}
-              {mapAction?.highlightedDistricts && mapAction.highlightedDistricts.length > 0 && (
-                <>
-                  {mapAction.highlightedDistricts.map((dist, idx) => {
-                    const isTarget = dist.id === mapAction.targetDistrictId;
-                    const ringColor = dist.severity === "critical"
-                      ? "rgba(239, 68, 68, 0.45)"
-                      : dist.severity === "warning"
-                      ? "rgba(245, 158, 11, 0.45)"
-                      : "rgba(14, 165, 233, 0.45)";
+              {/* District Centroid Badges for Highlighted / Heatmap Districts */}
+              {districtBoundariesGeoJSON.features.map((feat, idx) => {
+                const props = feat.properties;
+                const isTarget = props.isTarget;
 
-                    const borderColor = dist.severity === "critical"
-                      ? "#ef4444"
-                      : dist.severity === "warning"
-                      ? "#f59e0b"
-                      : "#0ea5e9";
+                const badgeBg =
+                  props.severity === "critical" || isTarget
+                    ? "rgba(239, 68, 68, 0.9)"
+                    : props.severity === "warning"
+                    ? "rgba(245, 158, 11, 0.9)"
+                    : "rgba(14, 165, 233, 0.9)";
 
-                    return (
-                      <Marker
-                        key={`mapaction-region-${dist.id}-${idx}`}
-                        latitude={dist.lat}
-                        longitude={dist.lng}
-                        anchor="center"
+                return (
+                  <Marker
+                    key={`district-poly-label-${props.id}-${idx}`}
+                    latitude={props.centerLat}
+                    longitude={props.centerLng}
+                    anchor="center"
+                  >
+                    <div className="relative flex flex-col items-center justify-center pointer-events-none transition-all duration-300 transform hover:scale-105">
+                      {isTarget && (
+                        <div className="absolute w-24 h-24 rounded-full animate-ping opacity-60 bg-red-500/30" />
+                      )}
+                      <div
+                        className="relative px-3 py-1.5 rounded-lg backdrop-blur-md border shadow-2xl flex flex-col items-center justify-center transition-all"
+                        style={{
+                          backgroundColor: "rgba(15, 23, 42, 0.85)",
+                          borderColor: props.strokeColor,
+                          boxShadow: `0 0 15px ${props.strokeColor}40`,
+                        }}
                       >
-                        <div className="relative flex items-center justify-center pointer-events-none">
-                          {/* Outer animated heat pulsing halo */}
-                          <div
-                            className="absolute rounded-full animate-ping opacity-75"
-                            style={{
-                              width: isTarget ? "160px" : "110px",
-                              height: isTarget ? "160px" : "110px",
-                              backgroundColor: ringColor,
-                            }}
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="w-2 h-2 rounded-full animate-pulse"
+                            style={{ backgroundColor: props.strokeColor }}
                           />
-                          {/* Smooth gradient heat circle */}
-                          <div
-                            className="relative rounded-full backdrop-blur-[2px] border-2 shadow-2xl flex flex-col items-center justify-center transition-all"
-                            style={{
-                              width: isTarget ? "140px" : "95px",
-                              height: isTarget ? "140px" : "95px",
-                              background: `radial-gradient(circle, ${ringColor} 0%, rgba(15, 23, 42, 0.65) 100%)`,
-                              borderColor: borderColor,
-                            }}
-                          >
-                            <span className="font-mono text-[10px] font-extrabold uppercase tracking-wider text-white px-2 py-0.5 rounded bg-slate-950/80 border border-white/20 shadow-md">
-                              {dist.name}
-                            </span>
-                            <span className="font-mono text-[9px] font-bold text-amber-300 mt-1 bg-slate-900/90 px-1.5 py-0.2 rounded">
-                              {dist.count} {dist.count === 1 ? "Incident" : "Incidents"}
-                            </span>
-                          </div>
+                          <span className="font-mono text-[11px] font-extrabold uppercase tracking-wider text-white">
+                            {props.name}
+                          </span>
                         </div>
-                      </Marker>
-                    );
-                  })}
-                </>
-              )}
+                        {props.count > 0 && (
+                          <span
+                            className="font-mono text-[9.5px] font-bold text-white px-2 py-0.5 rounded-full mt-1 border border-white/20"
+                            style={{ backgroundColor: badgeBg }}
+                          >
+                            {props.count} {props.count === 1 ? "Active Incident" : "Active Incidents"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Marker>
+                );
+              })}
 
               {/* ------------------------------------------------------ */}
               {/* Incident popup                                          */}
@@ -2202,7 +2323,11 @@ export function MapContainer({
                 ))}
 
               {/* ------------------------------------------------------ */}
-              {/* WebGL background layers for Flights & Vessels          */}
+              {/* WebGL Flight Path Trails (FlightRadar24 Style)        */}
+              {/* ------------------------------------------------------ */}
+
+              {/* ------------------------------------------------------ */}
+              {/* WebGL Flight Path Trail (Active ONLY when selected)    */}
               {/* ------------------------------------------------------ */}
 
               {activeShowFlights && (
@@ -2249,188 +2374,209 @@ export function MapContainer({
               {/* AIS Vessel Popup                                       */}
               {/* ------------------------------------------------------ */}
 
-              {selectedVessel && (
-                <Popup
-                  latitude={
-                    selectedVessel.lat
-                  }
-                  longitude={
-                    selectedVessel.lng
-                  }
-                  anchor="left"
-                  offset={36}
-                  closeButton={false}
-                  closeOnClick={false}
-                  onClose={() =>
-                    setSelectedVessel(
-                      null,
-                    )
-                  }
-                >
-                  <div className="bg-popover text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[260px] animate-in fade-in-50 zoom-in-95">
-                    <div className="flex justify-between items-start gap-3">
-                      <div className="space-y-1">
-                        <div className="flex gap-2 items-center">
-                          <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 uppercase font-semibold text-[10px] tracking-wider">
-                            <Anchor className="w-3 h-3 mr-1 inline" />
+              {(() => {
+                const activeVessel = selectedVessel
+                  ? vessels.find((v) => v.mmsi === selectedVessel.mmsi) || selectedVessel
+                  : null;
+                if (!activeVessel) return null;
 
-                            {
-                              selectedVessel.shipCategory
-                            }
-                          </Badge>
+                return (
+                  <Popup
+                    latitude={activeVessel.lat}
+                    longitude={activeVessel.lng}
+                    anchor="left"
+                    offset={36}
+                    closeButton={false}
+                    closeOnClick={false}
+                    onClose={() => setSelectedVessel(null)}
+                  >
+                    <div className="bg-popover text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[270px] animate-in fade-in-50 zoom-in-95">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="space-y-1">
+                          <div className="flex gap-2 items-center">
+                            <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 uppercase font-semibold text-[10px] tracking-wider flex items-center">
+                              <span className="relative flex h-2 w-2 mr-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                              </span>
+                              <Anchor className="w-3 h-3 mr-1 inline" />
+                              {activeVessel.shipCategory}
+                            </Badge>
 
-                          <span className="font-mono text-xs font-semibold text-muted-foreground">
-                            MMSI:{" "}
-                            {
-                              selectedVessel.mmsi
-                            }
-                          </span>
+                            <span className="font-mono text-xs font-semibold text-muted-foreground">
+                              MMSI: {activeVessel.mmsi}
+                            </span>
+                          </div>
+
+                          <h4 className="font-bold text-sm text-foreground leading-tight pt-1">
+                            {activeVessel.name}
+                          </h4>
                         </div>
 
-                        <h4 className="font-bold text-sm text-foreground leading-tight pt-1">
-                          {
-                            selectedVessel.name
-                          }
-                        </h4>
+                        <button
+                          onClick={() => setSelectedVessel(null)}
+                          className="h-11 w-11 p-3 -mr-2 -mt-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
+                          aria-label="Close popup"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
                       </div>
 
-                      <button
-                        onClick={() =>
-                          setSelectedVessel(
-                            null,
-                          )
-                        }
-                        className="h-11 w-11 p-3 -mr-2 -mt-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
-                        aria-label="Close popup"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+                      <div className="mt-2 text-xs font-mono text-cyan-300 bg-cyan-950/40 p-2 rounded border border-cyan-800/40 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted-foreground">Live Coords:</span>
+                          <span className="text-foreground font-semibold">
+                            {activeVessel.lat.toFixed(5)}, {activeVessel.lng.toFixed(5)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted-foreground">Speed & Heading:</span>
+                          <span className="text-foreground font-semibold">
+                            {activeVessel.sog} kts ({Math.round(activeVessel.sog * 1.852)} km/h) · {activeVessel.heading}°
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted-foreground">Destination:</span>
+                          <span className="text-cyan-200 font-semibold truncate max-w-[140px]">
+                            {activeVessel.destination}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-2 border-t border-border/80 font-mono text-[11px] font-semibold text-muted-foreground flex justify-between items-center">
+                        <span>
+                          CALLSIGN:{" "}
+                          <strong className="text-foreground font-bold uppercase">
+                            {activeVessel.callSign || "N/A"}
+                          </strong>
+                        </span>
+
+                        <span className="flex items-center text-[10px] text-cyan-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mr-1 animate-pulse"></span>
+                          AIS REAL-TIME
+                        </span>
+                      </div>
                     </div>
-
-                    <p className="text-xs font-medium mt-2 leading-relaxed text-foreground/90">
-                      Speed{" "}
-                      {selectedVessel.sog}{" "}
-                      kts (
-                      {Math.round(
-                        selectedVessel.sog *
-                        1.852,
-                      )}{" "}
-                      km/h) · Heading{" "}
-                      {
-                        selectedVessel.heading
-                      }
-                      °
-                    </p>
-
-                    <div className="mt-2 text-xs font-mono text-cyan-300 bg-cyan-950/40 p-2 rounded border border-cyan-800/40">
-                      Destination:{" "}
-                      <span className="text-foreground font-semibold">
-                        {
-                          selectedVessel.destination
-                        }
-                      </span>
-                    </div>
-
-                    <div className="mt-3 pt-2 border-t border-border/80 font-mono text-[11px] font-semibold text-muted-foreground flex justify-between items-center">
-                      <span>
-                        CALLSIGN:{" "}
-                        <strong className="text-foreground font-bold uppercase">
-                          {
-                            selectedVessel.callSign ||
-                            "N/A"
-                          }
-                        </strong>
-                      </span>
-
-                      <span>
-                        TYPE CODE:{" "}
-                        <strong className="text-foreground font-bold uppercase">
-                          {
-                            selectedVessel.shipType ||
-                            "AIS"
-                          }
-                        </strong>
-                      </span>
-                    </div>
-                  </div>
-                </Popup>
-              )}
+                  </Popup>
+                );
+              })()}
 
               {/* ------------------------------------------------------ */}
               {/* Airspace Flight Popup                                  */}
               {/* ------------------------------------------------------ */}
 
-              {selectedFlight && (
-                <Popup
-                  latitude={selectedFlight.lat}
-                  longitude={selectedFlight.lng}
-                  anchor="left"
-                  offset={36}
-                  closeButton={false}
-                  closeOnClick={false}
-                  onClose={() => setSelectedFlight(null)}
-                >
-                  <div className="bg-popover text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[260px] animate-in fade-in-50 zoom-in-95">
-                    <div className="flex justify-between items-start gap-3">
-                      <div className="space-y-1">
-                        <div className="flex gap-2 items-center">
-                          <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/50 uppercase font-semibold text-[10px] tracking-wider">
-                            <Plane className="w-3 h-3 mr-1 inline" />
-                            {selectedFlight.callsign.includes("HELI") || selectedFlight.altitude < 300
-                              ? "Helicopter"
-                              : selectedFlight.callsign.includes("MIL")
-                              ? "Military"
-                              : "Commercial"}
-                          </Badge>
+              {(() => {
+                const activeFlight = selectedFlight
+                  ? flights.find((f) => f.id === selectedFlight.id) || selectedFlight
+                  : null;
+                if (!activeFlight) return null;
 
-                          <span className="font-mono text-xs font-semibold text-muted-foreground">
-                            {selectedFlight.country}
-                          </span>
+                return (
+                  <Popup
+                    latitude={activeFlight.lat}
+                    longitude={activeFlight.lng}
+                    anchor="left"
+                    offset={36}
+                    closeButton={false}
+                    closeOnClick={false}
+                    onClose={() => setSelectedFlight(null)}
+                  >
+                    <div className="bg-popover text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[270px] animate-in fade-in-50 zoom-in-95">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="space-y-1">
+                          <div className="flex gap-2 items-center">
+                            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/50 uppercase font-semibold text-[10px] tracking-wider flex items-center">
+                              <span className="relative flex h-2 w-2 mr-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                              </span>
+                              <Plane className="w-3 h-3 mr-1 inline" />
+                              {activeFlight.callsign.includes("HELI") || activeFlight.altitude < 300
+                                ? "Helicopter"
+                                : activeFlight.callsign.includes("MIL")
+                                ? "Military"
+                                : "Commercial"}
+                            </Badge>
+
+                            <span className="font-mono text-xs font-semibold text-muted-foreground">
+                              {activeFlight.country}
+                            </span>
+                          </div>
+
+                          <h4 className="font-bold text-sm text-foreground leading-tight pt-1 font-mono">
+                            {activeFlight.callsign || activeFlight.id}
+                          </h4>
                         </div>
 
-                        <h4 className="font-bold text-sm text-foreground leading-tight pt-1 font-mono">
-                          {selectedFlight.callsign || selectedFlight.id}
-                        </h4>
+                        <button
+                          onClick={() => setSelectedFlight(null)}
+                          className="h-11 w-11 p-3 -mr-2 -mt-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
+                          aria-label="Close popup"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
                       </div>
 
-                      <button
-                        onClick={() => setSelectedFlight(null)}
-                        className="h-11 w-11 p-3 -mr-2 -mt-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
-                        aria-label="Close popup"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+                      <div className="mt-2 text-xs font-mono text-amber-300 bg-amber-950/40 p-2.5 rounded-lg border border-amber-800/40 space-y-1.5">
+                        {activeFlight.originAirport && (
+                          <div className="flex justify-between items-center text-[11px] pb-1 border-b border-amber-800/30">
+                            <span className="text-muted-foreground">Origin Airport:</span>
+                            <span className="text-amber-300 font-bold">
+                              🛫 {activeFlight.originAirport}
+                            </span>
+                          </div>
+                        )}
+                        {activeFlight.destinationAirport && (
+                          <div className="flex justify-between items-center text-[11px] pb-1 border-b border-amber-800/30">
+                            <span className="text-muted-foreground">Destination:</span>
+                            <span className="text-cyan-300 font-bold">
+                              🛬 {activeFlight.destinationAirport}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted-foreground">Aircraft Model:</span>
+                          <span className="text-foreground font-semibold">
+                            {activeFlight.aircraftType || "Aircraft"}{activeFlight.squawk ? ` (Squawk: ${activeFlight.squawk})` : ""}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted-foreground">Live Altitude:</span>
+                          <span className="text-foreground font-semibold">
+                            {Math.round(activeFlight.altitude)} m ({Math.round(activeFlight.altitude * 3.28084)} ft)
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted-foreground">Speed & Bearing:</span>
+                          <span className="text-foreground font-semibold">
+                            {Math.round(activeFlight.velocity * 3.6)} km/h ({Math.round(activeFlight.velocity * 1.94384)} kts) · {activeFlight.heading}°
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted-foreground">Vertical Speed:</span>
+                          <span className="text-amber-200 font-semibold">
+                            {activeFlight.verticalRate > 0 ? `+${activeFlight.verticalRate} m/s ↗` : activeFlight.verticalRate < 0 ? `${activeFlight.verticalRate} m/s ↘` : "0 m/s →"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-2 border-t border-border/80 font-mono text-[11px] font-semibold text-muted-foreground flex justify-between items-center">
+                        <span>
+                          ICAO24:{" "}
+                          <strong className="text-foreground font-bold uppercase">
+                            {activeFlight.id}
+                          </strong>
+                        </span>
+
+                        <span className="flex items-center text-[10px] text-amber-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1 animate-pulse"></span>
+                          ADS-B REAL-TIME
+                        </span>
+                      </div>
                     </div>
-
-                    <p className="text-xs font-medium mt-2 leading-relaxed text-foreground/90">
-                      Alt {Math.round(selectedFlight.altitude)} m ({Math.round(selectedFlight.altitude * 3.28084)} ft) · Speed {Math.round(selectedFlight.velocity * 3.6)} km/h ({Math.round(selectedFlight.velocity * 1.94384)} kts) · Heading {selectedFlight.heading}°
-                    </p>
-
-                    <div className="mt-2 text-xs font-mono text-amber-300 bg-amber-950/40 p-2 rounded border border-amber-800/40 flex justify-between">
-                      <span>Vertical Rate:</span>
-                      <span className="text-foreground font-semibold">
-                        {selectedFlight.verticalRate > 0 ? `+${selectedFlight.verticalRate} m/s` : `${selectedFlight.verticalRate} m/s`}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 pt-2 border-t border-border/80 font-mono text-[11px] font-semibold text-muted-foreground flex justify-between items-center">
-                      <span>
-                        ICAO24:{" "}
-                        <strong className="text-foreground font-bold uppercase">
-                          {selectedFlight.id}
-                        </strong>
-                      </span>
-
-                      <span>
-                        STATUS:{" "}
-                        <strong className="text-foreground font-bold uppercase">
-                          {selectedFlight.isGround ? "ON GROUND" : "AIRBORNE"}
-                        </strong>
-                      </span>
-                    </div>
-                  </div>
-                </Popup>
-              )}
+                  </Popup>
+                );
+              })()}
 
               {/* ------------------------------------------------------ */}
               {/* Vehicle Popup                                          */}
@@ -2621,8 +2767,8 @@ export function MapContainer({
                 <Popup
                   latitude={selectedTransportHub.lat}
                   longitude={selectedTransportHub.lng}
-                  anchor="top"
-                  offset={15}
+                  anchor="left"
+                  offset={36}
                   closeButton={false}
                   closeOnClick={false}
                   onClose={() => setSelectedTransportHub(null)}

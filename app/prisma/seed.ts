@@ -12,6 +12,7 @@ const t = (offsetMinutes: number): Date =>
 
 async function main() {
   console.log('🗑  Clearing existing data...');
+  await prisma.incident.deleteMany();
   await prisma.instruction.deleteMany();
   await prisma.report.deleteMany();
   await prisma.signal.deleteMany();
@@ -343,14 +344,14 @@ async function main() {
     'No water since 7am. Block 45, floor 6.',
     'Vett pole. Lapsed peavad kooli minema.',
     'No water in the whole building. 3rd floor.',
-    'Вода не идёт уже час. Этаж 7.',
-    'Краны сухие. Блок 47.',
+    'Water not running for an hour. Floor 7.',
+    'Taps dry. Block 47.',
     'Vett pole terves majas juba tund aega.',
-    'Нет воды. Дети есть хотят.',
+    'No water. Children need food.',
     'No running water. Called Tallinn Vesi, no answer.',
     'Vesi läks ära umbes 7:20. Korrus 5.',
     'Water pump not working. Upper floors dry.',
-    'Вода пропала рано утром.',
+    'Water went out early in the morning.',
   ];
 
   for (let i = 0; i < 12; i++) {
@@ -377,11 +378,11 @@ async function main() {
   const pharmacyDescriptions = [
     'Benu on kinni, uks lukus.',
     'Pharmacy locked. Need insulin.',
-    'Apteeк закрыт. Нужны лекарства.',
+    'Pharmacy closed. Need medicines.',
     'Benu Laagna kinni. Mõlemad uksed lukus.',
     'Pharmacie fermée. Diabétique sans insuline.',
     'Apteek suletud. Vana inimene vajab ravimeid.',
-    'Аптека закрыта. Пожилая соседка без лекарств.',
+    'Pharmacy closed. Elderly neighbor needs medicines.',
     'Benu closed, no sign on door.',
   ];
 
@@ -409,7 +410,7 @@ async function main() {
   const roadDescriptions = [
     'Puu teel. Autod ei pääse läbi. Peterburi / Laagna.',
     'Tree down blocking road. Cars stuck.',
-    'Дерево упало на дорогу. Peterburi tee.',
+    'Tree fallen on road. Peterburi tee.',
     'Road blocked at junction. Emergency vehicles can\'t pass.',
     'Puu kukkunud. Kiirabi ei saa läbi.',
   ];
@@ -440,7 +441,7 @@ async function main() {
     await prisma.report.create({
       data: {
         type: 'WATER_CONTAMINATED',
-        description: 'Vesi on mürgitatud! Ärge jooge! / Вода отравлена! Не пейте!',
+        description: 'Vesi on mürgitatud! Ärge jooge! / Water is poisoned! Do not drink!',
         lat: 59.4268, // identical coords — red flag for engine
         lng: 24.831,
         districtId: 'lasnamae',
@@ -485,7 +486,7 @@ async function main() {
     data: {
       title: 'Water distribution point open — Laagna Civic Centre',
       body:
-        'Vee väljastuspunkt on avatud Laagna tee 17 (Laagna Civic Centre). Palun suunduge sinna koos anumatega. Maht 2000L, täiendatakse iga 4 tunni tagant.\n\nWater distribution point is open at Laagna tee 17 (Laagna Civic Centre). Please bring containers. 2000L capacity, refilled every 4 hours.\n\nПункт выдачи воды открыт по адресу Laagna tee 17 (Laagna Civic Centre). Приходите с ёмкостями. Объём 2000Л, пополняется каждые 4 часа.',
+        'Vee väljastuspunkt on avatud Laagna tee 17 (Laagna Civic Centre). Palun suunduge sinna koos anumatega. Maht 2000L, täiendatakse iga 4 tunni tagant.\n\nWater distribution point is open at Laagna tee 17 (Laagna Civic Centre). Please bring containers. 2000L capacity, refilled every 4 hours.',
       districtId: 'lasnamae',
       geoFenceLat: 59.428,
       geoFenceLng: 24.835,
@@ -497,6 +498,100 @@ async function main() {
     },
   });
 
+  // -------------------------------------------------------------------------
+  // INCIDENTS
+  // -------------------------------------------------------------------------
+  console.log('🚨 Seeding SCADA incidents...');
+
+  await prisma.incident.createMany({
+    data: [
+      {
+        id: "INC-0847-01",
+        title: "Vanalinn Substation #4 Tripped",
+        timestamp: "08:47:05",
+        severity: "critical",
+        category: "Grid Failure",
+        makiIcon: "lightning",
+        lat: 59.4372,
+        lng: 24.7453,
+        description: "Primary transformer isolation relay triggered unexpectedly. Cascading frequency drop detected in Old Town district.",
+        status: "active",
+        nodeId: "EE-TLN-SUB-04",
+        district: "Vanalinn",
+      },
+      {
+        id: "INC-0847-02",
+        title: "Ülemiste Smart Feeder Surge",
+        timestamp: "08:47:01",
+        severity: "critical",
+        category: "Grid Failure",
+        makiIcon: "caution",
+        lat: 59.4215,
+        lng: 24.7958,
+        description: "Voltage spike exceeding 420kV tolerances. Automated circuit breaker isolated tech park sectors B & C.",
+        status: "active",
+        nodeId: "EE-TLN-ULE-01",
+        district: "Ülemiste",
+      },
+      {
+        id: "INC-0847-03",
+        title: "Viru Junction Signal Controller Freeze",
+        timestamp: "08:47:18",
+        severity: "warning",
+        category: "Traffic Flow",
+        makiIcon: "traffic-light",
+        lat: 59.4365,
+        lng: 24.7562,
+        description: "Optical traffic sensors lost heartbeat connection. Junction defaulted to fail-safe amber pulse state.",
+        status: "investigating",
+        nodeId: "EE-TLN-TRF-88",
+        district: "Viru",
+      },
+      {
+        id: "INC-0847-04",
+        title: "Balti Jaam Automated Dispatch Timeout",
+        timestamp: "08:47:30",
+        severity: "warning",
+        category: "Emergency Dispatch",
+        makiIcon: "emergency-phone",
+        lat: 59.4402,
+        lng: 24.7378,
+        description: "Emergency vehicle priority routing server experienced a 1.4s packet drop. Secondary routing route initiated.",
+        status: "active",
+        nodeId: "EE-TLN-DISP-09",
+        district: "Balti Jaam",
+      },
+      {
+        id: "INC-0847-05",
+        title: "Port of Tallinn Fiber Gateway Latency",
+        timestamp: "08:46:50",
+        severity: "info",
+        category: "Telecom Node",
+        makiIcon: "communications-tower",
+        lat: 59.4450,
+        lng: 24.7680,
+        description: "Subsea link telemetry reporting elevated ping (48ms vs baseline 4ms). Traffic rerouted through terrestrial backbone.",
+        status: "mitigated",
+        nodeId: "EE-TLN-GW-03",
+        district: "Port",
+      },
+      {
+        id: "INC-0847-06",
+        title: "Kristiine Sector Sensor Array Anomaly",
+        timestamp: "08:47:42",
+        severity: "warning",
+        category: "Sensor Anomaly",
+        makiIcon: "waveform",
+        lat: 59.4260,
+        lng: 24.7240,
+        description: "Environmental acoustic sensor array detected low-frequency micro-vibrations prior to power trip.",
+        status: "investigating",
+        nodeId: "EE-TLN-SNS-44",
+        district: "Kristiine",
+      },
+    ],
+  });
+
   console.log('✅ Seed complete.');
   console.log('');
   console.log('Summary:');
@@ -506,6 +601,7 @@ async function main() {
   console.log('  Signals:        4  (3 real + 1 flagged)');
   console.log('  Reports:        31 (12 no-water + 8 pharma + 5 road + 5 fake + 1 queued)');
   console.log('  Instructions:   1  (targeted water-point broadcast)');
+  console.log('  Incidents:      6  (SCADA active incidents)');
 }
 
 main()

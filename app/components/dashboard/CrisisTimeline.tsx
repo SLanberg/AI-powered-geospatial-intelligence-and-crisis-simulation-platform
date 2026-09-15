@@ -743,7 +743,7 @@ export function CrisisTimeline({
   );
 
   return (
-    <div className="w-full bg-[#18191c] text-zinc-300 border-t border-zinc-800 px-4 py-3 select-none">
+    <div className="w-full bg-[#18191c] text-zinc-300 border-t border-zinc-800 px-4 py-3 select-text">
       <div className="flex items-center gap-4 w-full">
         {/* Transport */}
         <div className="flex items-center gap-2 shrink-0">

@@ -1,4 +1,4 @@
-import { X, AlertTriangle } from "lucide-react";
+import { X, AlertTriangle, Camera, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Incident } from "../data";
 import { MakiIcon, getMakiIconNameForIncident } from "./MakiIcon";
@@ -68,7 +68,7 @@ export function MapIncidentPopup({
           </div>
         </div>
 
-        {/* Close Button: aligned nicely within padding bounds without overflowing card */}
+        {/* Close Button */}
         <button
           onClick={() => setSelectedIncident(null)}
           className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors shrink-0 -mr-1 -mt-1"
@@ -81,6 +81,40 @@ export function MapIncidentPopup({
       <p className="text-xs font-medium mt-2.5 leading-relaxed text-foreground/90 break-words">
         {selectedIncident.description}
       </p>
+
+      {/* Google Maps Satellite View Embed */}
+      {selectedIncident.lat && selectedIncident.lng && (
+        <div className="relative mt-2.5 rounded-lg overflow-hidden border border-border/80 bg-black/40 group">
+          <iframe
+            title={`Google Maps Satellite view of ${selectedIncident.title}`}
+            width="100%"
+            height="120"
+            className="w-full h-28 border-0 rounded-lg filter contrast-[1.05] brightness-95 transition-all"
+            loading="lazy"
+            src={`https://maps.google.com/maps?q=${selectedIncident.lat},${selectedIncident.lng}&t=k&z=18&ie=UTF8&iwloc=&output=embed`}
+          />
+          <div className="absolute bottom-1.5 right-1.5 flex gap-1 z-10">
+            <a
+              href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedIncident.lat},${selectedIncident.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2 py-0.5 bg-background/90 hover:bg-background text-foreground text-[10px] font-mono font-medium rounded border border-border/80 shadow flex items-center gap-1 backdrop-blur transition-colors"
+            >
+              <Camera className="w-3 h-3 text-sky-400" />
+              Street View
+            </a>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${selectedIncident.lat},${selectedIncident.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2 py-0.5 bg-background/90 hover:bg-background text-foreground text-[10px] font-mono font-medium rounded border border-border/80 shadow flex items-center gap-1 backdrop-blur transition-colors"
+            >
+              <ExternalLink className="w-3 h-3 text-emerald-400" />
+              Google Maps
+            </a>
+          </div>
+        </div>
+      )}
 
       <div className="mt-3 pt-2.5 border-t border-border/80 font-mono text-[11px] font-semibold text-muted-foreground flex justify-between items-center gap-2 flex-wrap min-w-0">
         <span className="min-w-0 truncate">NODE: <strong className="text-foreground font-bold">{selectedIncident.nodeId}</strong></span>

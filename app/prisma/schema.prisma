@@ -96,3 +96,21 @@ model Instruction {
   status           String   @default("SENT") // SENT | ACKNOWLEDGED
   createdAt        DateTime @default(now())
 }
+
+model Incident {
+  id          String   @id @default(uuid())
+  title       String
+  timestamp   String
+  severity    String   // critical | warning | info
+  category    String   // Grid Failure | Traffic Flow | Telecom Node | Emergency Dispatch | Sensor Anomaly
+  makiIcon    String
+  lat         Float
+  lng         Float
+  description String
+  status      String   @default("active") // active | investigating | mitigated
+  nodeId      String
+  district    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+

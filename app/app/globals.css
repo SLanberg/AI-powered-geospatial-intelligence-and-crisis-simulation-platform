@@ -258,3 +258,48 @@
 .animate-ping {
   animation: smooth-ping 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite !important;
 }
+
+/* =========================================================
+   UNIVERSAL TEXT SELECTION FOR CARDS, CHAT, & PANELS
+   ========================================================= */
+
+/* Ensure text inside all cards, chat messages, modals, popups, and telemetry feeds is easily selectable */
+[class*="card"],
+[class*="Card"],
+[class*="chat"],
+[class*="Chat"],
+[class*="popup"],
+[class*="Popup"],
+[class*="drawer"],
+[class*="Drawer"],
+[class*="panel"],
+[class*="Panel"],
+[class*="matrix"],
+[class*="Matrix"],
+[class*="timeline"],
+[class*="Timeline"],
+[class*="feed"],
+[class*="Feed"],
+.prose,
+p,
+span,
+h1, h2, h3, h4, h5, h6,
+code,
+pre,
+td,
+th,
+li {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+/* Custom glowing tactical selection highlight styling */
+::selection {
+  background-color: rgba(63, 125, 204, 0.45) !important;
+  color: #ffffff !important;
+}
+
+::-moz-selection {
+  background-color: rgba(63, 125, 204, 0.45) !important;
+  color: #ffffff !important;
+}

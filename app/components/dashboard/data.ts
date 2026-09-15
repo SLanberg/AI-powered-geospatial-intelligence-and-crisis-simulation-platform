@@ -107,13 +107,40 @@ export const INITIAL_INCIDENTS: Incident[] = [
 
 export let MOCK_INCIDENTS: Incident[] = [...INITIAL_INCIDENTS];
 
+export async function fetchIncidentsFromDb(): Promise<Incident[]> {
+  try {
+    const res = await fetch("/api/incidents");
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.incidents) && data.incidents.length > 0) {
+        MOCK_INCIDENTS = data.incidents;
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("scada-incidents-updated", { detail: MOCK_INCIDENTS }));
+        }
+        return MOCK_INCIDENTS;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fetch incidents from SQLite DB, using in-memory store:", err);
+  }
+  return MOCK_INCIDENTS;
+}
+
 export function addDynamicIncident(incident: Incident): Incident[] {
   MOCK_INCIDENTS = [incident, ...MOCK_INCIDENTS];
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("scada-incidents-updated", { detail: MOCK_INCIDENTS }));
+    
+    // Persist asynchronously to SQLite DB
+    fetch("/api/incidents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(incident),
+    }).catch((err) => console.error("Failed to persist incident to SQLite DB:", err));
   }
   return MOCK_INCIDENTS;
 }
+
 
 export interface TallinnDistrict {
   id: string;
