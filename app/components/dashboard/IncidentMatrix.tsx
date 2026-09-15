@@ -65,10 +65,6 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <div className="flex items-center gap-3">
           <div className="relative flex items-center justify-center h-10 w-10 rounded-lg bg-teal-500/20 border-teal-500/30 shadow-lg text-red-400">
-            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-60"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
-            </span>
             <AlertTriangle className="w-5 h-5 text-teal-400" />
           </div>
           <div>
@@ -158,7 +154,6 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
               </TableRow>
             ) : (
               filteredIncidents.map((inc) => {
-                const isCritical = inc.severity.toLowerCase() === "critical" || inc.severity.toLowerCase() === "emergency";
                 return (
                   <TableRow
                     key={inc.id}
@@ -166,12 +161,6 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {isCritical && (
-                          <span className="relative flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-60"></span>
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
-                          </span>
-                        )}
                         <Badge className={getThreatBadgeClass(inc.severity)}>
                           {inc.severity}
                         </Badge>

@@ -6,15 +6,9 @@ import { MapContainer } from "@/components/dashboard/MapContainer";
 import { IncidentMatrix } from "@/components/dashboard/IncidentMatrix";
 import { AIAssistant } from "@/components/dashboard/AIAssistant";
 import { MediaFeed } from "@/components/dashboard/MediaFeed";
+import { NavBar } from "@/components/dashboard/NavBar";
 
 import { Incident, MOCK_INCIDENTS } from "@/components/dashboard/data";
-import {
-  Radio,
-  PanelRightOpen,
-  PanelRightClose,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from "lucide-react";
 
 export default function NeuralCityDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -61,75 +55,31 @@ export default function NeuralCityDashboard() {
 
       {/* Main Command Center Content Area - Full fluid width */}
       <main
-        className={`flex-1 min-h-screen flex flex-col px-4 md:px-6 py-4 overflow-x-hidden transition-all duration-300 ease-in-out ${
+        className={`flex-1 h-screen flex flex-col overflow-x-hidden transition-all duration-300 ease-in-out ${
           sidebarOpen ? "ml-[220px] w-[calc(100%-220px)]" : "ml-0 w-full"
         } ${aiOpen ? "lg:mr-[420px]" : ""}`}
       >
         {/* Top Command Bar & Action Controls */}
-        <header className="w-full bg-card border border-border rounded-xl px-4 py-2.5 mb-4 flex flex-wrap items-center justify-between gap-3 shadow-lg">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen((open) => !open)}
-              aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-              title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-              className="group relative flex items-center justify-center rounded-lg border border-border bg-muted/80 h-7 w-7 p-0 text-foreground transition-all hover:border-primary/60 hover:text-primary"
-            >
-              <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
-                {sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-              </span>
-              {sidebarOpen ? (
-                <PanelLeftClose className="h-3.5 w-3.5 text-foreground" />
-              ) : (
-                <PanelLeftOpen className="h-3.5 w-3.5 text-foreground" />
-              )}
-            </button>
-          </div>
-          {/* Right Action Controls */}
-          <div className="flex items-center gap-3 font-mono text-xs">
-            <button
-              type="button"
-              onClick={() => setFeedOpen((open) => !open)}
-              aria-label={feedOpen ? "Close telemetry feed" : "Open telemetry feed"}
-              title={feedOpen ? "Close telemetry feed" : "Open telemetry feed"}
-              className="group relative flex items-center justify-center rounded-lg border border-border bg-muted/80 h-7 w-7 p-0 text-foreground transition-all hover:border-primary/60 hover:text-primary"
-            >
-              <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
-                {feedOpen ? "Close telemetry feed" : "Open telemetry feed"}
-              </span>
-              <Radio className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setAiOpen((open) => !open)}
-              aria-label={aiOpen ? "Close secondary sidebar" : "Open secondary sidebar"}
-              title={aiOpen ? "Close secondary sidebar" : "Open secondary sidebar"}
-              className="group relative flex items-center justify-center rounded-lg border border-border bg-muted/80 h-7 w-7 p-0 text-foreground transition-all hover:border-primary/60 hover:text-primary"
-            >
-              <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
-                {aiOpen ? "Close secondary sidebar" : "Open secondary sidebar"}
-              </span>
-              {aiOpen ? (
-                <PanelRightClose className="h-3.5 w-3.5 text-foreground" />
-              ) : (
-                <PanelRightOpen className="h-3.5 w-3.5 text-foreground" />
-              )}
-            </button>
-          </div>
-        </header>
-
+        <NavBar
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          feedOpen={feedOpen}
+          setFeedOpen={setFeedOpen}
+          aiOpen={aiOpen}
+          setAiOpen={setAiOpen}
+        />
 
         {/* Viewport Content Switcher */}
         {activeTab === "incidents" ? (
-          <div className="w-full flex-1">
+          <div className="w-full flex-1 p-4 overflow-y-auto">
             <IncidentMatrix onSelectIncident={handleSelectIncidentFromMatrix} />
           </div>
         ) : activeTab === "media" ? (
-          <div className="w-full flex-1">
+          <div className="w-full flex-1 p-4 overflow-y-auto">
             <MediaFeed />
           </div>
         ) : (
-          <div className="w-full flex-1 flex flex-col">
+          <div className="w-full flex-1 flex flex-col h-[calc(100vh-49px)]">
             <MapContainer
               showIncidents={showIncidents}
               crisisActive={crisisActive}

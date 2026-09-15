@@ -37,7 +37,7 @@ import {
   type TrafficSegment,
 } from "@/lib/trafficEngine";
 
-import { MapHeader } from "./map/MapHeader";
+import { MapToolbar } from "./map/MapToolbar";
 import { MapIncidentPopup } from "./map/MapIncidentPopup";
 import { useMapInteractions } from "./map/useMapInteractions";
 import { MapObjectVector } from "./map/MapObjectVector";
@@ -1394,45 +1394,33 @@ export function MapContainer({
   /* ---------------------------------------------------------------------- */
 
   return (
-    <div className="w-full flex flex-col select-none">
-      {/* ---------------------------------------------------------------- */}
-      {/* Header                                                            */}
-      {/* ---------------------------------------------------------------- */}
-
-      <MapHeader
-        mapTheme={mapTheme}
-        setMapTheme={setMapTheme}
-        is3D={is3D}
-        toggle3D={toggle3D}
-        resetView={resetView}
-        showFlights={activeShowFlights}
-        setShowFlights={activeSetShowFlights}
-        showVehicles={activeShowVehicles}
-        setShowVehicles={activeSetShowVehicles}
-        showEmergencyServices={
-          showEmergencyServices
-        }
-        setShowEmergencyServices={
-          setShowEmergencyServices
-        }
-        showIncidents={showIncidents}
-        setShowIncidents={setShowIncidents}
-        flightCount={flights.length}
-        vehicleCount={vessels.length}
-        emergencyCount={
-          TALLINN_EMERGENCY_SERVICES.length
-        }
-        incidentCount={
-          MOCK_INCIDENTS.length
-        }
-      />
-
+    <div className="w-full h-full flex flex-col flex-1 select-none">
       {/* ---------------------------------------------------------------- */}
       {/* Map                                                               */}
       {/* ---------------------------------------------------------------- */}
 
-      <div className="relative w-full h-[640px] lg:h-[calc(100vh-230px)] min-h-[580px]">
-        <div className="absolute inset-0 overflow-hidden rounded-b-xl border-x border-b border-border bg-background">
+      <div className="relative w-full h-full flex-1 min-h-[580px]">
+        {/* Compact vertical toolbars overlaid on map */}
+        <MapToolbar
+          mapTheme={mapTheme}
+          setMapTheme={setMapTheme}
+          is3D={is3D}
+          toggle3D={toggle3D}
+          resetView={resetView}
+          showFlights={activeShowFlights}
+          setShowFlights={activeSetShowFlights}
+          showVehicles={activeShowVehicles}
+          setShowVehicles={activeSetShowVehicles}
+          showEmergencyServices={showEmergencyServices}
+          setShowEmergencyServices={setShowEmergencyServices}
+          showIncidents={showIncidents}
+          setShowIncidents={setShowIncidents}
+          flightCount={flights.length}
+          vehicleCount={vessels.length}
+          emergencyCount={TALLINN_EMERGENCY_SERVICES.length}
+          incidentCount={MOCK_INCIDENTS.length}
+        />
+        <div className="absolute inset-0 overflow-hidden rounded-xl border border-border bg-background">
           {isClient ? (
             <Map
               ref={mapRef}
