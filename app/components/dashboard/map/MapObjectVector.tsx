@@ -131,7 +131,7 @@ export const MapObjectVector = React.memo(function MapObjectVector({
 
   return (
     <div
-      className={`relative flex items-center justify-center rounded-full bg-slate-950/85 backdrop-blur-xs transition-transform will-change-transform ${getStatusRingStyle()} ${
+      className={`relative flex items-center justify-center rounded-full bg-slate-950 transition-transform will-change-transform ${getStatusRingStyle()} ${
         isSelected ? "ring-2 ring-cyan-400 scale-110 z-20" : ""
       }`}
       style={{

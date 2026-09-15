@@ -802,7 +802,7 @@ export function CrisisTimeline({
                   left: `${hoverPosition}%`,
                 }}
               >
-                <div className="rounded-md border border-zinc-700 bg-zinc-950/95 backdrop-blur px-2.5 py-1.5 shadow-xl">
+                <div className="rounded-md border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 shadow-xl">
                   <div className="font-mono text-[11px] font-semibold text-zinc-200">
                     {hoverTime}
                   </div>

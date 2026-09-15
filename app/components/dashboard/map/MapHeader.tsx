@@ -1,4 +1,4 @@
-import { Crosshair, Layers3, Satellite, Map as MapIcon, ShieldAlert, Plane, Anchor, Siren, AlertTriangle } from "lucide-react";
+import { Crosshair, Box, Satellite, Map as MapIcon, ShieldAlert, Plane, Anchor, Siren, AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -196,7 +196,7 @@ export function MapHeader({
               : "border-[#2A3545] bg-[#121820] text-slate-100 hover:bg-[#1E2530]"
           }`}
         >
-          <Layers3 className="w-5 h-5" />
+          <Box className="w-5 h-5" />
         </Button>
 
         <Button

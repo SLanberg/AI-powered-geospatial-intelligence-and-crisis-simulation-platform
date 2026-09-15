@@ -42,7 +42,7 @@ export function MapIncidentPopup({
   };
 
   return (
-    <div className="bg-popover/95 backdrop-blur text-popover-foreground p-4 rounded-xl border border-border shadow-2xl w-80 max-w-[calc(100vw-2rem)] animate-in fade-in-50 zoom-in-95 overflow-hidden box-border">
+    <div className="bg-popover text-popover-foreground p-4 rounded-xl border border-border shadow-2xl w-80 max-w-[calc(100vw-2rem)] animate-in fade-in-50 zoom-in-95 overflow-hidden box-border">
       <div className="flex justify-between items-start gap-2.5">
         <div className="flex items-start gap-2.5 min-w-0 flex-1">
           {/* Maki Icon Badge Container */}

@@ -37,19 +37,17 @@ import {
   type TrafficSegment,
 } from "@/lib/trafficEngine";
 
-import { CrisisTimeline } from "./CrisisTimeline";
 import { MapHeader } from "./map/MapHeader";
 import { MapIncidentPopup } from "./map/MapIncidentPopup";
 import { useMapInteractions } from "./map/useMapInteractions";
 import { MapObjectVector } from "./map/MapObjectVector";
 import { clusterEmergencyServices } from "./map/useDecluttering";
 import { MakiIcon, getMakiIconNameForIncident } from "./map/MakiIcon";
+import { TelemetryFeed } from "./map/TelemetryFeed";
 
 import {
   MOCK_INCIDENTS,
-  OPERATIONAL_ASSESSMENT,
   type Incident,
-  type OperationalAssessment,
 } from "./data";
 
 import { AppleMapsMarker } from "./map/AppleMapsMarker";
@@ -494,6 +492,10 @@ interface MapContainerProps {
   onFlightCountChange?: (count: number) => void;
 
   onVehicleCountChange?: (count: number) => void;
+
+  showTelemetryFeed?: boolean;
+
+  onCloseTelemetryFeed?: () => void;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -542,7 +544,7 @@ const FlightMarkerItem = React.memo(function FlightMarkerItem({
           size={30}
           isSelected={isSelected}
         />
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap bg-slate-900/90 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg backdrop-blur-xs">
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap bg-slate-900 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg">
           {flight.callsign || flight.id} ({Math.round(flight.altitude)}m)
         </div>
       </div>
@@ -588,7 +590,7 @@ const VesselMarkerItem = React.memo(function VesselMarkerItem({
           size={30}
           isSelected={isSelected}
         />
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap bg-slate-900/90 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg backdrop-blur-xs">
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap bg-slate-900 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg">
           {vessel.name || `MMSI ${vessel.mmsi}`} ({vessel.sog} kts)
         </div>
       </div>
@@ -611,6 +613,8 @@ export function MapContainer({
   setShowIncidents,
   onFlightCountChange,
   onVehicleCountChange,
+  showTelemetryFeed = true,
+  onCloseTelemetryFeed,
 }: MapContainerProps) {
   const mapRef = useRef<MapRef | null>(null);
 
@@ -1196,99 +1200,6 @@ export function MapContainer({
     selectedTime,
   ]);
 
-  /* ---------------------------------------------------------------------- */
-  /* Operational assessment                                                 */
-  /* ---------------------------------------------------------------------- */
-
-  const operationalAssessment =
-    useMemo<OperationalAssessment>(() => {
-      const criticalCount =
-        filteredIncidents.filter(
-          (incident) =>
-            incident.severity ===
-            "critical",
-        ).length;
-
-      const warningCount =
-        filteredIncidents.filter(
-          (incident) =>
-            incident.severity ===
-            "warning",
-        ).length;
-
-      const riskScore = Math.min(
-        100,
-        Math.max(
-          20,
-          Math.round(
-            OPERATIONAL_ASSESSMENT.riskScore *
-            0.55 +
-            criticalCount * 22 +
-            warningCount * 10,
-          ),
-        ),
-      );
-
-      let riskLevel: OperationalAssessment["riskLevel"] =
-        "Low";
-
-      if (riskScore >= 80) {
-        riskLevel = "Critical";
-      } else if (riskScore >= 60) {
-        riskLevel = "High";
-      } else if (riskScore >= 40) {
-        riskLevel = "Medium";
-      }
-
-      return {
-        riskLevel,
-
-        riskScore,
-
-        currentState:
-          criticalCount > 0
-            ? `${criticalCount} critical faults are active in the core network and elevated impact is spreading across adjacent sectors.`
-            : "No critical service disruptions are active right now, but warning-level anomalies merit attention.",
-
-        likelyNext:
-          criticalCount > 0
-            ? "The most likely development is cascade pressure on the central feeder and traffic-dispatch nodes unless load is rebalanced immediately."
-            : "Conditions are likely to remain stable with minor degradation in peripheral sensor zones.",
-
-        recommendedStrategy:
-          criticalCount > 0
-            ? "Isolate the critical feeder, defer nonessential loads, and redirect emergency resources toward the most exposed districts."
-            : "Maintain live monitoring and dispatch routine inspection teams to the minor anomaly clusters.",
-
-        probability: Math.min(
-          97,
-          Math.round(
-            OPERATIONAL_ASSESSMENT.probability *
-            0.7 +
-            criticalCount * 18 +
-            warningCount * 8,
-          ),
-        ),
-
-        impact:
-          criticalCount > 0
-            ? "High impact on power continuity, emergency routing, and district-level mobility."
-            : "Moderate impact limited to monitoring and service redundancy.",
-
-        confidence: Math.max(
-          70,
-          Math.min(
-            97,
-            OPERATIONAL_ASSESSMENT.confidence,
-          ),
-        ),
-
-        actionWindow:
-          criticalCount > 0
-            ? "10–15 mins"
-            : "30–45 mins",
-      };
-    }, [filteredIncidents]);
 
   /* ---------------------------------------------------------------------- */
   /* GeoJSON                                                                 */
@@ -1745,7 +1656,7 @@ export function MapContainer({
 
                         "line-width": 8,
                         "line-opacity": 0.35,
-                        "line-blur": 3,
+                        "line-blur": 0,
                       }}
                     />
 
@@ -2048,7 +1959,7 @@ export function MapContainer({
                     )
                   }
                 >
-                  <div className="bg-popover/95 backdrop-blur text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[260px] animate-in fade-in-50 zoom-in-95">
+                  <div className="bg-popover text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[260px] animate-in fade-in-50 zoom-in-95">
                     <div className="flex justify-between items-start gap-3">
                       <div className="space-y-1">
                         <div className="flex gap-2 items-center">
@@ -2151,7 +2062,7 @@ export function MapContainer({
                   closeOnClick={false}
                   onClose={() => setSelectedFlight(null)}
                 >
-                  <div className="bg-popover/95 backdrop-blur text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[260px] animate-in fade-in-50 zoom-in-95">
+                  <div className="bg-popover text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[260px] animate-in fade-in-50 zoom-in-95">
                     <div className="flex justify-between items-start gap-3">
                       <div className="space-y-1">
                         <div className="flex gap-2 items-center">
@@ -2235,7 +2146,7 @@ export function MapContainer({
                     )
                   }
                 >
-                  <div className="bg-popover/95 backdrop-blur text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[260px] animate-in fade-in-50 zoom-in-95">
+                  <div className="bg-popover text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[260px] animate-in fade-in-50 zoom-in-95">
                     <div className="flex justify-between items-start gap-3">
                       <div className="space-y-1">
                         <div className="flex gap-2 items-center">
@@ -2400,167 +2311,21 @@ export function MapContainer({
             </Map>
           ) : null}
         </div>
+
+        {/* Telemetry Feed overlay inside map */}
+        {showTelemetryFeed && (
+          <TelemetryFeed
+            filteredIncidents={filteredIncidents}
+            setSelectedIncident={setSelectedIncident}
+            flyTo={flyTo}
+            onClose={() => onCloseTelemetryFeed?.()}
+            onSelectIncident={(incident) => setSelectedIncident(incident)}
+          />
+        )}
       </div>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* Under-map operational summary                                    */}
-      {/* ---------------------------------------------------------------- */}
 
-      <div className="mt-4 rounded-xl border border-border bg-card/95 p-3 shadow-sm">
-        <div className="flex items-center justify-between gap-3 border-b border-border pb-2.5">
-          <div>
-            <div className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
-              Operational picture
-            </div>
 
-            <div className="mt-1 text-sm font-semibold text-card-foreground">
-              Decision support overview
-            </div>
-          </div>
-
-          <div
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-[0.18em] ${operationalAssessment.riskLevel ===
-                "Critical"
-                ? "border-rose-500/50 bg-rose-500/10 text-rose-300"
-                : operationalAssessment.riskLevel ===
-                  "High"
-                  ? "border-amber-500/50 bg-amber-500/10 text-amber-300"
-                  : operationalAssessment.riskLevel ===
-                    "Medium"
-                    ? "border-blue-500/50 bg-blue-500/10 text-blue-300"
-                    : "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
-              }`}
-          >
-            {operationalAssessment.riskLevel}{" "}
-            risk
-          </div>
-        </div>
-
-        <div className="mt-3 grid gap-2 md:grid-cols-3">
-          <div className="rounded-lg border border-border bg-muted/30 p-2.5">
-            <div className="text-[9px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
-              Current state
-            </div>
-
-            <div className="mt-1.5 text-xs leading-relaxed text-card-foreground">
-              {
-                operationalAssessment.currentState
-              }
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-border bg-muted/30 p-2.5">
-            <div className="text-[9px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
-              Likely next
-            </div>
-
-            <div className="mt-1.5 text-xs leading-relaxed text-card-foreground">
-              {
-                operationalAssessment.likelyNext
-              }
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-border bg-muted/30 p-2.5">
-            <div className="text-[9px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
-              Recommended action
-            </div>
-
-            <div className="mt-1.5 text-xs leading-relaxed text-card-foreground">
-              {
-                operationalAssessment.recommendedStrategy
-              }
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <div className="flex-1 rounded-lg border border-border bg-muted/20 p-2.5">
-            <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
-              <span>
-                Risk intensity
-              </span>
-
-              <span>
-                {
-                  operationalAssessment.riskScore
-                }
-                %
-              </span>
-            </div>
-
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className={`h-full rounded-full ${operationalAssessment.riskLevel ===
-                    "Critical"
-                    ? "bg-rose-500"
-                    : operationalAssessment.riskLevel ===
-                      "High"
-                      ? "bg-amber-500"
-                      : operationalAssessment.riskLevel ===
-                        "Medium"
-                        ? "bg-blue-500"
-                        : "bg-emerald-500"
-                  }`}
-                style={{
-                  width: `${operationalAssessment.riskScore}%`,
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="w-full sm:w-64 rounded-lg border border-border bg-muted/20 p-2.5">
-            <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
-              <span>
-                Probability
-              </span>
-
-              <span>
-                {Math.round(
-                  operationalAssessment.probability,
-                )}
-                %
-              </span>
-            </div>
-
-            <div className="mt-2 text-[11px] text-card-foreground">
-              <span className="font-semibold">
-                Impact:
-              </span>{" "}
-              {
-                operationalAssessment.impact
-              }
-            </div>
-
-            <div className="mt-1 text-[10px] text-muted-foreground font-mono">
-              Confidence{" "}
-              {
-                operationalAssessment.confidence
-              }
-              % ·{" "}
-              {
-                operationalAssessment.actionWindow
-              }
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ---------------------------------------------------------------- */}
-      {/* Timeline                                                          */}
-      {/* ---------------------------------------------------------------- */}
-
-      <CrisisTimeline
-        selectedTime={selectedTime}
-        setSelectedTime={setSelectedTime}
-        crisisActive={crisisActive}
-        selectedIncident={
-          selectedIncident
-        }
-        setSelectedIncident={
-          setSelectedIncident
-        }
-      />
     </div>
   );
 }

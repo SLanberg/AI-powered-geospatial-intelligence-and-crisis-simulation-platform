@@ -4,8 +4,6 @@ import React from "react";
 import {
   Map,
   AlertTriangle,
-  Activity,
-  Radio,
   Cpu,
   Newspaper,
 } from "lucide-react";
@@ -34,7 +32,6 @@ export function Sidebar({
       badge: "6 Active",
       badgeVariant: "destructive" as const,
     },
-    { id: "telemetry", label: "Telemetry", icon: Activity, badge: null },
     { id: "media", label: "Media", icon: Newspaper, badge: "LIVE" },
   ];
 
@@ -59,7 +56,7 @@ export function Sidebar({
 
             <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
               <span>TALLINN GRID</span>
-              <span className="text-primary font-medium">CORE v0.1</span>
+              <span className="text-primary font-medium">CORE v0.2</span>
             </div>
           </div>
 
@@ -79,28 +76,25 @@ export function Sidebar({
                   key={item.id}
                   variant="ghost"
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full justify-start h-9 px-2.5 text-xs font-medium transition-all ${
-                    isActive
+                  className={`w-full justify-start h-9 px-2.5 text-xs font-medium transition-all ${isActive
                       ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary rounded-r-md rounded-l-none font-semibold"
                       : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                  }`}
+                    }`}
                 >
                   <Icon
-                    className={`w-4 h-4 mr-2.5 shrink-0 ${
-                      isActive ? "text-primary" : "text-muted-foreground"
-                    }`}
+                    className={`w-4 h-4 mr-2.5 shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"
+                      }`}
                   />
                   <span className="truncate flex-1 text-left">{item.label}</span>
                   {item.badge && (
                     <Badge
                       variant={item.badgeVariant || "outline"}
-                      className={`ml-auto text-[10px] px-1.5 py-0 h-4 font-mono font-normal ${
-                        item.badge === "LIVE"
+                      className={`ml-auto text-[10px] px-1.5 py-0 h-4 font-mono font-normal ${item.badge === "LIVE"
                           ? "bg-rose-950/80 text-rose-300 border-rose-800 animate-pulse"
                           : isActive
-                          ? "bg-primary/20 text-primary border-primary/40"
-                          : "bg-muted text-muted-foreground border-border"
-                      }`}
+                            ? "bg-primary/20 text-primary border-primary/40"
+                            : "bg-muted text-muted-foreground border-border"
+                        }`}
                     >
                       {item.badge}
                     </Badge>
@@ -110,31 +104,6 @@ export function Sidebar({
             })}
           </div>
 
-        </div>
-
-        {/* Footer / Node Status */}
-        <div className="p-3 border-t border-sidebar-border bg-sidebar-accent/30 space-y-2">
-          <div className="flex items-center justify-between text-[11px]">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
-              <span className="font-mono text-[10px]">EE-TLN-CORE</span>
-            </div>
-            <Badge
-              variant="outline"
-              className="text-[9px] px-1 py-0 h-3.5 bg-emerald-950/40 text-emerald-400 border-emerald-900/60 font-mono"
-            >
-              ONLINE
-            </Badge>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1 text-[10px] font-mono text-muted-foreground pt-1 border-t border-sidebar-border">
-            <div>
-              LATENCY: <span className="text-sidebar-foreground">12ms</span>
-            </div>
-            <div className="text-right">
-              SYNC: <span className="text-sidebar-foreground">100%</span>
-            </div>
-          </div>
         </div>
       </aside>
     </>

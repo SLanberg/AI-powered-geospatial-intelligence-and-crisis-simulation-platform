@@ -12,29 +12,6 @@ export interface Incident {
   nodeId: string;
 }
 
-export interface OperationalAssessment {
-  riskLevel: "Low" | "Medium" | "High" | "Critical";
-  riskScore: number;
-  currentState: string;
-  likelyNext: string;
-  recommendedStrategy: string;
-  probability: number;
-  impact: string;
-  confidence: number;
-  actionWindow: string;
-}
-
-export const OPERATIONAL_ASSESSMENT: OperationalAssessment = {
-  riskLevel: "Critical",
-  riskScore: 86,
-  currentState: "Two critical infrastructure failures are active in the central district and one backup system is degrading.",
-  likelyNext: "Operational instability is likely to spread into adjacent residential and transit zones unless feeders are isolated within the next 10–15 minutes.",
-  recommendedStrategy: "Prioritize isolation of the central feeder, reroute emergency traffic, and dispatch mobile teams to the highest-risk clusters.",
-  probability: 82,
-  impact: "High disruption to power continuity, junction flow, and emergency dispatch capacity.",
-  confidence: 88,
-  actionWindow: "10–15 mins",
-};
 
 export const CRISIS_TIMESTAMP = "08:47:00";
 

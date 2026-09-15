@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Grip, Minus, Radio, Sparkles, X } from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
+import { LayoutGrid, Pin, X, GripVertical } from "lucide-react";
 
 import type { Incident } from "../data";
 
@@ -9,156 +7,317 @@ interface TelemetryFeedProps {
   filteredIncidents: Incident[];
   setSelectedIncident: (incident: Incident | null) => void;
   flyTo: (latitude: number, longitude: number, zoom: number) => void;
-  isMinimized: boolean;
-  onToggleMinimize: () => void;
   onClose: () => void;
-  onUseContext: (context: string) => void;
   onSelectIncident?: (incident: Incident) => void;
 }
+
+const severityConfig: Record<
+  string,
+  { label: string; bg: string; text: string; dot: string }
+> = {
+  critical: {
+    label: "critical",
+    bg: "rgba(239,68,68,0.15)",
+    text: "#f87171",
+    dot: "#ef4444",
+  },
+  warning: {
+    label: "warning",
+    bg: "rgba(234,179,8,0.15)",
+    text: "#facc15",
+    dot: "#eab308",
+  },
+  info: {
+    label: "info",
+    bg: "rgba(148,163,184,0.12)",
+    text: "#94a3b8",
+    dot: "#64748b",
+  },
+};
 
 export function TelemetryFeed({
   filteredIncidents,
   setSelectedIncident,
   flyTo,
-  isMinimized,
-  onToggleMinimize,
   onClose,
-  onUseContext,
   onSelectIncident,
 }: TelemetryFeedProps) {
-  const [position, setPosition] = useState({ x: 18, y: 24 });
-  const dragStateRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const [pinned, setPinned] = useState(false);
+
+  /* ── Drag logic ── */
+  const [position, setPosition] = useState<{ right: number; top: number }>({
+    right: 12,
+    top: 12,
+  });
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    originRight: number;
+    originTop: number;
+  } | null>(null);
 
   useEffect(() => {
-    const handleMove = (event: PointerEvent) => {
-      const dragState = dragStateRef.current;
-      if (!dragState) return;
-
-      const deltaX = event.clientX - dragState.startX;
-      const deltaY = event.clientY - dragState.startY;
-
+    const onMove = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
       setPosition({
-        x: dragState.originX + deltaX,
-        y: dragState.originY + deltaY,
+        right: d.originRight - (e.clientX - d.startX),
+        top: d.originTop + (e.clientY - d.startY),
       });
     };
-
-    const handleUp = () => {
-      dragStateRef.current = null;
+    const onUp = () => {
+      dragRef.current = null;
     };
-
-    window.addEventListener("pointermove", handleMove);
-    window.addEventListener("pointerup", handleUp);
-
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
     return () => {
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
     };
   }, []);
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement;
-    if (target.closest("button")) return;
-
-    dragStateRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: position.x,
-      originY: position.y,
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      originRight: position.right,
+      originTop: position.top,
     };
   };
 
-  const contextText = filteredIncidents.length
-    ? filteredIncidents
-        .map(
-          (incident) =>
-            `${incident.id} | ${incident.severity.toUpperCase()} | ${incident.title} | ${incident.nodeId} | ${incident.timestamp}`,
-        )
-        .join("\n")
-    : "No active incidents in the current telemetry feed.";
-
   return (
     <div
-      className="absolute z-20 w-[290px] overflow-hidden rounded-xl border border-border bg-card/95 text-card-foreground shadow-2xl backdrop-blur-sm"
-      style={{ left: `${position.x}px`, top: `${position.y}px` }}
+      style={{
+        ...s.panel,
+        right: position.right,
+        top: position.top,
+      }}
     >
-      <div
-        className="flex items-center justify-between gap-2 border-b border-border bg-muted/60 px-3 py-2 cursor-grab active:cursor-grabbing"
-        onPointerDown={handlePointerDown}
-      >
-        <div className="flex items-center gap-2">
-          <Grip className="h-3.5 w-3.5 text-muted-foreground" />
-          <Radio className="h-3.5 w-3.5 text-rose-400" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-card-foreground">
-            Telemetry Feed
-          </span>
+      {/* ── Header ── */}
+      <div style={s.header} onPointerDown={onPointerDown}>
+        <div style={s.headerLeft}>
+          <GripVertical style={{ width: 12, height: 12, color: "#334155", flexShrink: 0 }} />
+          <LayoutGrid style={{ width: 12, height: 12, color: "#64748b", flexShrink: 0 }} />
+          <span style={s.headerTitle}>TELEMETRY FEED</span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div style={s.headerActions}>
           <button
             type="button"
-            aria-label={isMinimized ? "Expand feed" : "Minimize feed"}
-            onClick={onToggleMinimize}
-            className="rounded-md border border-border bg-background/40 p-1 text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Pin panel"
+            onClick={() => setPinned((v) => !v)}
+            style={{
+              ...s.headerBtn,
+              color: pinned ? "#60a5fa" : "#475569",
+            }}
           >
-            <Minus className="h-3 w-3" />
+            <Pin style={{ width: 11, height: 11 }} />
           </button>
-
-          <button
-            type="button"
-            aria-label="Use feed context in AI"
-            onClick={() => onUseContext(contextText)}
-            className="rounded-md border border-border bg-background/40 p-1 text-primary transition-colors hover:bg-primary/10"
-          >
-            <Sparkles className="h-3 w-3" />
-          </button>
-
           <button
             type="button"
             aria-label="Close feed"
             onClick={onClose}
-            className="rounded-md border border-border bg-background/40 p-1 text-muted-foreground transition-colors hover:text-foreground"
+            style={s.headerBtn}
           >
-            <X className="h-3 w-3" />
+            <X style={{ width: 11, height: 11 }} />
           </button>
         </div>
       </div>
 
-      {!isMinimized && (
-        <div className="max-h-[420px] overflow-y-auto p-2 space-y-1.5">
-          {filteredIncidents.map((incident) => (
+      {/* ── Card List ── */}
+      <div style={s.cardList}>
+        {filteredIncidents.map((incident) => {
+          const sev = severityConfig[incident.severity] ?? severityConfig.info;
+          return (
             <button
               key={incident.id}
+              type="button"
               onClick={() => {
                 onSelectIncident?.(incident);
                 setSelectedIncident(incident);
                 flyTo(incident.lat, incident.lng, 14.8);
               }}
-              className="w-full rounded-lg border border-border bg-muted/30 p-2 text-left transition-colors hover:bg-muted/60"
+              style={s.card}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#2a3444";
+                e.currentTarget.style.background = "#1a2230";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "#1e2734";
+                e.currentTarget.style.background = "#161c24";
+              }}
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-[10px] font-semibold text-primary">
-                  {incident.id}
-                </span>
-
-                <Badge
-                  variant={incident.severity === "critical" ? "destructive" : "outline"}
-                  className="text-[8px]"
+              {/* Top: ID + Severity */}
+              <div style={s.cardTopRow}>
+                <span style={s.incidentId}>{incident.id}</span>
+                <span
+                  style={{
+                    ...s.severityBadge,
+                    background: sev.bg,
+                    color: sev.text,
+                  }}
                 >
-                  {incident.severity}
-                </Badge>
+                  <span style={{ ...s.severityDot, background: sev.dot }} />
+                  {sev.label}
+                </span>
               </div>
 
-              <div className="mt-1 text-[11px] text-card-foreground">{incident.title}</div>
+              {/* Middle: Event title */}
+              <div style={s.cardTitle}>{incident.title}</div>
 
-              <div className="mt-1 flex items-center justify-between text-[9px] font-mono text-muted-foreground">
-                <span>{incident.timestamp}</span>
-                <span>{incident.nodeId}</span>
+              {/* Bottom: Timestamp + Asset Code */}
+              <div style={s.cardBottomRow}>
+                <span style={s.timestamp}>{incident.timestamp}</span>
+                <span style={s.nodeId}>{incident.nodeId}</span>
               </div>
             </button>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }
+
+/* ────────────────────────────────────────────
+   Inline styles — compact dark tactical palette
+   ──────────────────────────────────────────── */
+const s: Record<string, React.CSSProperties> = {
+  panel: {
+    position: "absolute",
+    zIndex: 20,
+    width: 272,
+    maxHeight: "calc(100% - 24px)",
+    display: "flex",
+    flexDirection: "column",
+    borderRadius: 10,
+    border: "1px solid #1e2734",
+    background: "#11161d",
+    boxShadow: "0 6px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03)",
+    overflow: "hidden",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+  },
+
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "7px 10px",
+    borderBottom: "1px solid #1e2734",
+    background: "#11161d",
+    flexShrink: 0,
+    cursor: "grab",
+    userSelect: "none" as const,
+  },
+  headerLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+  },
+  headerTitle: {
+    fontSize: 9.5,
+    fontWeight: 700,
+    letterSpacing: "0.12em",
+    color: "#cbd5e1",
+    lineHeight: 1,
+  },
+  headerActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 1,
+  },
+  headerBtn: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 22,
+    height: 22,
+    borderRadius: 5,
+    border: "none",
+    background: "transparent",
+    color: "#475569",
+    cursor: "pointer",
+    transition: "color 0.15s",
+    padding: 0,
+  },
+
+  cardList: {
+    flex: 1,
+    overflowY: "auto",
+    padding: "6px 8px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+  },
+
+  card: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    width: "100%",
+    padding: "7px 9px",
+    borderRadius: 6,
+    border: "1px solid #1e2734",
+    background: "#161c24",
+    cursor: "pointer",
+    textAlign: "left",
+    transition: "border-color 0.15s, background 0.15s",
+  },
+
+  cardTopRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  incidentId: {
+    fontSize: 10,
+    fontWeight: 600,
+    fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', monospace",
+    color: "#60a5fa",
+    letterSpacing: "0.03em",
+  },
+  severityBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    fontSize: 8.5,
+    fontWeight: 600,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.06em",
+    padding: "1px 6px",
+    borderRadius: 3,
+    lineHeight: "14px",
+  },
+  severityDot: {
+    width: 4,
+    height: 4,
+    borderRadius: "50%",
+    flexShrink: 0,
+  },
+
+  cardTitle: {
+    fontSize: 11,
+    fontWeight: 500,
+    color: "#e2e8f0",
+    lineHeight: 1.35,
+  },
+
+  cardBottomRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  timestamp: {
+    fontSize: 9,
+    fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', monospace",
+    color: "#475569",
+    fontWeight: 500,
+  },
+  nodeId: {
+    fontSize: 9,
+    fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', monospace",
+    color: "#475569",
+    fontWeight: 500,
+    letterSpacing: "0.02em",
+  },
+};
