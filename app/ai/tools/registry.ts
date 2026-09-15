@@ -152,19 +152,92 @@ export class ToolRegistry {
     // create_incident
     this.registerTool({
       name: "create_incident",
-      description: "Create a new grid anomaly report.",
+      description: "Create a new grid incident on the Tallinn map.",
       isWriteOperation: true,
       policy: writePolicy,
       parameters: {
         type: "object",
         properties: {
-          title: { type: "string" },
-          sector: { type: "string" },
+          title: { type: "string", description: "Short descriptive title of the incident" },
+          description: { type: "string", description: "Detailed telemetry description" },
+          category: { type: "string", enum: ["Grid Failure", "Traffic Flow", "Telecom Node", "Emergency Dispatch", "Sensor Anomaly"], description: "Incident category" },
+          severity: { type: "string", enum: ["critical", "warning", "info"], description: "Severity level" },
+          lat: { type: "number", description: "Latitude coordinate in Tallinn (approx 59.41 - 59.46)" },
+          lng: { type: "number", description: "Longitude coordinate in Tallinn (approx 24.70 - 24.82)" },
+          district: { type: "string", description: "District name (Vanalinn, Ülemiste, Balti Jaam, Kristiine, Port, Mustamäe, Nõmme, Lasnamäe)" },
+          nodeId: { type: "string", description: "Node hardware identifier e.g. EE-TLN-NEW-01" },
         },
-        required: ["title"],
+        required: ["title", "severity"],
       },
       execute: async (args) => {
-        return { status: "created", id: "INC-999", title: args.title };
+        const id = `INC-${new Date().getHours().toString().padStart(2, "0")}${new Date().getMinutes().toString().padStart(2, "0")}-${Math.floor(Math.random() * 89 + 10)}`;
+        const timestamp = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        
+        let lat = typeof args.lat === "number" ? args.lat : 59.4372;
+        let lng = typeof args.lng === "number" ? args.lng : 24.7453;
+        
+        // District coordinate mapping fallback if specific lat/lng not supplied
+        const districtStr = (args.district as string || "").toLowerCase();
+        if (!args.lat || !args.lng) {
+          if (districtStr.includes("vanalinn") || districtStr.includes("old town")) { lat = 59.4372; lng = 24.7453; }
+          else if (districtStr.includes("ulemiste") || districtStr.includes("ülemiste")) { lat = 59.4215; lng = 24.7958; }
+          else if (districtStr.includes("port") || districtStr.includes("sadam")) { lat = 59.4450; lng = 24.7680; }
+          else if (districtStr.includes("balti")) { lat = 59.4402; lng = 24.7378; }
+          else if (districtStr.includes("kristiine")) { lat = 59.4260; lng = 24.7240; }
+          else if (districtStr.includes("mustam")) { lat = 59.3960; lng = 24.6700; }
+          else if (districtStr.includes("lasnam")) { lat = 59.4380; lng = 24.8400; }
+          else if (districtStr.includes("nõmme") || districtStr.includes("nomme")) { lat = 59.3800; lng = 24.6800; }
+        }
+
+        const newIncident = {
+          id,
+          title: (args.title as string) || "Unspecified Anomaly",
+          timestamp,
+          severity: (args.severity as "critical" | "warning" | "info") || "critical",
+          category: (args.category as any) || "Grid Failure",
+          makiIcon: args.severity === "critical" ? "lightning" : args.severity === "warning" ? "caution" : "waveform",
+          lat,
+          lng,
+          description: (args.description as string) || "Manual telemetry anomaly added via SCADA AI command.",
+          status: "active",
+          nodeId: (args.nodeId as string) || `EE-TLN-AI-${Math.floor(Math.random() * 89 + 10)}`,
+        };
+
+        return {
+          status: "created",
+          message: `Successfully created incident ${id} at coordinates ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+          incident: newIncident,
+        };
+      },
+    });
+
+    // highlight_incident_areas
+    this.registerTool({
+      name: "highlight_incident_areas",
+      description: "Aggregates incidents by Tallinn city district, identifies highest concentration areas, and updates the tactical map.",
+      isWriteOperation: false,
+      policy: readOnlyPolicy,
+      parameters: {
+        type: "object",
+        properties: {
+          city: { type: "string", description: "Target city, e.g. Tallinn" },
+        },
+      },
+      execute: async (args) => {
+        return {
+          status: "success",
+          city: args.city || "Tallinn",
+          highestConcentrationDistrict: "Vanalinn (Old Town)",
+          incidentCount: 2,
+          districts: [
+            { name: "Vanalinn", count: 2, severity: "CRITICAL" },
+            { name: "Balti Jaam", count: 1, severity: "WARNING" },
+            { name: "Ülemiste", count: 1, severity: "CRITICAL" },
+            { name: "Port / Sadam", count: 1, severity: "INFO" },
+            { name: "Kristiine", count: 1, severity: "WARNING" },
+          ],
+          mapAction: "highlight_high_density",
+        };
       },
     });
   }

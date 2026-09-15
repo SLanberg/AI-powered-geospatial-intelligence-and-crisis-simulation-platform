@@ -48,6 +48,7 @@ import { TelemetryFeed } from "./map/TelemetryFeed";
 import {
   MOCK_INCIDENTS,
   type Incident,
+  type MapAction,
 } from "./data";
 
 import { AppleMapsMarker } from "./map/AppleMapsMarker";
@@ -58,6 +59,13 @@ import {
   TALLINN_EMERGENCY_SERVICES,
   type EmergencyService,
 } from "./emergencyServicesData";
+
+import { TransportHubMarker } from "./map/TransportHubMarker";
+import { TransportHubPopup } from "./map/TransportHubPopup";
+import {
+  TALLINN_TRANSPORT_HUBS,
+  type TransportHub,
+} from "./transportHubsData";
 
 if (typeof window !== "undefined") {
   maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
@@ -325,6 +333,81 @@ const SELECTED_INCIDENT: LayerProps = {
   },
 };
 
+const INCIDENT_HEATMAP: LayerProps = {
+  id: "incident-heatmap",
+  type: "heatmap",
+  source: "incidents-heatmap",
+  maxzoom: 17,
+  paint: {
+    // Weight points based on severity property
+    "heatmap-weight": [
+      "interpolate",
+      ["linear"],
+      ["get", "weight"],
+      1,
+      0.5,
+      3,
+      1.5,
+      5,
+      3,
+    ],
+    // Intensity multiplier based on zoom level
+    "heatmap-intensity": [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      8,
+      1,
+      13,
+      2.5,
+      16,
+      4,
+    ],
+    // Color ramp from cool blue to cyan to yellow to vivid red/magenta
+    "heatmap-color": [
+      "interpolate",
+      ["linear"],
+      ["heatmap-density"],
+      0,
+      "rgba(15, 23, 42, 0)",
+      0.15,
+      "rgba(14, 165, 233, 0.4)",
+      0.35,
+      "rgba(34, 197, 94, 0.65)",
+      0.65,
+      "rgba(245, 158, 11, 0.85)",
+      0.85,
+      "rgba(239, 68, 68, 0.95)",
+      1.0,
+      "rgba(236, 72, 153, 1)",
+    ],
+    // Radius of influence per point based on zoom
+    "heatmap-radius": [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      8,
+      25,
+      12,
+      45,
+      15,
+      70,
+    ],
+    // Smooth fade out at high zoom levels
+    "heatmap-opacity": [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      7,
+      0.85,
+      14,
+      0.8,
+      17,
+      0.3,
+    ],
+  },
+};
+
 const FLIGHT_CIRCLES: LayerProps = {
   id: "flight-circles",
   type: "circle",
@@ -409,6 +492,32 @@ function incidentsToGeoJSON(incidents: Incident[]) {
   };
 }
 
+function incidentsToHeatmapGeoJSON(incidents: Incident[]) {
+  return {
+    type: "FeatureCollection" as const,
+
+    features: incidents.map((incident) => {
+      const weight = incident.severity === "critical" ? 5 : incident.severity === "warning" ? 3 : 1;
+      return {
+        type: "Feature" as const,
+
+        id: `hm-${incident.id}`,
+
+        geometry: {
+          type: "Point" as const,
+          coordinates: [incident.lng, incident.lat],
+        },
+
+        properties: {
+          id: incident.id,
+          weight,
+          severity: incident.severity,
+        },
+      };
+    }),
+  };
+}
+
 function incidentToGeoJSON(incident: Incident | null) {
   if (!incident) {
     return {
@@ -489,6 +598,12 @@ interface MapContainerProps {
     React.SetStateAction<boolean>
   >;
 
+  showHeatmap?: boolean;
+
+  setShowHeatmap?: React.Dispatch<
+    React.SetStateAction<boolean>
+  >;
+
   onFlightCountChange?: (count: number) => void;
 
   onVehicleCountChange?: (count: number) => void;
@@ -496,6 +611,10 @@ interface MapContainerProps {
   showTelemetryFeed?: boolean;
 
   onCloseTelemetryFeed?: () => void;
+
+  mapAction?: MapAction | null;
+
+  onClearMapAction?: () => void;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -611,10 +730,14 @@ export function MapContainer({
   showVehicles,
   setShowVehicles,
   setShowIncidents,
+  showHeatmap,
+  setShowHeatmap,
   onFlightCountChange,
   onVehicleCountChange,
   showTelemetryFeed = true,
   onCloseTelemetryFeed,
+  mapAction,
+  onClearMapAction,
 }: MapContainerProps) {
   const mapRef = useRef<MapRef | null>(null);
 
@@ -623,6 +746,23 @@ export function MapContainer({
 
   const [is3D, setIs3D] =
     useState(false);
+
+  const [internalShowHeatmap, setInternalShowHeatmap] = useState(false);
+  const activeShowHeatmap = showHeatmap ?? internalShowHeatmap;
+  const activeSetShowHeatmap = setShowHeatmap ?? setInternalShowHeatmap;
+
+  const [incidentList, setIncidentList] = useState<Incident[]>(MOCK_INCIDENTS);
+
+  useEffect(() => {
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<Incident[]>;
+      if (customEvent.detail) {
+        setIncidentList([...customEvent.detail]);
+      }
+    };
+    window.addEventListener("scada-incidents-updated", handleUpdate);
+    return () => window.removeEventListener("scada-incidents-updated", handleUpdate);
+  }, []);
 
   const isClient = useIsClient();
 
@@ -701,6 +841,17 @@ export function MapContainer({
     selectedEmergencyService,
     setSelectedEmergencyService,
   ] = useState<EmergencyService | null>(null);
+
+  /* Transport Hubs state */
+  const [
+    showTransportHubs,
+    setShowTransportHubs,
+  ] = useState(true);
+
+  const [
+    selectedTransportHub,
+    setSelectedTransportHub,
+  ] = useState<TransportHub | null>(null);
 
   /* ---------------------------------------------------------------------- */
   /* GeoJSON calculation for WebGL Flight Airspace layer                   */
@@ -1186,18 +1337,19 @@ export function MapContainer({
 
     switch (selectedTime) {
       case "08:40":
-        return MOCK_INCIDENTS.slice(4);
+        return incidentList.slice(4);
 
       case "08:44":
-        return MOCK_INCIDENTS.slice(2);
+        return incidentList.slice(2);
 
       case "08:47":
       default:
-        return MOCK_INCIDENTS;
+        return incidentList;
     }
   }, [
     showIncidents,
     selectedTime,
+    incidentList,
   ]);
 
 
@@ -1211,6 +1363,11 @@ export function MapContainer({
         filteredIncidents,
       ),
     [filteredIncidents],
+  );
+
+  const incidentHeatmapGeoJSON = useMemo(
+    () => incidentsToHeatmapGeoJSON(filteredIncidents),
+    [filteredIncidents]
   );
 
   const selectedIncidentGeoJSON =
@@ -1251,6 +1408,16 @@ export function MapContainer({
       viewState.bearing,
     ],
   );
+
+  useEffect(() => {
+    if (mapAction?.center) {
+      flyTo(
+        mapAction.center.lat,
+        mapAction.center.lng,
+        mapAction.center.zoom,
+      );
+    }
+  }, [mapAction, flyTo]);
 
   const resetView = useCallback(() => {
     setIs3D(false);
@@ -1375,12 +1542,34 @@ export function MapContainer({
     useCallback(
       (s: EmergencyService) => {
         setSelectedEmergencyService(s);
+        setSelectedTransportHub(null);
         setSelectedFlight(null);
         setSelectedVessel(null);
         setSelectedIncident(null);
         setSelectedVehicle(null);
       },
       [
+        setSelectedEmergencyService,
+        setSelectedTransportHub,
+        setSelectedFlight,
+        setSelectedIncident,
+        setSelectedVehicle,
+        setSelectedVessel,
+      ],
+    );
+
+  const handleTransportHubClick =
+    useCallback(
+      (hub: TransportHub) => {
+        setSelectedTransportHub(hub);
+        setSelectedEmergencyService(null);
+        setSelectedFlight(null);
+        setSelectedVessel(null);
+        setSelectedIncident(null);
+        setSelectedVehicle(null);
+      },
+      [
+        setSelectedTransportHub,
         setSelectedEmergencyService,
         setSelectedFlight,
         setSelectedIncident,
@@ -1413,13 +1602,47 @@ export function MapContainer({
           setShowVehicles={activeSetShowVehicles}
           showEmergencyServices={showEmergencyServices}
           setShowEmergencyServices={setShowEmergencyServices}
+          showTransportHubs={showTransportHubs}
+          setShowTransportHubs={setShowTransportHubs}
           showIncidents={showIncidents}
           setShowIncidents={setShowIncidents}
+          showHeatmap={activeShowHeatmap}
+          setShowHeatmap={activeSetShowHeatmap}
           flightCount={flights.length}
           vehicleCount={vessels.length}
           emergencyCount={TALLINN_EMERGENCY_SERVICES.length}
+          transportHubCount={TALLINN_TRANSPORT_HUBS.length}
           incidentCount={MOCK_INCIDENTS.length}
         />
+
+        {mapAction && (
+          <div className="absolute top-4 left-16 z-40 bg-[#121820]/95 border border-red-500/60 rounded-xl px-4 py-2.5 text-white shadow-2xl backdrop-blur-md flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-red-500/20 border border-red-500/50 flex items-center justify-center shrink-0">
+                <Target className="w-4 h-4 text-red-400 animate-pulse" />
+              </div>
+              <div>
+                <div className="text-[10px] font-mono font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
+                  AI MAP ACTION ACTIVE
+                </div>
+                <div className="text-xs font-semibold text-slate-100 font-mono">
+                  {mapAction.title || "Incident Concentration Hotspots Highlighted"}
+                </div>
+              </div>
+            </div>
+            {onClearMapAction && (
+              <button
+                type="button"
+                onClick={onClearMapAction}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-mono font-medium rounded-lg text-slate-200 transition-colors shrink-0"
+              >
+                Clear Overlay
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="absolute inset-0 overflow-hidden rounded-xl border border-border bg-background">
           {isClient ? (
             <Map
@@ -1573,6 +1796,79 @@ export function MapContainer({
                       {...SELECTED_INCIDENT}
                     />
                   </Source>
+                </>
+              )}
+
+              {/* ------------------------------------------------------ */}
+              {/* Heatmap Layer                                          */}
+              {/* ------------------------------------------------------ */}
+              {activeShowHeatmap && (
+                <Source
+                  id="incidents-heatmap"
+                  type="geojson"
+                  data={incidentHeatmapGeoJSON}
+                >
+                  <Layer {...INCIDENT_HEATMAP} />
+                </Source>
+              )}
+
+              {/* ------------------------------------------------------ */}
+              {/* AI Map Action Highlight District Overlay Rings         */}
+              {/* ------------------------------------------------------ */}
+              {mapAction?.highlightedDistricts && mapAction.highlightedDistricts.length > 0 && (
+                <>
+                  {mapAction.highlightedDistricts.map((dist, idx) => {
+                    const isTarget = dist.id === mapAction.targetDistrictId;
+                    const ringColor = dist.severity === "critical"
+                      ? "rgba(239, 68, 68, 0.45)"
+                      : dist.severity === "warning"
+                      ? "rgba(245, 158, 11, 0.45)"
+                      : "rgba(14, 165, 233, 0.45)";
+
+                    const borderColor = dist.severity === "critical"
+                      ? "#ef4444"
+                      : dist.severity === "warning"
+                      ? "#f59e0b"
+                      : "#0ea5e9";
+
+                    return (
+                      <Marker
+                        key={`mapaction-region-${dist.id}-${idx}`}
+                        latitude={dist.lat}
+                        longitude={dist.lng}
+                        anchor="center"
+                      >
+                        <div className="relative flex items-center justify-center pointer-events-none">
+                          {/* Outer animated heat pulsing halo */}
+                          <div
+                            className="absolute rounded-full animate-ping opacity-75"
+                            style={{
+                              width: isTarget ? "160px" : "110px",
+                              height: isTarget ? "160px" : "110px",
+                              backgroundColor: ringColor,
+                            }}
+                          />
+                          {/* Smooth gradient heat circle */}
+                          <div
+                            className="relative rounded-full backdrop-blur-[2px] border-2 shadow-2xl flex flex-col items-center justify-center transition-all"
+                            style={{
+                              width: isTarget ? "140px" : "95px",
+                              height: isTarget ? "140px" : "95px",
+                              background: `radial-gradient(circle, ${ringColor} 0%, rgba(15, 23, 42, 0.65) 100%)`,
+                              borderColor: borderColor,
+                            }}
+                          >
+                            <span className="font-mono text-[10px] font-extrabold uppercase tracking-wider text-white px-2 py-0.5 rounded bg-slate-950/80 border border-white/20 shadow-md">
+                              {dist.name}
+                            </span>
+                            <span className="font-mono text-[9px] font-bold text-amber-300 mt-1 bg-slate-900/90 px-1.5 py-0.2 rounded">
+                              {dist.count} {dist.count === 1 ? "Incident" : "Incidents"}
+                            </span>
+                          </div>
+                        </div>
+                      </Marker>
+                    );
+                  })}
                 </>
               )}
 
@@ -1880,6 +2176,30 @@ export function MapContainer({
                       </Marker>
                     ),
                 )}
+
+              {/* ------------------------------------------------------ */}
+              {/* Transport Hubs (Airports, Railway Stations, Ports)     */}
+              {/* ------------------------------------------------------ */}
+
+              {showTransportHubs &&
+                TALLINN_TRANSPORT_HUBS.map((hub) => (
+                  <Marker
+                    key={hub.id}
+                    latitude={hub.lat}
+                    longitude={hub.lng}
+                    anchor="bottom"
+                  >
+                    <TransportHubMarker
+                      hub={hub}
+                      isSelected={selectedTransportHub?.id === hub.id}
+                      onClick={handleTransportHubClick}
+                      showLabel={
+                        selectedTransportHub?.id === hub.id ||
+                        viewState.zoom >= 11.2
+                      }
+                    />
+                  </Marker>
+                ))}
 
               {/* ------------------------------------------------------ */}
               {/* WebGL background layers for Flights & Vessels          */}
@@ -2292,6 +2612,30 @@ export function MapContainer({
                           duration: 1000,
                         },
                       );
+                    }}
+                  />
+                </Popup>
+              )}
+
+              {selectedTransportHub && (
+                <Popup
+                  latitude={selectedTransportHub.lat}
+                  longitude={selectedTransportHub.lng}
+                  anchor="top"
+                  offset={15}
+                  closeButton={false}
+                  closeOnClick={false}
+                  onClose={() => setSelectedTransportHub(null)}
+                >
+                  <TransportHubPopup
+                    hub={selectedTransportHub}
+                    onClose={() => setSelectedTransportHub(null)}
+                    onRecenter={(lat, lng) => {
+                      mapRef.current?.flyTo({
+                        center: [lng, lat],
+                        zoom: 15.5,
+                        duration: 1000,
+                      });
                     }}
                   />
                 </Popup>

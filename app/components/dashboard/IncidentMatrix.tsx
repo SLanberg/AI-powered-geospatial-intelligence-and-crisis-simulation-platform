@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { AlertTriangle, MapPin, Search, ShieldAlert, ArrowUpDown, Filter } from "lucide-react";
 import {
   Table,
@@ -20,12 +20,24 @@ interface IncidentMatrixProps {
 }
 
 export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
+  const [incidentList, setIncidentList] = useState<Incident[]>(MOCK_INCIDENTS);
   const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
+  useEffect(() => {
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<Incident[]>;
+      if (customEvent.detail) {
+        setIncidentList([...customEvent.detail]);
+      }
+    };
+    window.addEventListener("scada-incidents-updated", handleUpdate);
+    return () => window.removeEventListener("scada-incidents-updated", handleUpdate);
+  }, []);
+
   const filteredIncidents = useMemo(() => {
-    let result = MOCK_INCIDENTS.filter((inc) => {
+    let result = incidentList.filter((inc) => {
       const matchesSeverity =
         severityFilter === "all" || inc.severity === severityFilter;
       const matchesQuery =
@@ -41,7 +53,7 @@ export function IncidentMatrix({ onSelectIncident }: IncidentMatrixProps) {
       if (sortAsc) return a.timestamp.localeCompare(b.timestamp);
       return b.timestamp.localeCompare(a.timestamp);
     });
-  }, [severityFilter, searchQuery, sortAsc]);
+  }, [incidentList, severityFilter, searchQuery, sortAsc]);
 
   const getThreatBadgeClass = (severity: string) => {
     switch (severity.toLowerCase()) {

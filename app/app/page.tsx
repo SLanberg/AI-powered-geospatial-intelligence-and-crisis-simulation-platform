@@ -8,18 +8,20 @@ import { AIAssistant } from "@/components/dashboard/AIAssistant";
 import { MediaFeed } from "@/components/dashboard/MediaFeed";
 import { NavBar } from "@/components/dashboard/NavBar";
 
-import { Incident, MOCK_INCIDENTS } from "@/components/dashboard/data";
+import { Incident, MOCK_INCIDENTS, MapAction } from "@/components/dashboard/data";
 
 export default function NeuralCityDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("map");
   const [showIncidents, setShowIncidents] = useState<boolean>(true);
+  const [showHeatmap, setShowHeatmap] = useState<boolean>(false);
   const [crisisActive, setCrisisActive] = useState<boolean>(true);
   const [selectedTime, setSelectedTime] = useState<string>("08:47");
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [feedOpen, setFeedOpen] = useState(true);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiContext, setAiContext] = useState<string | null>(null);
+  const [mapAction, setMapAction] = useState<MapAction | null>(null);
 
   const filteredIncidents = useMemo(() => {
     switch (selectedTime) {
@@ -41,6 +43,11 @@ export default function NeuralCityDashboard() {
   const handleUseFeedContext = (context: string) => {
     setAiContext(context);
     setAiOpen(true);
+  };
+
+  const handleMapAction = (action: MapAction) => {
+    setMapAction(action);
+    setActiveTab("map");
   };
 
   return (
@@ -90,8 +97,12 @@ export default function NeuralCityDashboard() {
               selectedIncident={selectedIncident}
               setSelectedIncident={setSelectedIncident}
               setShowIncidents={setShowIncidents}
+              showHeatmap={showHeatmap}
+              setShowHeatmap={setShowHeatmap}
               showTelemetryFeed={feedOpen}
               onCloseTelemetryFeed={() => setFeedOpen(false)}
+              mapAction={mapAction}
+              onClearMapAction={() => setMapAction(null)}
             />
           </div>
         )}
@@ -102,6 +113,7 @@ export default function NeuralCityDashboard() {
         onClose={() => setAiOpen(false)}
         context={aiContext}
         onClearContext={() => setAiContext(null)}
+        onMapAction={handleMapAction}
       />
     </div>
   );

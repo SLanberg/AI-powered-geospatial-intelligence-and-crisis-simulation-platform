@@ -13,6 +13,8 @@ import {
   Siren,
   AlertTriangle,
   Satellite,
+  Bus,
+  Flame,
 } from "lucide-react";
 
 /* -------------------------------------------------------------------------- */
@@ -45,13 +47,18 @@ interface MapToolbarProps {
   setShowVehicles?: (show: boolean | ((prev: boolean) => boolean)) => void;
   showEmergencyServices?: boolean;
   setShowEmergencyServices?: (show: boolean | ((prev: boolean) => boolean)) => void;
+  showTransportHubs?: boolean;
+  setShowTransportHubs?: (show: boolean | ((prev: boolean) => boolean)) => void;
   showIncidents?: boolean;
   setShowIncidents?: (show: boolean | ((prev: boolean) => boolean)) => void;
+  showHeatmap?: boolean;
+  setShowHeatmap?: (show: boolean | ((prev: boolean) => boolean)) => void;
 
   /* Counts */
   flightCount?: number;
   vehicleCount?: number;
   emergencyCount?: number;
+  transportHubCount?: number;
   incidentCount?: number;
 }
 
@@ -528,11 +535,16 @@ export function MapToolbar({
   setShowVehicles,
   showEmergencyServices = true,
   setShowEmergencyServices,
+  showTransportHubs = true,
+  setShowTransportHubs,
   showIncidents = true,
   setShowIncidents,
+  showHeatmap = false,
+  setShowHeatmap,
   flightCount = 0,
   vehicleCount = 0,
   emergencyCount = 0,
+  transportHubCount = 0,
   incidentCount = 0,
 }: MapToolbarProps) {
 
@@ -555,7 +567,7 @@ export function MapToolbar({
 
   /* Build layer config */
   const anyLayerVisible =
-    showFlights || showVehicles || showEmergencyServices || showIncidents;
+    showFlights || showVehicles || showEmergencyServices || showTransportHubs || showIncidents || showHeatmap;
 
   const layers: LayerConfig[] = [
     ...(setShowFlights
@@ -594,6 +606,18 @@ export function MapToolbar({
           },
         ]
       : []),
+    ...(setShowTransportHubs
+      ? [
+          {
+            id: "transport_hubs",
+            label: "Transport Hubs",
+            icon: <Bus size={14} />,
+            visible: showTransportHubs,
+            count: transportHubCount,
+            onToggle: () => setShowTransportHubs((p: boolean) => !p),
+          },
+        ]
+      : []),
     ...(setShowIncidents
       ? [
           {
@@ -603,6 +627,18 @@ export function MapToolbar({
             visible: showIncidents,
             count: incidentCount,
             onToggle: () => setShowIncidents((p: boolean) => !p),
+          },
+        ]
+      : []),
+    ...(setShowHeatmap
+      ? [
+          {
+            id: "heatmap",
+            label: "Incident Heatmap",
+            icon: <Flame size={14} />,
+            visible: showHeatmap,
+            count: incidentCount,
+            onToggle: () => setShowHeatmap((p: boolean) => !p),
           },
         ]
       : []),

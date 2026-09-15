@@ -24,7 +24,7 @@ export const TIMELINE_STEPS = [
   { time: "09:00", label: "Post-Incident Audit", status: "normal" },
 ];
 
-export const MOCK_INCIDENTS: Incident[] = [
+export const INITIAL_INCIDENTS: Incident[] = [
   {
     id: "INC-0847-01",
     title: "Vanalinn Substation #4 Tripped",
@@ -105,6 +105,16 @@ export const MOCK_INCIDENTS: Incident[] = [
   }
 ];
 
+export let MOCK_INCIDENTS: Incident[] = [...INITIAL_INCIDENTS];
+
+export function addDynamicIncident(incident: Incident): Incident[] {
+  MOCK_INCIDENTS = [incident, ...MOCK_INCIDENTS];
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("scada-incidents-updated", { detail: MOCK_INCIDENTS }));
+  }
+  return MOCK_INCIDENTS;
+}
+
 export interface TallinnDistrict {
   id: string;
   name: string;
@@ -171,3 +181,71 @@ export const TALLINN_DISTRICTS: TallinnDistrict[] = [
     description: "Acoustic sensor array zone & western residential power ring"
   }
 ];
+
+export interface MapHighlightRegion {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  count: number;
+  severity: "critical" | "warning" | "info";
+  incidents: string[];
+}
+
+export interface MapAction {
+  type: "highlight_incidents_by_district" | "focus_district" | "reset";
+  targetDistrictId?: string;
+  highlightedDistricts?: MapHighlightRegion[];
+  center?: { lat: number; lng: number; zoom: number };
+  title?: string;
+}
+
+export interface DistrictAggregation {
+  district: TallinnDistrict;
+  count: number;
+  incidents: Incident[];
+  highestSeverity: "critical" | "warning" | "info";
+}
+
+export function getDistrictIncidentAggregations(incidents: Incident[] = MOCK_INCIDENTS): DistrictAggregation[] {
+  const districtsWithoutAll = TALLINN_DISTRICTS.filter((d) => d.id !== "all");
+
+  const map = new Map<string, { district: TallinnDistrict; count: number; incidents: Incident[] }>();
+  for (const d of districtsWithoutAll) {
+    map.set(d.id, { district: d, count: 0, incidents: [] });
+  }
+
+  for (const inc of incidents) {
+    let closestDistrict = districtsWithoutAll[0];
+    let minDistance = Infinity;
+
+    for (const d of districtsWithoutAll) {
+      const dist = Math.hypot(inc.lat - d.lat, inc.lng - d.lng);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestDistrict = d;
+      }
+    }
+
+    const entry = map.get(closestDistrict.id);
+    if (entry) {
+      entry.count += 1;
+      entry.incidents.push(inc);
+    }
+  }
+
+  const results: DistrictAggregation[] = Array.from(map.values()).map((entry) => {
+    let highestSeverity: "critical" | "warning" | "info" = "info";
+    for (const inc of entry.incidents) {
+      if (inc.severity === "critical") highestSeverity = "critical";
+      else if (inc.severity === "warning" && highestSeverity !== "critical") highestSeverity = "warning";
+    }
+    return {
+      ...entry,
+      highestSeverity,
+    };
+  });
+
+  return results.sort((a, b) => b.count - a.count);
+}
+

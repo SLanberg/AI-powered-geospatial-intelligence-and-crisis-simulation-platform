@@ -1,4 +1,4 @@
-import { Crosshair, Box, Satellite, Map as MapIcon, ShieldAlert, Plane, Anchor, Siren, AlertTriangle } from "lucide-react";
+import { Crosshair, Box, Satellite, Map as MapIcon, ShieldAlert, Plane, Anchor, Siren, AlertTriangle, Flame, Compass } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -16,11 +16,16 @@ interface MapHeaderProps {
   setShowVehicles?: (show: boolean | ((prev: boolean) => boolean)) => void;
   showEmergencyServices?: boolean;
   setShowEmergencyServices?: (show: boolean | ((prev: boolean) => boolean)) => void;
+  showTransportHubs?: boolean;
+  setShowTransportHubs?: (show: boolean | ((prev: boolean) => boolean)) => void;
   showIncidents?: boolean;
   setShowIncidents?: (show: boolean | ((prev: boolean) => boolean)) => void;
+  showHeatmap?: boolean;
+  setShowHeatmap?: (show: boolean | ((prev: boolean) => boolean)) => void;
   flightCount?: number;
   vehicleCount?: number;
   emergencyCount?: number;
+  transportHubCount?: number;
   incidentCount?: number;
 }
 
@@ -36,11 +41,16 @@ export function MapHeader({
   setShowVehicles,
   showEmergencyServices = true,
   setShowEmergencyServices,
+  showTransportHubs = true,
+  setShowTransportHubs,
   showIncidents = true,
   setShowIncidents,
+  showHeatmap = false,
+  setShowHeatmap,
   flightCount = 0,
   vehicleCount = 0,
   emergencyCount = 0,
+  transportHubCount = 0,
   incidentCount = 0,
 }: MapHeaderProps) {
   return (
@@ -156,6 +166,26 @@ export function MapHeader({
               </button>
             )}
 
+            {setShowTransportHubs && (
+              <button
+                onClick={() => setShowTransportHubs((prev) => !prev)}
+                title="Toggle Transport Hubs (Airports, Railway Stations, Ports)"
+                className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  showTransportHubs
+                    ? "bg-sky-500/20 text-sky-200 border border-sky-400/60"
+                    : "text-slate-500 hover:text-slate-100 hover:bg-white/5 opacity-70"
+                }`}
+              >
+                <Compass className="w-4 h-4 text-sky-400" />
+                <span>Hubs</span>
+                {showTransportHubs && transportHubCount > 0 && (
+                  <span className="bg-sky-950/80 text-sky-200 text-[10px] px-1.5 py-0.5 rounded-full font-mono">
+                    {transportHubCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             {setShowIncidents && (
               <button
                 onClick={() => setShowIncidents((prev) => !prev)}
@@ -173,6 +203,22 @@ export function MapHeader({
                     {incidentCount}
                   </span>
                 )}
+              </button>
+            )}
+
+            {setShowHeatmap && (
+              <button
+                onClick={() => setShowHeatmap((prev) => !prev)}
+                title="Toggle Heatmap Density Overlay"
+                className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  showHeatmap
+                    ? "bg-flame-500/20 text-amber-300 border border-amber-500/60 shadow-lg shadow-amber-500/20"
+                    : "text-slate-500 hover:text-slate-100 hover:bg-white/5 opacity-70"
+                }`}
+                style={showHeatmap ? { backgroundColor: "rgba(245, 158, 11, 0.2)", borderColor: "#f59e0b" } : undefined}
+              >
+                <Flame className="w-4 h-4 text-amber-400" />
+                <span>Heatmap</span>
               </button>
             )}
 

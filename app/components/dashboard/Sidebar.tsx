@@ -23,13 +23,26 @@ export function Sidebar({
   setActiveTab,
   isOpen = true,
 }: SidebarProps) {
+  const [incidentCount, setIncidentCount] = React.useState<number>(6);
+
+  React.useEffect(() => {
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<unknown[]>;
+      if (customEvent.detail) {
+        setIncidentCount(customEvent.detail.length);
+      }
+    };
+    window.addEventListener("scada-incidents-updated", handleUpdate);
+    return () => window.removeEventListener("scada-incidents-updated", handleUpdate);
+  }, []);
+
   const navItems = [
     { id: "map", label: "Operational picture", icon: Map, badge: null },
     {
       id: "incidents",
       label: "Incidents",
       icon: AlertTriangle,
-      badge: "6 Active",
+      badge: `${incidentCount} Active`,
       badgeVariant: "destructive" as const,
     },
     { id: "media", label: "Media", icon: Newspaper, badge: "LIVE" },
