@@ -19,6 +19,11 @@
       }
     ],
     "paths": {
+      "@/shared/*": ["./shared/*"],
+      "@/backend/*": ["./backend/*"],
+      "@/ai_agent/*": ["./ai_agent/*"],
+      "@/frontend/*": ["./frontend/*"],
+      "@/components/*": ["./frontend/components/*"],
       "@/*": ["./*"]
     }
   },
