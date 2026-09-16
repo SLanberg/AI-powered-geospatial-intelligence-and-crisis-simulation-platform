@@ -743,6 +743,16 @@ export function MapContainer({
   onClearMapAction,
 }: MapContainerProps) {
   const mapRef = useRef<MapRef | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    const observer = new ResizeObserver(() => {
+      mapRef.current?.resize();
+    });
+    observer.observe(mapContainerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const [mapTheme, setMapTheme] =
     useState<MapTheme>("dark");
@@ -1730,7 +1740,7 @@ export function MapContainer({
           </div>
         )}
 
-        <div className="absolute inset-0 overflow-hidden rounded-xl border border-border bg-background">
+        <div ref={mapContainerRef} className="absolute inset-0 overflow-hidden rounded-xl border border-border bg-background">
           {isClient ? (
             <Map
               ref={mapRef}

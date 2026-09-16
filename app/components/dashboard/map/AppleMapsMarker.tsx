@@ -1,7 +1,7 @@
 "use client";
 
 import React, { memo } from "react";
-import { Shield, Flame, Plus } from "lucide-react";
+import { Shield, Flame, Plus, Heart, Home, AlertTriangle, Fuel, Zap, Droplets, Factory, FlaskConical, Warehouse } from "lucide-react";
 import type { EmergencyService, EmergencyServiceType } from "../emergencyServicesData";
 
 /*
@@ -12,11 +12,51 @@ import type { EmergencyService, EmergencyServiceType } from "../emergencyService
 type Cfg = { color: string; label: string };
 
 const CONFIGS: Record<EmergencyServiceType, Cfg> = {
-  hospital: { color: "#F472B6", label: "Medical" },
-  clinic: { color: "#F472B6", label: "Medical" },
+  hospital: { color: "#F472B6", label: "Hospital" },
+  clinic: { color: "#EC4899", label: "Clinic" },
   police: { color: "#007AFF", label: "Police" },
   fire_station: { color: "#FF9500", label: "Fire & rescue" },
+  shelter: { color: "#10B981", label: "Shelter" },
+  hazard_site: { color: "#EF4444", label: "Hazard Site" },
 };
+
+/** Helper to categorize hazard sites by building function / name */
+export function getHazardCategoryConfig(service: EmergencyService): { color: string; label: string; icon: React.ElementType } {
+  const name = service.name.toLowerCase();
+  
+  // Logistics, Storage & Warehouses (e.g., Ladu, DSV, Schenker, Cargo, Logistics)
+  if (/ladu|warehouse|logistika|logistics|dsv|schenker|cargo|depoo|hoiustamine/i.test(name)) {
+    return { color: "#E11D48", label: "Logistics & Storage Depot", icon: Warehouse };
+  }
+
+  // Fuel & Gas Stations / Terminals / Petroleum
+  if (/tankla|circle k|alexela|neste|terminal|vedelgaas|lpg|bensiin|kütus|oil service|liwathon|milstrand|bct/i.test(name)) {
+    return { color: "#F97316", label: "Fuel & Gas Facility", icon: Fuel };
+  }
+
+  // Chemical, Alcohol & Explosives Industries
+  if (/keemia|keemiatööstus|ammoniaak|orica|vatsa|spirit|moe|keemia vkt|reideni plaat|silmet|vatsa/i.test(name)) {
+    return { color: "#A855F7", label: "Chemical & Industrial Hazard", icon: FlaskConical };
+  }
+
+  // Energy & Electrical Substation Infrastructure
+  if (/alajaam|elektri|energeetika|substation|power|soojus|utilitas|eesti energia/i.test(name)) {
+    return { color: "#EAB308", label: "Energy Infrastructure", icon: Zap };
+  }
+
+  // Marine, Port & Water Treatment
+  if (/sadam|kallas|vesi|veepuhastus|dbt|vaala|veevärk/i.test(name)) {
+    return { color: "#06B6D4", label: "Maritime & Port Facility", icon: Droplets };
+  }
+
+  // Heavy Manufacturing / Industrial Complex
+  if (/tehas|tootmine|tööstus|vabrik|kombinaat|ehitus|metall|saeveski/i.test(name)) {
+    return { color: "#E11D48", label: "Heavy Industrial Facility", icon: Factory };
+  }
+
+  // Fallback High-Risk Industrial Hazard
+  return { color: "#E11D48", label: "Industrial & Hazard Facility", icon: Factory };
+}
 
 interface AppleMapsMarkerProps {
   service: EmergencyService;
@@ -31,14 +71,32 @@ export const AppleMapsMarker = memo(function AppleMapsMarker({
   onClick,
   showLabel = true,
 }: AppleMapsMarkerProps) {
-  const cfg = CONFIGS[service.type] ?? CONFIGS.hospital;
+  const isClinic =
+    service.type === "clinic" ||
+    /kliinik|polikliinik|tervisekeskus|meditsiin|arst|clinic/i.test(service.name);
 
-  const Icon =
-    service.type === "hospital" || service.type === "clinic"
-      ? Plus
-      : service.type === "police"
-      ? Shield
-      : Flame;
+  const hazardConfig = service.type === "hazard_site" ? getHazardCategoryConfig(service) : null;
+
+  const cfg = isClinic
+    ? CONFIGS.clinic
+    : hazardConfig
+    ? { color: hazardConfig.color, label: hazardConfig.label }
+    : CONFIGS[service.type] ?? CONFIGS.hospital;
+
+  const Icon = isClinic
+    ? Heart
+    : hazardConfig
+    ? hazardConfig.icon
+    : service.type === "hospital"
+    ? Plus
+    : service.type === "police"
+    ? Shield
+    : service.type === "fire_station"
+    ? Flame
+    : service.type === "shelter"
+    ? Home
+    : AlertTriangle;
+
 
   return (
     <button

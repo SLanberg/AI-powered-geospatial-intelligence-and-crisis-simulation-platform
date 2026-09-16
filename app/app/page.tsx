@@ -63,8 +63,8 @@ export default function NeuralCityDashboard() {
       {/* Main Command Center Content Area - Full fluid width */}
       <main
         className={`flex-1 h-screen flex flex-col overflow-x-hidden transition-all duration-300 ease-in-out ${
-          sidebarOpen ? "ml-[220px] w-[calc(100%-220px)]" : "ml-0 w-full"
-        } ${aiOpen ? "lg:mr-[420px]" : ""}`}
+          sidebarOpen ? "ml-[220px]" : "ml-0"
+        } ${aiOpen ? "mr-[440px]" : "mr-0"}`}
       >
         {/* Top Command Bar & Action Controls */}
         <NavBar

@@ -107,8 +107,16 @@ export function MakiIcon({ name, size = 15, className = "", ...props }: MakiIcon
 
       case "hospital":
       case "medical":
-        // Mapbox Maki Hospital 15px icon
+        // Mapbox Maki Hospital 15px icon (Cross)
         return <path d="M6 2v4H2v3h4v4h3V9h4V6H9V2H6z" />;
+
+      case "clinic":
+      case "heart":
+      case "health-center":
+        // Heart icon for clinics & health centers
+        return (
+          <path d="M7.5 13.25l-.94-.85C3.2 9.3 1 7.3 1 4.8 1 2.7 2.7 1 4.8 1c1.2 0 2.3.56 3.05 1.44C8.6 1.56 9.7 1 10.9 1 13 1 14.7 2.7 14.7 4.8c0 2.5-2.2 4.5-5.56 7.6l-.94.85z" />
+        );
 
       case "car":
         // Mapbox Maki Car 15px icon
