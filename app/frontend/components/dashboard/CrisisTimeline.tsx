@@ -743,19 +743,24 @@ export function CrisisTimeline({
   );
 
   return (
-    <div className="w-full bg-[#18191c] text-zinc-300 border-t border-zinc-800 px-4 py-3 select-text">
-      <div className="flex items-center gap-4 w-full">
-        {/* Transport */}
-        <div className="flex items-center gap-2 shrink-0">
+    <div className="w-full bg-[#101318] text-zinc-200 border-t border-[#263140] px-4 py-3 select-text shadow-2xl">
+      <div className="flex flex-wrap items-center gap-4 w-full">
+        
+        {/* 1. Media Controls Cluster */}
+        <div className="flex items-center gap-2 shrink-0 bg-[#1A222E] border border-[#2D3B4E] p-1.5 rounded-xl shadow-inner">
           <Button
             size="icon"
             variant="ghost"
-            className="h-9 w-9 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+            className={`h-9 w-9 rounded-lg transition-all ${
+              isPlaying
+                ? "bg-red-500/25 text-red-400 border border-red-500/50 shadow-sm shadow-red-500/20"
+                : "bg-[#007AFF]/25 text-sky-300 border border-[#007AFF]/50 hover:bg-[#007AFF]/40"
+            }`}
             onClick={() => setIsPlaying((value) => !value)}
             title={isPlaying ? "Pause Timeline" : "Play Timeline"}
           >
             {isPlaying ? (
-              <Pause className="w-4 h-4" />
+              <Pause className="w-4 h-4 fill-current" />
             ) : (
               <Play className="w-4 h-4 fill-current ml-0.5" />
             )}
@@ -764,27 +769,50 @@ export function CrisisTimeline({
           <Button
             size="icon"
             variant="ghost"
-            className="h-9 w-9 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+            className="h-9 w-9 text-zinc-300 hover:bg-white/10 hover:text-white rounded-lg border border-transparent hover:border-zinc-700"
             onClick={resetTimeline}
             title="Reset timeline"
           >
             <RotateCcw className="w-4 h-4" />
           </Button>
 
-          <div className="hidden sm:flex items-center gap-2 pl-1 min-w-[82px]">
-            <Clock className="w-3.5 h-3.5 text-zinc-600" />
+          <span className="hidden sm:inline-block font-mono text-[10px] font-extrabold text-sky-300 bg-sky-950/80 px-2 py-1 rounded border border-sky-500/30 tracking-wider">
+            {PLAYBACK_SPEED}X REPLAY
+          </span>
+        </div>
 
-            <span className="font-mono text-xs text-zinc-300 tabular-nums">
+        {/* 2. Dedicated Time-State Telemetry Card */}
+        <div className="flex items-center gap-3 shrink-0 bg-[#1A222E] border border-[#2D3B4E] px-3 py-1.5 rounded-xl shadow-md">
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-4 h-4 text-sky-400 animate-pulse" />
+            <span className="font-mono text-sm font-black text-white tabular-nums tracking-wider drop-shadow-sm">
               {formatTimelineTime(selectedSeconds)}
+            </span>
+          </div>
+
+          <div className="h-4 w-px bg-zinc-700/80" />
+
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`h-2 w-2 rounded-full ${severityClass(
+                activeEvent.severity
+              )}`}
+            />
+            <span
+              className={`font-mono text-[10px] font-extrabold uppercase tracking-wider ${severityTextClass(
+                activeEvent.severity
+              )}`}
+            >
+              {activeEvent.severity}
             </span>
           </div>
         </div>
 
-        {/* Timeline */}
-        <div className="flex-1 min-w-0">
+        {/* 3. Main Interactive Scrubber & Waveform Track */}
+        <div className="flex-1 min-w-[280px]">
           <div
             ref={scrubberRef}
-            className="relative h-[76px] w-full cursor-pointer touch-none"
+            className="relative h-[72px] w-full cursor-pointer touch-none select-none bg-[#121720]/80 rounded-lg border border-[#232F40] px-1"
             onPointerDown={handleTimelinePointerDown}
             onPointerMove={handleTimelinePointerMove}
             onPointerUp={handleTimelinePointerUp}
@@ -802,30 +830,27 @@ export function CrisisTimeline({
                   left: `${hoverPosition}%`,
                 }}
               >
-                <div className="rounded-md border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 shadow-xl">
-                  <div className="font-mono text-[11px] font-semibold text-zinc-200">
+                <div className="rounded-md border border-zinc-600 bg-zinc-950 px-2.5 py-1.5 shadow-2xl">
+                  <div className="font-mono text-xs font-bold text-white">
                     {hoverTime}
                   </div>
 
                   {hoverEvent?.incidentId && (
                     <div className="mt-1 flex items-center gap-1.5 whitespace-nowrap">
                       <span
-                        className={`h-1.5 w-1.5 rounded-full ${severityClass(
+                        className={`h-2 w-2 rounded-full ${severityClass(
                           hoverEvent.severity
                         )}`}
                       />
 
-                      <span className="text-[10px] text-zinc-300">
-                        {hoverEvent.registeredIncidentsCount ??
-                          1}{" "}
-                        {(
-                          hoverEvent.registeredIncidentsCount ?? 1
-                        ) === 1
+                      <span className="text-[11px] font-semibold text-zinc-200">
+                        {hoverEvent.registeredIncidentsCount ?? 1}{" "}
+                        {(hoverEvent.registeredIncidentsCount ?? 1) === 1
                           ? "incident"
                           : "incidents"}
                       </span>
 
-                      <span className="max-w-[180px] truncate text-[10px] text-zinc-500">
+                      <span className="max-w-[180px] truncate text-[11px] text-zinc-400">
                         {hoverEvent.title}
                       </span>
                     </div>
@@ -833,7 +858,7 @@ export function CrisisTimeline({
 
                   {hoverEvent?.subEvents &&
                     hoverEvent.subEvents.length > 0 && (
-                      <div className="mt-0.5 text-[9px] text-zinc-500">
+                      <div className="mt-0.5 text-[10px] font-semibold text-zinc-400">
                         {hoverEvent.subEvents.length} related events
                       </div>
                     )}
@@ -864,23 +889,23 @@ export function CrisisTimeline({
                       event.stopPropagation();
                       setHoveredEventId(null);
                     }}
-                    className="absolute top-1 -translate-x-1/2 flex items-center justify-center p-1.5 rounded-full focus:outline-none"
+                    className="absolute top-1 -translate-x-1/2 flex items-center justify-center p-1.5 rounded-full focus:outline-none z-20"
                     style={{
                       left: `${cluster.position}%`,
                     }}
                     title={primaryEvent.title}
                   >
                     <span
-                      className={`block h-1.5 w-1.5 rounded-full transition-transform ${severityClass(primaryEvent.severity)
+                      className={`block h-2 w-2 rounded-full transition-transform ${severityClass(primaryEvent.severity)
                         } ${hoveredEventId === primaryEvent.id
-                          ? "scale-[1.8]"
+                          ? "scale-[2.0] ring-2 ring-white"
                           : ""
                         }`}
                     />
 
                     {cluster.count > 1 && (
                       <span
-                        className={`absolute left-2.5 -top-1 min-w-[15px] h-[15px] px-1 rounded-full border border-zinc-700 bg-zinc-900 text-[8px] leading-[13px] font-mono font-bold ${severityTextClass(
+                        className={`absolute left-3 -top-1.5 min-w-[16px] h-[16px] px-1 rounded-full border border-zinc-600 bg-zinc-950 text-[9px] leading-[14px] font-mono font-black ${severityTextClass(
                           primaryEvent.severity
                         )}`}
                       >
@@ -893,7 +918,7 @@ export function CrisisTimeline({
             </div>
 
             {/* SVG waveform */}
-            <div className="absolute inset-x-0 top-5 bottom-2">
+            <div className="absolute inset-x-0 top-5 bottom-1">
               <svg
                 viewBox="0 0 1000 100"
                 preserveAspectRatio="none"
@@ -909,13 +934,13 @@ export function CrisisTimeline({
                   >
                     <stop
                       offset="0%"
-                      stopColor="currentColor"
-                      stopOpacity="0.22"
+                      stopColor="#007AFF"
+                      stopOpacity="0.45"
                     />
                     <stop
                       offset="100%"
-                      stopColor="currentColor"
-                      stopOpacity="0.025"
+                      stopColor="#007AFF"
+                      stopOpacity="0.05"
                     />
                   </linearGradient>
                 </defs>
@@ -924,7 +949,7 @@ export function CrisisTimeline({
                 <path
                   d={waveformPath}
                   fill="url(#timelineActivityGradient)"
-                  className="text-zinc-300"
+                  className="text-sky-400"
                 />
 
                 {/* Subtle baseline */}
@@ -933,11 +958,9 @@ export function CrisisTimeline({
                   y1="92"
                   x2="1000"
                   y2="92"
-                  stroke="currentColor"
-                  strokeOpacity="0.12"
-                  strokeWidth="1"
+                  stroke="#3A4A60"
+                  strokeWidth="1.5"
                   vectorEffect="non-scaling-stroke"
-                  className="text-zinc-300"
                 />
 
                 {/* Incident-specific highlights */}
@@ -952,24 +975,24 @@ export function CrisisTimeline({
 
                   const radius =
                     point.event.severity === "critical"
-                      ? 14
+                      ? 16
                       : point.event.severity === "warning"
-                        ? 10
-                        : 7;
+                        ? 12
+                        : 8;
 
                   const opacity =
                     point.event.severity === "critical"
-                      ? 0.12
+                      ? 0.35
                       : point.event.severity === "warning"
-                        ? 0.07
-                        : 0.045;
+                        ? 0.25
+                        : 0.15;
 
                   const color =
                     point.event.severity === "critical"
-                      ? "#ef4444"
+                      ? "#FF3B30"
                       : point.event.severity === "warning"
-                        ? "#f59e0b"
-                        : "#60a5fa";
+                        ? "#FF9500"
+                        : "#38BDF8";
 
                   return (
                     <circle
@@ -984,22 +1007,30 @@ export function CrisisTimeline({
                 })}
               </svg>
 
-              {/* Playhead */}
+              {/* Explicit High-Contrast Needle / Cursor Playhead */}
               <div
-                className="absolute top-0 bottom-0 w-px bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.65)] pointer-events-none"
+                className="absolute top-0 bottom-0 pointer-events-none z-30 transition-all duration-75 ease-out"
                 style={{
                   left: `${playheadPosition}%`,
                 }}
               >
-                <div className="absolute -top-1.5 -left-[4px] h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                {/* Glowing vertical aura column */}
+                <div className="absolute top-0 bottom-0 w-6 -translate-x-1/2 bg-gradient-to-r from-transparent via-red-500/20 to-transparent" />
 
-                <div className="absolute bottom-[-2px] -left-[3px] h-1.5 w-1.5 rounded-full bg-red-500" />
+                {/* High-Contrast Red Needle Body Line */}
+                <div className="absolute top-0 bottom-0 w-[2.5px] -translate-x-1/2 bg-[#FF3B30] shadow-[0_0_10px_rgba(255,59,48,0.95)]" />
+
+                {/* Top Needle Diamond Pin Head Handle */}
+                <div className="absolute -top-2.5 -left-[7px] h-3.5 w-3.5 rotate-45 bg-[#FF3B30] border-2 border-white shadow-lg shadow-red-500/60" />
+
+                {/* Bottom Needle Pin Base Dot */}
+                <div className="absolute -bottom-1 -left-[5px] h-3 w-3 rounded-full bg-[#FF3B30] border-2 border-white shadow-md" />
               </div>
 
               {/* Hover position indicator */}
               {hoverPosition !== null && !isDragging && (
                 <div
-                  className="absolute top-1 bottom-1 w-px bg-white/20 pointer-events-none"
+                  className="absolute top-0 bottom-0 w-px bg-white/40 pointer-events-none border-dashed border-r border-white/60"
                   style={{
                     left: `${hoverPosition}%`,
                   }}
@@ -1009,16 +1040,17 @@ export function CrisisTimeline({
           </div>
 
           {/* Time axis */}
-          <div className="relative h-5 w-full">
+          <div className="relative h-4 w-full mt-1">
             {axisLabels.map((label, index) => (
               <span
                 key={`${label.label}-${index}`}
-                className={`absolute -translate-x-1/2 font-mono text-[9px] tabular-nums ${index === 0
-                    ? "text-zinc-500"
+                className={`absolute -translate-x-1/2 font-mono text-[10px] font-bold tabular-nums ${
+                  index === 0
+                    ? "text-zinc-400"
                     : index === axisLabels.length - 1
-                      ? "text-zinc-500"
-                      : "text-zinc-600"
-                  }`}
+                    ? "text-zinc-400"
+                    : "text-zinc-300"
+                }`}
                 style={{
                   left: `${label.position}%`,
                 }}
@@ -1028,47 +1060,49 @@ export function CrisisTimeline({
             ))}
           </div>
         </div>
-      </div>
 
-      {/* Current event context */}
-      <div className="hidden lg:flex shrink-0 items-center gap-2 max-w-[240px]">
-        {activeEvent.incidentId ? (
-          <>
-            {(() => {
-              const activeInc = MOCK_INCIDENTS.find(i => i.id === activeEvent.incidentId);
-              const makiName = activeInc ? getMakiIconNameForIncident(activeInc) : "caution";
-              return (
-                <div className={`p-1 rounded bg-muted/80 border border-border flex items-center justify-center shrink-0 ${
-                  activeEvent.severity === "critical"
-                    ? "text-red-400 border-red-500/30"
-                    : activeEvent.severity === "warning"
-                      ? "text-amber-400 border-amber-500/30"
-                      : "text-blue-400 border-blue-500/30"
-                }`}>
-                  <MakiIcon name={makiName} size={14} />
+        {/* 4. Active Event Details Context */}
+        <div className="hidden xl:flex shrink-0 items-center gap-2.5 max-w-[260px] bg-[#1A222E] border border-[#2D3B4E] px-3 py-2 rounded-xl shadow-md">
+          {activeEvent.incidentId ? (
+            <>
+              {(() => {
+                const activeInc = MOCK_INCIDENTS.find(i => i.id === activeEvent.incidentId);
+                const makiName = activeInc ? getMakiIconNameForIncident(activeInc) : "caution";
+                return (
+                  <div className={`p-1.5 rounded-lg bg-black/40 border flex items-center justify-center shrink-0 ${
+                    activeEvent.severity === "critical"
+                      ? "text-red-400 border-red-500/50 shadow-sm shadow-red-500/30"
+                      : activeEvent.severity === "warning"
+                        ? "text-amber-400 border-amber-500/50 shadow-sm shadow-amber-500/30"
+                        : "text-sky-400 border-sky-500/50 shadow-sm shadow-sky-500/30"
+                  }`}>
+                    <MakiIcon name={makiName} size={16} />
+                  </div>
+                );
+              })()}
+
+              <div className="min-w-0">
+                <div
+                  className={`font-mono text-[10px] font-black uppercase tracking-wider ${severityTextClass(
+                    activeEvent.severity
+                  )}`}
+                >
+                  {activeEvent.severity} STATUS
                 </div>
-              );
-            })()}
 
-            <div className="min-w-0">
-              <div
-                className={`font-mono text-[9px] uppercase tracking-wider ${severityTextClass(
-                  activeEvent.severity
-                )}`}
-              >
-                {activeEvent.severity}
+                <div className="truncate text-xs font-bold text-zinc-100" title={activeEvent.title}>
+                  {activeEvent.title}
+                </div>
               </div>
-
-              <div className="truncate text-[10px] text-zinc-400">
-                {activeEvent.title}
-              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-emerald-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Nominal Operational State
             </div>
-          </>
-        ) : (
-          <div className="font-mono text-[9px] uppercase tracking-wider text-zinc-600">
-            Nominal
-          </div>
-        )}
+          )}
+        </div>
+
       </div>
     </div>
   );

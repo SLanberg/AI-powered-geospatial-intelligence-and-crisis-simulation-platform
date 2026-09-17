@@ -12,4 +12,5 @@ export * from "./services/trafficEngine.service";
 export * from "./controllers/incidents.controller";
 export * from "./controllers/telemetry.controller";
 export * from "./controllers/chat.controller";
+export * from "./ws/telemetryWsServer";
 export * from "./routes";

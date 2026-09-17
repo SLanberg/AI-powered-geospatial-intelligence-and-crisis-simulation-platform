@@ -23,16 +23,16 @@ import {
 
 type MapTheme = "dark" | "voyager" | "satellite";
 
-interface LayerConfig {
+export interface LayerConfig {
   id: string;
   label: string;
   icon: React.ReactNode;
   visible: boolean;
-  count: number;
+  count: number | string;
   onToggle: () => void;
 }
 
-interface MapToolbarProps {
+export interface MapToolbarProps {
   /* Viewport controls */
   mapTheme: MapTheme;
   setMapTheme: (theme: MapTheme) => void;
@@ -53,6 +53,9 @@ interface MapToolbarProps {
   setShowIncidents?: (show: boolean | ((prev: boolean) => boolean)) => void;
   showHeatmap?: boolean;
   setShowHeatmap?: (show: boolean | ((prev: boolean) => boolean)) => void;
+
+  /* Custom layers extension */
+  customLayers?: LayerConfig[];
 
   /* Counts */
   flightCount?: number;
@@ -523,7 +526,7 @@ function BasemapDropdown({
 /* MapToolbar (exported)                                                       */
 /* -------------------------------------------------------------------------- */
 
-export function MapToolbar({
+export const MapToolbar = React.memo(function MapToolbar({
   mapTheme,
   setMapTheme,
   is3D,
@@ -541,6 +544,7 @@ export function MapToolbar({
   setShowIncidents,
   showHeatmap = false,
   setShowHeatmap,
+  customLayers = [],
   flightCount = 0,
   vehicleCount = 0,
   emergencyCount = 0,
@@ -566,9 +570,6 @@ export function MapToolbar({
   }, []);
 
   /* Build layer config */
-  const anyLayerVisible =
-    showFlights || showVehicles || showEmergencyServices || showTransportHubs || showIncidents || showHeatmap;
-
   const layers: LayerConfig[] = [
     ...(setShowFlights
       ? [
@@ -642,7 +643,10 @@ export function MapToolbar({
           },
         ]
       : []),
+    ...customLayers,
   ];
+
+  const anyLayerVisible = layers.some((l) => l.visible);
 
   /* ---- Toolbar bar style ---- */
   const barStyle: React.CSSProperties = {
@@ -763,4 +767,6 @@ export function MapToolbar({
       </div>
     </>
   );
-}
+});
+
+

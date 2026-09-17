@@ -190,9 +190,12 @@ export function getDistrictBoundariesGeoJSON(
     let fillColor = "rgba(14, 165, 233, 0.25)";
     let strokeColor = "#0ea5e9";
 
-    if (severity === "critical" || isTarget) {
+    if (severity === "critical") {
       fillColor = "rgba(239, 68, 68, 0.40)";
       strokeColor = "#ef4444";
+    } else if (isTarget) {
+      fillColor = "rgba(56, 189, 248, 0.35)";
+      strokeColor = "#38bdf8";
     } else if (severity === "warning") {
       fillColor = "rgba(245, 158, 11, 0.35)";
       strokeColor = "#f59e0b";

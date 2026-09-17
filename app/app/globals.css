@@ -208,12 +208,20 @@
 }
 
 /* MapLibre / Mapbox popup */
+.maplibregl-popup,
+.mapboxgl-popup {
+  max-width: 300px !important;
+  z-index: 9999999 !important;
+}
+
 .maplibregl-popup-content,
 .mapboxgl-popup-content {
   background: transparent !important;
   padding: 0 !important;
   box-shadow: none !important;
   border-radius: 0 !important;
+  max-width: 300px !important;
+  z-index: 9999999 !important;
 }
 
 .maplibregl-popup-tip,

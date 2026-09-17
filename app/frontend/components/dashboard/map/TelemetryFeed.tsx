@@ -35,7 +35,7 @@ const severityConfig: Record<
   },
 };
 
-export function TelemetryFeed({
+export const TelemetryFeed = React.memo(function TelemetryFeed({
   filteredIncidents,
   setSelectedIncident,
   flyTo,
@@ -177,7 +177,7 @@ export function TelemetryFeed({
       </div>
     </div>
   );
-}
+});
 
 /* ────────────────────────────────────────────
    Inline styles — compact dark tactical palette

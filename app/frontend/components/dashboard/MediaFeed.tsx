@@ -108,7 +108,7 @@ export function MediaFeed() {
                     ? Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-[69px] animate-pulse bg-muted/20" />)
                     : articles.map((article) => (
                         <a key={article.id} href={article.url} target="_blank" rel="noreferrer" className="group flex items-start gap-3 p-4 transition-colors hover:bg-muted/40">
-                          <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${source === "ERR" ? "bg-sky-400" : "bg-rose-400"}`} />
+                          <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${source === "ERR" ? "bg-sky-400" : "bg-amber-400"}`} />
                           <span className="flex-1 text-sm font-medium leading-snug text-card-foreground group-hover:text-primary">{article.title}</span>
                           <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                         </a>

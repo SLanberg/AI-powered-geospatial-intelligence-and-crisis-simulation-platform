@@ -16,8 +16,10 @@ export interface TransportHub {
   website?: string;
   status: "active" | "busy" | "alert";
   passengerVolume: string;
+  dailyPassengers?: number;
   cargoVolume?: string;
   activeLinesOrTerminals: string[];
+  activeTerminalCount?: number;
   description: string;
 }
 

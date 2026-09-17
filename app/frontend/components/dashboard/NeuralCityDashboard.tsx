@@ -9,6 +9,12 @@ import { MediaFeed } from "@/components/dashboard/MediaFeed";
 import { NavBar } from "@/components/dashboard/NavBar";
 import { Incident } from "@/shared";
 import { MOCK_INCIDENTS, MapAction } from "@/components/dashboard/data";
+import { NepalIncidentReplayView } from "@/frontend/components/dashboard/nepal/NepalIncidentReplayView";
+import {
+  REPLAY_START_SECONDS,
+  getActiveEvent,
+  NepalTimelineEvent,
+} from "@/frontend/data/nepalIncidentData";
 
 export interface NeuralCityDashboardProps {
   initialIncidents?: Incident[];
@@ -26,6 +32,12 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
   const [aiOpen, setAiOpen] = useState(false);
   const [aiContext, setAiContext] = useState<string | null>(null);
   const [mapAction, setMapAction] = useState<MapAction | null>(null);
+
+  // Nepal Replay synchronized state
+  const [replaySeconds, setReplaySeconds] = useState<number>(REPLAY_START_SECONDS);
+  const [copilotDefaultMode, setCopilotDefaultMode] = useState<"chat" | "analysis">("chat");
+
+  const activeNepalEvent = useMemo(() => getActiveEvent(replaySeconds), [replaySeconds]);
 
   const incidentsData = initialIncidents && initialIncidents.length > 0 ? initialIncidents : (MOCK_INCIDENTS as Incident[]);
 
@@ -80,10 +92,23 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
           setFeedOpen={setFeedOpen}
           aiOpen={aiOpen}
           setAiOpen={setAiOpen}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
         />
 
         {/* Viewport Content Switcher */}
-        {activeTab === "incidents" ? (
+        {activeTab === "nepal" ? (
+          <div className="w-full flex-1 flex flex-col h-[calc(100vh-49px)]">
+            <NepalIncidentReplayView
+              currentSeconds={replaySeconds}
+              onSeek={setReplaySeconds}
+              onOpenRealTimeAnalysis={() => {
+                setCopilotDefaultMode("analysis");
+                setAiOpen(true);
+              }}
+            />
+          </div>
+        ) : activeTab === "incidents" ? (
           <div className="w-full flex-1 p-4 overflow-y-auto">
             <IncidentMatrix
               onSelectIncident={handleSelectIncidentFromMatrix}
@@ -123,6 +148,12 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
         context={aiContext}
         onClearContext={() => setAiContext(null)}
         onMapAction={handleMapAction}
+        activeTab={activeTab}
+        activeNepalEvent={activeNepalEvent}
+        currentReplaySeconds={replaySeconds}
+        onSeekReplay={setReplaySeconds}
+        selectedIncident={selectedIncident}
+        defaultMode={copilotDefaultMode}
       />
     </div>
   );

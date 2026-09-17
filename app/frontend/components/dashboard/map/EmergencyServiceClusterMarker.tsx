@@ -10,10 +10,12 @@ interface EmergencyServiceClusterMarkerProps {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  hospital: "#F472B6",
-  clinic: "#F472B6",
-  police: "#007AFF",
-  fire_station: "#FF9500",
+  hospital: "#0284C7",
+  clinic: "#06B6D4",
+  police: "#3B82F6",
+  fire_station: "#F97316",
+  shelter: "#10B981",
+  hazard_site: "#A855F7",
 };
 
 function getPieGradient(services: EmergencyService[]) {
@@ -73,17 +75,16 @@ export function EmergencyServiceClusterMarker({
       onClick={onClick}
       aria-label={`Expand cluster of ${services.length} emergency service locations (${breakdown})`}
       title={`${services.length} emergency service locations (${breakdown}) — click to zoom in`}
-      className="group relative flex h-10 w-10 items-center justify-center rounded-full p-[3px] transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2"
+      className="group relative flex h-10 w-10 items-center justify-center rounded-full p-[3px] focus-visible:outline-2 focus-visible:outline-offset-2"
       style={{
         background: pieGradient,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.6)",
       }}
     >
-      <div className="flex h-full w-full items-center justify-center rounded-full bg-[#121820] text-[#F8FAFC]">
-        <Layers3 aria-hidden="true" className="absolute h-4 w-4 opacity-70" />
+      <div className="flex h-full w-full items-center justify-center rounded-full bg-[#0F172A] text-[#FFFFFF]">
+        <Layers3 aria-hidden="true" className="absolute h-4 w-4 opacity-85 text-sky-400" />
         <span
-          className="relative mt-5 rounded-sm px-1 text-[10px] font-bold leading-3 tabular-nums"
-          style={{ backgroundColor: "#121820" }}
+          className="relative mt-5 rounded-md px-1.5 py-0.5 text-xs font-black leading-none tabular-nums text-white border border-sky-400/60"
+          style={{ backgroundColor: "#0A0E17" }}
         >
           +{services.length}
         </span>

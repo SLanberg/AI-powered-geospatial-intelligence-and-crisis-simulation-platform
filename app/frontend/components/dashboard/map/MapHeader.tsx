@@ -66,23 +66,23 @@ export function MapHeader({
           <button
             onClick={() => setMapTheme("dark")}
             title="Dark Muted Canvas (Recommended)"
-            className={`min-h-[38px] px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+            className={`min-h-[38px] px-3.5 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
               mapTheme === "dark"
-              ? "bg-[#007AFF] text-white shadow-sm"
-                : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
+              ? "bg-[#007AFF] text-white shadow-sm ring-1 ring-blue-400/50"
+                : "text-slate-200 hover:text-white hover:bg-white/10"
             }`}
           >
-            <MapIcon className="w-4 h-4" />
+            <MapIcon className="w-4 h-4 text-sky-300" />
             Tactical
           </button>
 
           <button
             onClick={() => setMapTheme("voyager")}
             title="Dark street reference"
-            className={`min-h-[38px] px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all ${
+            className={`min-h-[38px] px-3.5 py-1.5 text-xs font-bold rounded-md transition-all ${
               mapTheme === "voyager"
-              ? "bg-[#007AFF] text-white shadow-sm"
-                : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
+              ? "bg-[#007AFF] text-white shadow-sm ring-1 ring-blue-400/50"
+                : "text-slate-200 hover:text-white hover:bg-white/10"
             }`}
           >
             Street
@@ -91,13 +91,13 @@ export function MapHeader({
           <button
             onClick={() => setMapTheme("satellite")}
             title="Aerial Imagery"
-            className={`min-h-[38px] px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+            className={`min-h-[38px] px-3.5 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
               mapTheme === "satellite"
-              ? "bg-[#007AFF] text-white shadow-sm"
-                : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
+              ? "bg-[#007AFF] text-white shadow-sm ring-1 ring-blue-400/50"
+                : "text-slate-200 hover:text-white hover:bg-white/10"
             }`}
           >
-            <Satellite className="w-4 h-4" />
+            <Satellite className="w-4 h-4 text-emerald-300" />
             Aerial
           </button>
         </div>
@@ -106,20 +106,20 @@ export function MapHeader({
         {setShowFlights && setShowVehicles && (
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center bg-[#1E2530] border border-[#2A3545] rounded-md p-1 gap-1" role="group" aria-label="Air and maritime tracking layers">
-              <span className="px-1 font-mono text-[9px] font-bold tracking-wider text-sky-300 uppercase">Air & maritime</span>
+              <span className="px-1.5 font-mono text-[10px] font-extrabold tracking-wider text-sky-200 uppercase">Air & maritime</span>
             <button
               onClick={() => setShowFlights((prev) => !prev)}
               title="Toggle Live Air Domain (Flights & Helicopters)"
-              className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+              className={`min-h-[38px] px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
                 showFlights
-                  ? "bg-sky-500/20 text-white border border-sky-400/50"
-                  : "text-slate-500 hover:text-slate-100 hover:bg-white/5 opacity-70"
+                  ? "bg-sky-500/25 text-white border border-sky-400/70 shadow-sm"
+                  : "text-slate-300 hover:text-white hover:bg-white/10"
               }`}
             >
               <Plane className="w-4 h-4 text-sky-300" />
               <span>Air</span>
               {showFlights && flightCount > 0 && (
-                <span className="bg-sky-950/80 text-sky-200 text-[10px] px-1.5 py-0.5 rounded-full font-mono">
+                <span className="bg-sky-950/90 text-sky-200 text-[11px] px-2 py-0.5 rounded-full font-mono font-bold">
                   {flightCount}
                 </span>
               )}
@@ -128,16 +128,16 @@ export function MapHeader({
             <button
               onClick={() => setShowVehicles((prev) => !prev)}
               title="Toggle Live Maritime Domain (Ships & Speedboats)"
-              className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+              className={`min-h-[38px] px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
                 showVehicles
-                  ? "bg-cyan-500/20 text-white border border-cyan-400/50"
-                  : "text-slate-500 hover:text-slate-100 hover:bg-white/5 opacity-70"
+                  ? "bg-cyan-500/25 text-white border border-cyan-400/70 shadow-sm"
+                  : "text-slate-300 hover:text-white hover:bg-white/10"
               }`}
             >
               <Anchor className="w-4 h-4 text-cyan-200" />
               <span>Maritime</span>
               {showVehicles && vehicleCount > 0 && (
-                <span className="bg-cyan-950/80 text-cyan-300 text-[10px] px-1.5 py-0.5 rounded-full font-mono">
+                <span className="bg-cyan-950/90 text-cyan-200 text-[11px] px-2 py-0.5 rounded-full font-mono font-bold">
                   {vehicleCount}
                 </span>
               )}
@@ -145,21 +145,21 @@ export function MapHeader({
             </div>
 
             <div className="flex items-center bg-[#1E2530] border border-[#2A3545] rounded-md p-1 gap-1" role="group" aria-label="Emergency response layers">
-              <span className="px-1 font-mono text-[9px] font-bold tracking-wider text-[#FFB4AF] uppercase">Emergency</span>
+              <span className="px-1.5 font-mono text-[10px] font-extrabold tracking-wider text-rose-200 uppercase">Emergency</span>
             {setShowEmergencyServices && (
               <button
                 onClick={() => setShowEmergencyServices((prev) => !prev)}
                 title="Toggle Emergency Services (Hospitals, Police, Fire Stations)"
-                className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                className={`min-h-[38px] px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
                   showEmergencyServices
-                    ? "bg-[#FF3B30]/15 text-white border border-[#FF3B30]/60"
-                    : "text-slate-500 hover:text-slate-100 hover:bg-white/5 opacity-70"
+                    ? "bg-[#FF3B30]/25 text-white border border-[#FF3B30]/70 shadow-sm"
+                    : "text-slate-300 hover:text-white hover:bg-white/10"
                 }`}
               >
                 <Siren className="w-4 h-4 text-[#FF3B30]" />
                 <span>Services</span>
                 {showEmergencyServices && emergencyCount > 0 && (
-                  <span className="bg-[#FF3B30]/20 text-[#FFB4AF] text-[10px] px-1.5 py-0.5 rounded-full font-mono">
+                  <span className="bg-[#FF3B30]/30 text-[#FFD4D1] text-[11px] px-2 py-0.5 rounded-full font-mono font-bold">
                     {emergencyCount}
                   </span>
                 )}
@@ -170,16 +170,16 @@ export function MapHeader({
               <button
                 onClick={() => setShowTransportHubs((prev) => !prev)}
                 title="Toggle Transport Hubs (Airports, Railway Stations, Ports)"
-                className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                className={`min-h-[38px] px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
                   showTransportHubs
-                    ? "bg-sky-500/20 text-sky-200 border border-sky-400/60"
-                    : "text-slate-500 hover:text-slate-100 hover:bg-white/5 opacity-70"
+                    ? "bg-sky-500/25 text-white border border-sky-400/70 shadow-sm"
+                    : "text-slate-300 hover:text-white hover:bg-white/10"
                 }`}
               >
                 <Compass className="w-4 h-4 text-sky-400" />
                 <span>Hubs</span>
                 {showTransportHubs && transportHubCount > 0 && (
-                  <span className="bg-sky-950/80 text-sky-200 text-[10px] px-1.5 py-0.5 rounded-full font-mono">
+                  <span className="bg-sky-950/90 text-sky-200 text-[11px] px-2 py-0.5 rounded-full font-mono font-bold">
                     {transportHubCount}
                   </span>
                 )}
@@ -190,16 +190,16 @@ export function MapHeader({
               <button
                 onClick={() => setShowIncidents((prev) => !prev)}
                 title="Toggle Incidents (Active Alerts & Hazards)"
-                className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                className={`min-h-[38px] px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
                   showIncidents
-                    ? "bg-[#FF3B30]/15 text-white border border-[#FF3B30]/60"
-                    : "text-slate-500 hover:text-slate-100 hover:bg-white/5 opacity-70"
+                    ? "bg-[#FF3B30]/25 text-white border border-[#FF3B30]/70 shadow-sm"
+                    : "text-slate-300 hover:text-white hover:bg-white/10"
                 }`}
               >
                 <AlertTriangle className="w-4 h-4 text-[#FF3B30]" />
                 <span>Incidents</span>
                 {showIncidents && incidentCount > 0 && (
-                  <span className="bg-[#FF3B30]/20 text-[#FFB4AF] text-[10px] px-1.5 py-0.5 rounded-full font-mono">
+                  <span className="bg-[#FF3B30]/30 text-[#FFD4D1] text-[11px] px-2 py-0.5 rounded-full font-mono font-bold">
                     {incidentCount}
                   </span>
                 )}
@@ -210,12 +210,11 @@ export function MapHeader({
               <button
                 onClick={() => setShowHeatmap((prev) => !prev)}
                 title="Toggle Heatmap Density Overlay"
-                className={`min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                className={`min-h-[38px] px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
                   showHeatmap
-                    ? "bg-flame-500/20 text-amber-300 border border-amber-500/60 shadow-lg shadow-amber-500/20"
-                    : "text-slate-500 hover:text-slate-100 hover:bg-white/5 opacity-70"
+                    ? "bg-amber-500/25 text-amber-200 border border-amber-500/80 shadow-lg shadow-amber-500/20"
+                    : "text-slate-300 hover:text-white hover:bg-white/10"
                 }`}
-                style={showHeatmap ? { backgroundColor: "rgba(245, 158, 11, 0.2)", borderColor: "#f59e0b" } : undefined}
               >
                 <Flame className="w-4 h-4 text-amber-400" />
                 <span>Heatmap</span>

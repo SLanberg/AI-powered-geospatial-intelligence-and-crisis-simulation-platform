@@ -113,11 +113,11 @@ export function MakiIcon({ name, size = 15, className = "", ...props }: MakiIcon
         return <path d="M6 2v4H2v3h4v4h3V9h4V6H9V2H6z" />;
 
       case "clinic":
-      case "heart":
+      case "stethoscope":
       case "health-center":
-        // Heart icon for clinics & health centers
+        // Stethoscope icon for outpatient clinics & health centers
         return (
-          <path d="M7.5 13.25l-.94-.85C3.2 9.3 1 7.3 1 4.8 1 2.7 2.7 1 4.8 1c1.2 0 2.3.56 3.05 1.44C8.6 1.56 9.7 1 10.9 1 13 1 14.7 2.7 14.7 4.8c0 2.5-2.2 4.5-5.56 7.6l-.94.85z" />
+          <path d="M4 1v4a3.5 3.5 0 0 0 7 0V1m-7 0H2v2.5a5.5 5.5 0 0 0 11 0V1h-2m-2 7.5v2a2 2 0 0 0 2 2h.5A2.5 2.5 0 1 0 14 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         );
 
       case "car":

@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Cpu,
   Newspaper,
+  Mountain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,13 @@ export function Sidebar({
 
   const navItems = [
     { id: "map", label: "Operational picture", icon: Map, badge: null },
+    {
+      id: "nepal",
+      label: "Nepal Replay",
+      icon: Mountain,
+      badge: "CASCADE",
+      badgeVariant: "destructive" as const,
+    },
     {
       id: "incidents",
       label: "Incidents",

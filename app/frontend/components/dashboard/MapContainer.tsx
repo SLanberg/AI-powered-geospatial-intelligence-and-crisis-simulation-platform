@@ -461,6 +461,31 @@ const VESSEL_CIRCLES: LayerProps = {
   },
 };
 
+const VEHICLE_CIRCLES: LayerProps = {
+  id: "vehicle-circles",
+  type: "circle",
+  source: "vehicles",
+
+  paint: {
+    "circle-radius": [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      8,
+      3,
+      12,
+      ["get", "radius"],
+      16,
+      ["*", ["get", "radius"], 1.4],
+    ],
+
+    "circle-color": ["get", "color"],
+    "circle-stroke-color": "#ffffff",
+    "circle-stroke-width": 1.5,
+    "circle-opacity": 0.9,
+  },
+};
+
 /* -------------------------------------------------------------------------- */
 /* GeoJSON helpers                                                            */
 /* -------------------------------------------------------------------------- */
@@ -720,6 +745,179 @@ const VesselMarkerItem = React.memo(function VesselMarkerItem({
   );
 });
 
+const IncidentMarkerItem = React.memo(function IncidentMarkerItem({
+  inc,
+  isSelected,
+  onSelect,
+}: {
+  inc: Incident;
+  isSelected: boolean;
+  onSelect: (inc: Incident) => void;
+}) {
+  const isCritical = inc.severity === "critical";
+  const isWarning = inc.severity === "warning";
+  const makiIconName = getMakiIconNameForIncident(inc);
+
+  const dotBg = isCritical
+    ? "bg-red-600 border-white text-white"
+    : isWarning
+    ? "bg-amber-500 border-white text-slate-950"
+    : "bg-emerald-500 border-white text-slate-950";
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onSelect(inc);
+    },
+    [inc, onSelect]
+  );
+
+  return (
+    <Marker
+      latitude={inc.lat}
+      longitude={inc.lng}
+      anchor="center"
+    >
+      <div
+        onClick={handleClick}
+        className={`relative cursor-pointer group flex flex-col items-center select-none will-change-transform ${
+          isSelected ? "z-50" : "z-30"
+        }`}
+      >
+        <div
+          className={`
+            flex items-center justify-center h-6 w-6 rounded-full border shadow-sm transition-transform group-hover:scale-110
+            ${dotBg}
+            ${isSelected ? "ring-2 ring-white ring-offset-1 ring-offset-slate-950 scale-110" : ""}
+          `}
+        >
+          <MakiIcon name={makiIconName} size={13} />
+        </div>
+        <div
+          className={`
+            mt-0.5 whitespace-nowrap rounded bg-slate-900/90 border border-slate-700/60 px-1 py-0.2 font-mono text-[9px] font-medium text-slate-200 shadow-sm
+            ${isSelected ? "border-white/60 text-white font-bold" : ""}
+          `}
+        >
+          {inc.nodeId}
+        </div>
+      </div>
+    </Marker>
+  );
+});
+
+const DistrictCentroidMarkerItem = React.memo(function DistrictCentroidMarkerItem({
+  props,
+}: {
+  props: any;
+}) {
+  const isTarget = props.isTarget;
+  const badgeBg =
+    props.severity === "critical" || isTarget
+      ? "rgba(239, 68, 68, 0.9)"
+      : props.severity === "warning"
+      ? "rgba(245, 158, 11, 0.9)"
+      : "rgba(14, 165, 233, 0.9)";
+
+  return (
+    <Marker
+      latitude={props.centerLat}
+      longitude={props.centerLng}
+      anchor="center"
+    >
+      <div className="relative flex flex-col items-center justify-center pointer-events-none transition-transform duration-200 transform hover:scale-105 will-change-transform">
+        <div
+          className="relative px-3 py-1.5 rounded-lg border flex flex-col items-center justify-center transition-all"
+          style={{
+            backgroundColor: "rgba(15, 23, 42, 0.85)",
+            borderColor: props.strokeColor,
+          }}
+        >
+          <div className="flex items-center gap-1.5">
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: props.strokeColor }}
+            />
+            <span className="font-mono text-[11px] font-extrabold uppercase tracking-wider text-white">
+              {props.name}
+            </span>
+          </div>
+          {props.count > 0 && (
+            <span
+              className="font-mono text-[9.5px] font-bold text-white px-2 py-0.5 rounded-full mt-1 border border-white/20"
+              style={{ backgroundColor: badgeBg }}
+            >
+              {props.count} {props.count === 1 ? "Active Incident" : "Active Incidents"}
+            </span>
+          )}
+        </div>
+      </div>
+    </Marker>
+  );
+});
+
+const SelectedVehicleMarkerItem = React.memo(function SelectedVehicleMarkerItem({
+  vehicle,
+  onSelect,
+}: {
+  vehicle: Vehicle;
+  onSelect: (vehicle: Vehicle) => void;
+}) {
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onSelect(vehicle);
+    },
+    [vehicle, onSelect]
+  );
+
+  return (
+    <Marker
+      latitude={vehicle.lat}
+      longitude={vehicle.lng}
+      anchor="center"
+    >
+      <div
+        onClick={handleClick}
+        className="relative cursor-pointer group flex items-center justify-center p-1 ring-2 ring-sky-400 rounded-full scale-110 will-change-transform z-50"
+        title={`${vehicle.name} (${vehicle.speed} km/h) - ${vehicle.destination}`}
+      >
+        {vehicle.type === "ambulance" ? (
+          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-rose-600 border-2 border-white shadow-md shadow-rose-500/50">
+            <Siren className="w-4 h-4 text-white animate-pulse" />
+          </div>
+        ) : vehicle.type === "police" ? (
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 border-2 border-white shadow-md shadow-blue-500/50">
+            <Siren className="w-3.5 h-3.5 text-white" />
+          </div>
+        ) : vehicle.type === "fire_engine" ? (
+          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-orange-600 border-2 border-white shadow-md shadow-orange-500/50">
+            <Siren className="w-4 h-4 text-white animate-bounce" />
+          </div>
+        ) : vehicle.type === "bus" ? (
+          <div className="flex items-center justify-center w-6 h-6 rounded-md bg-amber-600 border border-white shadow-sm">
+            <Bus className="w-3.5 h-3.5 text-white" />
+          </div>
+        ) : vehicle.type === "yacht" ? (
+          <div
+            className="flex items-center justify-center w-7 h-7 rounded-full bg-cyan-600 border-2 border-white shadow-md shadow-cyan-500/60 ring-2 ring-cyan-400/40"
+            style={{ transform: `rotate(${vehicle.heading}deg)` }}
+          >
+            <Anchor className="w-4 h-4 text-white" />
+          </div>
+        ) : (
+          <div
+            className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-600 border border-white shadow-sm"
+            style={{ transform: `rotate(${vehicle.heading}deg)` }}
+          >
+            <Car className="w-3 h-3 text-white" />
+          </div>
+        )}
+      </div>
+    </Marker>
+  );
+});
+
 export function MapContainer({
   showIncidents,
   crisisActive,
@@ -948,6 +1146,59 @@ export function MapContainer({
       })),
     };
   }, [vessels, activeShowVehicles]);
+
+  /* ---------------------------------------------------------------------- */
+  /* GeoJSON calculation for WebGL Traffic Vehicles layer                  */
+  /* ---------------------------------------------------------------------- */
+
+  const vehiclesGeoJSON = useMemo(() => {
+    if (!activeShowVehicles || vehicles.length === 0) {
+      return {
+        type: "FeatureCollection" as const,
+        features: [],
+      };
+    }
+
+    return {
+      type: "FeatureCollection" as const,
+      features: vehicles.map((v) => ({
+        type: "Feature" as const,
+        id: v.id,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [v.lng, v.lat],
+        },
+        properties: {
+          id: v.id,
+          name: v.name,
+          type: v.type,
+          speed: v.speed,
+          heading: v.heading,
+          destination: v.destination,
+          color:
+            v.type === "ambulance"
+              ? "#0284c7"
+              : v.type === "police"
+              ? "#3b82f6"
+              : v.type === "fire_engine"
+              ? "#ea580c"
+              : v.type === "bus"
+              ? "#d97706"
+              : v.type === "yacht"
+              ? "#06b6d4"
+              : v.status === "delayed"
+              ? "#f59e0b"
+              : "#10b981",
+          radius:
+            v.type === "ambulance" || v.type === "fire_engine" || v.type === "police"
+              ? 7
+              : v.type === "bus" || v.type === "yacht"
+              ? 6
+              : 4,
+        },
+      })),
+    };
+  }, [vehicles, activeShowVehicles]);
 
   /* ---------------------------------------------------------------------- */
   /* Fetch OpenSky & live ADS-B flights                                     */
@@ -1616,6 +1867,21 @@ export function MapContainer({
           setSelectedFlight(null);
           setSelectedEmergencyService(null);
           setSelectedIncident(null);
+          setSelectedVehicle(null);
+
+          return;
+        }
+      }
+
+      if (layerId === "vehicle-circles") {
+        const vehId = String(properties?.id ?? "");
+        const vehicle = vehicles.find((item) => item.id === vehId);
+        if (vehicle) {
+          setSelectedVehicle(vehicle);
+          setSelectedFlight(null);
+          setSelectedVessel(null);
+          setSelectedEmergencyService(null);
+          setSelectedIncident(null);
 
           return;
         }
@@ -1627,6 +1893,7 @@ export function MapContainer({
       baseHandleMapClick,
       flights,
       vessels,
+      vehicles,
       setSelectedIncident,
     ],
   );
@@ -1713,14 +1980,14 @@ export function MapContainer({
         />
 
         {mapAction && (
-          <div className="absolute top-4 left-16 z-40 bg-[#121820]/95 border border-red-500/60 rounded-xl px-4 py-2.5 text-white shadow-2xl backdrop-blur-md flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
+          <div className="absolute top-4 left-16 z-40 bg-[#121820]/95 border border-sky-500/60 rounded-xl px-4 py-2.5 text-white shadow-2xl backdrop-blur-md flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-red-500/20 border border-red-500/50 flex items-center justify-center shrink-0">
-                <Target className="w-4 h-4 text-red-400 animate-pulse" />
+              <div className="h-8 w-8 rounded-lg bg-sky-500/20 border border-sky-500/50 flex items-center justify-center shrink-0">
+                <Target className="w-4 h-4 text-sky-400 animate-pulse" />
               </div>
               <div>
-                <div className="text-[10px] font-mono font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
+                <div className="text-[10px] font-mono font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
                   AI MAP ACTION ACTIVE
                 </div>
                 <div className="text-xs font-semibold text-slate-100 font-mono">
@@ -1779,7 +2046,7 @@ export function MapContainer({
                   : []),
 
                 ...(activeShowVehicles
-                  ? ["vessel-circles"]
+                  ? ["vessel-circles", "vehicle-circles"]
                   : []),
               ]}
               onClick={handleMapClick}
@@ -1807,80 +2074,14 @@ export function MapContainer({
               {showIncidents && (
                 <>
                   {/* Minimal Tactical Incident Markers with Maki Icons */}
-                  {filteredIncidents.map((inc) => {
-                    const isCritical = inc.severity === "critical";
-                    const isWarning = inc.severity === "warning";
-                    const isSelected = selectedIncident?.id === inc.id;
-                    const makiIconName = getMakiIconNameForIncident(inc);
-
-                    // Minimal tactical color palette
-                    const dotBg = isCritical
-                      ? "bg-red-600 border-white text-white"
-                      : isWarning
-                      ? "bg-amber-500 border-white text-slate-950"
-                      : "bg-emerald-500 border-white text-slate-950";
-
-                    return (
-                      <Marker
-                        key={`incident-maki-marker-${inc.id}`}
-                        latitude={inc.lat}
-                        longitude={inc.lng}
-                        anchor="center"
-                        onClick={(e) => {
-                          e.originalEvent.stopPropagation();
-                          setSelectedIncident(inc);
-                        }}
-                      >
-                        <div
-                          className={`relative cursor-pointer group flex flex-col items-center select-none ${
-                            isSelected ? "z-50" : "z-30"
-                          }`}
-                        >
-                          {/* Minimal Tactical Dot Container */}
-                          <div
-                            className={`
-                              flex
-                              items-center
-                              justify-center
-                              h-6
-                              w-6
-                              rounded-full
-                              border
-                              shadow-sm
-                              transition-transform
-                              group-hover:scale-110
-                              ${dotBg}
-                              ${isSelected ? "ring-2 ring-white ring-offset-1 ring-offset-slate-950 scale-110" : ""}
-                            `}
-                          >
-                            <MakiIcon name={makiIconName} size={13} />
-                          </div>
-
-                          {/* Minimal Tactical Node ID Label */}
-                          <div
-                            className={`
-                              mt-0.5
-                              whitespace-nowrap
-                              rounded
-                              bg-slate-900/90
-                              border
-                              border-slate-700/60
-                              px-1
-                              py-0.2
-                              font-mono
-                              text-[9px]
-                              font-medium
-                              text-slate-200
-                              shadow-sm
-                              ${isSelected ? "border-white/60 text-white font-bold" : ""}
-                            `}
-                          >
-                            {inc.nodeId}
-                          </div>
-                        </div>
-                      </Marker>
-                    );
-                  })}
+                  {filteredIncidents.map((inc) => (
+                    <IncidentMarkerItem
+                      key={`incident-maki-marker-${inc.id}`}
+                      inc={inc}
+                      isSelected={selectedIncident?.id === inc.id}
+                      onSelect={setSelectedIncident}
+                    />
+                  ))}
 
                   <Source
                     id="selected-incident"
@@ -1950,58 +2151,12 @@ export function MapContainer({
               )}
 
               {/* District Centroid Badges for Highlighted / Heatmap Districts */}
-              {districtBoundariesGeoJSON.features.map((feat, idx) => {
-                const props = feat.properties;
-                const isTarget = props.isTarget;
-
-                const badgeBg =
-                  props.severity === "critical" || isTarget
-                    ? "rgba(239, 68, 68, 0.9)"
-                    : props.severity === "warning"
-                    ? "rgba(245, 158, 11, 0.9)"
-                    : "rgba(14, 165, 233, 0.9)";
-
-                return (
-                  <Marker
-                    key={`district-poly-label-${props.id}-${idx}`}
-                    latitude={props.centerLat}
-                    longitude={props.centerLng}
-                    anchor="center"
-                  >
-                    <div className="relative flex flex-col items-center justify-center pointer-events-none transition-all duration-300 transform hover:scale-105">
-                      {isTarget && (
-                        <div className="absolute w-24 h-24 rounded-full animate-ping opacity-60 bg-red-500/30" />
-                      )}
-                      <div
-                        className="relative px-3 py-1.5 rounded-lg backdrop-blur-md border shadow-2xl flex flex-col items-center justify-center transition-all"
-                        style={{
-                          backgroundColor: "rgba(15, 23, 42, 0.85)",
-                          borderColor: props.strokeColor,
-                          boxShadow: `0 0 15px ${props.strokeColor}40`,
-                        }}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className="w-2 h-2 rounded-full animate-pulse"
-                            style={{ backgroundColor: props.strokeColor }}
-                          />
-                          <span className="font-mono text-[11px] font-extrabold uppercase tracking-wider text-white">
-                            {props.name}
-                          </span>
-                        </div>
-                        {props.count > 0 && (
-                          <span
-                            className="font-mono text-[9.5px] font-bold text-white px-2 py-0.5 rounded-full mt-1 border border-white/20"
-                            style={{ backgroundColor: badgeBg }}
-                          >
-                            {props.count} {props.count === 1 ? "Active Incident" : "Active Incidents"}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </Marker>
-                );
-              })}
+              {districtBoundariesGeoJSON.features.map((feat, idx) => (
+                <DistrictCentroidMarkerItem
+                  key={`district-poly-label-${feat.properties.id}-${idx}`}
+                  props={feat.properties}
+                />
+              ))}
 
               {/* ------------------------------------------------------ */}
               {/* Incident popup                                          */}
@@ -2009,29 +2164,18 @@ export function MapContainer({
 
               {selectedIncident && (
                 <Popup
-                  latitude={
-                    selectedIncident.lat
-                  }
-                  longitude={
-                    selectedIncident.lng
-                  }
+                  latitude={selectedIncident.lat}
+                  longitude={selectedIncident.lng}
                   anchor="left"
-                  offset={36}
+                  offset={24}
+                  maxWidth="300px"
                   closeButton={false}
                   closeOnClick={false}
-                  onClose={() =>
-                    setSelectedIncident(
-                      null,
-                    )
-                  }
+                  onClose={() => setSelectedIncident(null)}
                 >
                   <MapIncidentPopup
-                    selectedIncident={
-                      selectedIncident
-                    }
-                    setSelectedIncident={
-                      setSelectedIncident
-                    }
+                    selectedIncident={selectedIncident}
+                    setSelectedIncident={setSelectedIncident}
                   />
                 </Popup>
               )}
@@ -2150,86 +2294,14 @@ export function MapContainer({
                   </Marker>
                 )}
 
-              {/* ------------------------------------------------------ */}
-              {/* Live vehicle markers                                   */}
-              {/* ------------------------------------------------------ */}
-
-              {activeShowVehicles &&
-                vehicles.map((v) => {
-                  const isSelected =
-                    selectedVehicle?.id ===
-                    v.id;
-
-                  return (
-                    <Marker
-                      key={`vehicle-${v.id}`}
-                      latitude={v.lat}
-                      longitude={v.lng}
-                      anchor="center"
-                      onClick={(e) => {
-                        e.originalEvent.stopPropagation();
-
-                        setSelectedVehicle(
-                          v,
-                        );
-                      }}
-                    >
-                      <div
-                        className={`relative cursor-pointer group flex items-center justify-center transition-transform hover:scale-125 p-1 ${isSelected
-                            ? "ring-2 ring-sky-400 rounded-full scale-110"
-                            : ""
-                          }`}
-                        title={`${v.name} (${v.speed} km/h) - ${v.destination}`}
-                      >
-                        {v.type ===
-                          "ambulance" ? (
-                          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-rose-600 border-2 border-white shadow-md shadow-rose-500/50">
-                            <Siren className="w-4 h-4 text-white animate-pulse" />
-                          </div>
-                        ) : v.type ===
-                          "police" ? (
-                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 border-2 border-white shadow-md shadow-blue-500/50">
-                            <Siren className="w-3.5 h-3.5 text-white" />
-                          </div>
-                        ) : v.type ===
-                          "fire_engine" ? (
-                          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-orange-600 border-2 border-white shadow-md shadow-orange-500/50">
-                            <Siren className="w-4 h-4 text-white animate-bounce" />
-                          </div>
-                        ) : v.type ===
-                          "bus" ? (
-                          <div className="flex items-center justify-center w-6 h-6 rounded-md bg-amber-600 border border-white shadow-sm">
-                            <Bus className="w-3.5 h-3.5 text-white" />
-                          </div>
-                        ) : v.type ===
-                          "yacht" ? (
-                          <div
-                            className="flex items-center justify-center w-7 h-7 rounded-full bg-cyan-600 border-2 border-white shadow-md shadow-cyan-500/60 ring-2 ring-cyan-400/40"
-                            style={{
-                              transform: `rotate(${v.heading}deg)`,
-                            }}
-                          >
-                            <Anchor className="w-4 h-4 text-white" />
-                          </div>
-                        ) : (
-                          /* Civilian cars showing traffic congestion */
-                          <div
-                            className={`flex items-center justify-center rounded-full border border-white shadow-sm transition-all ${v.status ===
-                                "delayed"
-                                ? "w-6 h-6 bg-amber-500 ring-2 ring-rose-500/80 animate-pulse"
-                                : "w-5 h-5 bg-emerald-600"
-                              }`}
-                            style={{
-                              transform: `rotate(${v.heading}deg)`,
-                            }}
-                          >
-                            <Car className="w-3 h-3 text-white" />
-                          </div>
-                        )}
-                      </div>
-                    </Marker>
-                  );
-                })}
+              {/* Selected Vehicle Marker Overlay */}
+              {activeShowVehicles && selectedVehicle && (
+                <SelectedVehicleMarkerItem
+                  key={`selected-vehicle-${selectedVehicle.id}`}
+                  vehicle={selectedVehicle}
+                  onSelect={setSelectedVehicle}
+                />
+              )}
 
               {/* ------------------------------------------------------ */}
               {/* Emergency services                                     */}
@@ -2297,11 +2369,8 @@ export function MapContainer({
                           }
                           showLabel={
                             selectedEmergencyService?.id ===
-                            cluster
-                              .services[0]
-                              .id ||
-                            viewState.zoom >=
-                            14.25
+                            cluster.services[0].id ||
+                            viewState.zoom >= 16.5
                           }
                         />
                       </Marker>
@@ -2324,10 +2393,6 @@ export function MapContainer({
                       hub={hub}
                       isSelected={selectedTransportHub?.id === hub.id}
                       onClick={handleTransportHubClick}
-                      showLabel={
-                        selectedTransportHub?.id === hub.id ||
-                        viewState.zoom >= 11.2
-                      }
                     />
                   </Marker>
                 ))}
@@ -2349,6 +2414,12 @@ export function MapContainer({
               {activeShowVehicles && (
                 <Source id="vessels" type="geojson" data={vesselsGeoJSON}>
                   <Layer {...VESSEL_CIRCLES} />
+                </Source>
+              )}
+
+              {activeShowVehicles && (
+                <Source id="vehicles" type="geojson" data={vehiclesGeoJSON}>
+                  <Layer {...VEHICLE_CIRCLES} />
                 </Source>
               )}
 
@@ -2395,16 +2466,17 @@ export function MapContainer({
                     latitude={activeVessel.lat}
                     longitude={activeVessel.lng}
                     anchor="left"
-                    offset={36}
+                    offset={24}
+                    maxWidth="300px"
                     closeButton={false}
                     closeOnClick={false}
                     onClose={() => setSelectedVessel(null)}
                   >
-                    <div className="bg-popover text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[270px] animate-in fade-in-50 zoom-in-95">
-                      <div className="flex justify-between items-start gap-3">
-                        <div className="space-y-1">
-                          <div className="flex gap-2 items-center">
-                            <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 uppercase font-semibold text-[10px] tracking-wider flex items-center">
+                    <div className="bg-popover text-popover-foreground p-3.5 rounded-xl border border-border shadow-2xl w-[300px] max-w-[300px] max-h-[420px] flex flex-col animate-in fade-in-50 zoom-in-95 overflow-hidden box-border">
+                      <div className="flex justify-between items-start gap-2 shrink-0 pb-2 border-b border-border/60">
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <div className="flex gap-1.5 items-center flex-wrap min-w-0">
+                            <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 uppercase font-semibold text-[10px] tracking-wider flex items-center shrink-0">
                               <span className="relative flex h-2 w-2 mr-1.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
@@ -2413,58 +2485,60 @@ export function MapContainer({
                               {activeVessel.shipCategory}
                             </Badge>
 
-                            <span className="font-mono text-xs font-semibold text-muted-foreground">
+                            <span className="font-mono text-[11px] font-semibold text-muted-foreground shrink-0">
                               MMSI: {activeVessel.mmsi}
                             </span>
                           </div>
 
-                          <h4 className="font-bold text-sm text-foreground leading-tight pt-1">
+                          <h4 className="font-bold text-xs text-foreground leading-snug pt-0.5 break-words">
                             {activeVessel.name}
                           </h4>
                         </div>
 
                         <button
                           onClick={() => setSelectedVessel(null)}
-                          className="h-11 w-11 p-3 -mr-2 -mt-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
+                          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors shrink-0 -mr-1 -mt-1"
                           aria-label="Close popup"
                         >
-                          <X className="w-5 h-5" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
 
-                      <div className="mt-2 text-xs font-mono text-cyan-300 bg-cyan-950/40 p-2 rounded border border-cyan-800/40 space-y-1">
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-muted-foreground">Live Coords:</span>
-                          <span className="text-foreground font-semibold">
-                            {activeVessel.lat.toFixed(5)}, {activeVessel.lng.toFixed(5)}
-                          </span>
+                      <div className="overflow-y-auto pr-1 flex-1 space-y-2 mt-2 font-mono text-xs">
+                        <div className="text-xs font-mono text-cyan-300 bg-cyan-950/40 p-2 rounded border border-cyan-800/40 space-y-1">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-muted-foreground">Live Coords:</span>
+                            <span className="text-foreground font-semibold">
+                              {activeVessel.lat.toFixed(5)}, {activeVessel.lng.toFixed(5)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-muted-foreground">Speed & Heading:</span>
+                            <span className="text-foreground font-semibold">
+                              {activeVessel.sog} kts ({Math.round(activeVessel.sog * 1.852)} km/h) · {activeVessel.heading}°
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-muted-foreground">Destination:</span>
+                            <span className="text-cyan-200 font-semibold truncate max-w-[130px]">
+                              {activeVessel.destination}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-muted-foreground">Speed & Heading:</span>
-                          <span className="text-foreground font-semibold">
-                            {activeVessel.sog} kts ({Math.round(activeVessel.sog * 1.852)} km/h) · {activeVessel.heading}°
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-muted-foreground">Destination:</span>
-                          <span className="text-cyan-200 font-semibold truncate max-w-[140px]">
-                            {activeVessel.destination}
-                          </span>
-                        </div>
-                      </div>
 
-                      <div className="mt-3 pt-2 border-t border-border/80 font-mono text-[11px] font-semibold text-muted-foreground flex justify-between items-center">
-                        <span>
-                          CALLSIGN:{" "}
-                          <strong className="text-foreground font-bold uppercase">
-                            {activeVessel.callSign || "N/A"}
-                          </strong>
-                        </span>
+                        <div className="pt-2 border-t border-border/80 font-mono text-[10px] font-semibold text-muted-foreground flex justify-between items-center">
+                          <span>
+                            CALLSIGN:{" "}
+                            <strong className="text-foreground font-bold uppercase">
+                              {activeVessel.callSign || "N/A"}
+                            </strong>
+                          </span>
 
-                        <span className="flex items-center text-[10px] text-cyan-400">
-                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mr-1 animate-pulse"></span>
-                          AIS REAL-TIME
-                        </span>
+                          <span className="flex items-center text-[9px] text-cyan-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mr-1 animate-pulse"></span>
+                            AIS REAL-TIME
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </Popup>
@@ -2486,16 +2560,17 @@ export function MapContainer({
                     latitude={activeFlight.lat}
                     longitude={activeFlight.lng}
                     anchor="left"
-                    offset={36}
+                    offset={24}
+                    maxWidth="300px"
                     closeButton={false}
                     closeOnClick={false}
                     onClose={() => setSelectedFlight(null)}
                   >
-                    <div className="bg-popover text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[270px] animate-in fade-in-50 zoom-in-95">
-                      <div className="flex justify-between items-start gap-3">
-                        <div className="space-y-1">
-                          <div className="flex gap-2 items-center">
-                            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/50 uppercase font-semibold text-[10px] tracking-wider flex items-center">
+                    <div className="bg-popover text-popover-foreground p-3.5 rounded-xl border border-border shadow-2xl w-[300px] max-w-[300px] max-h-[420px] flex flex-col animate-in fade-in-50 zoom-in-95 overflow-hidden box-border">
+                      <div className="flex justify-between items-start gap-2 shrink-0 pb-2 border-b border-border/60">
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <div className="flex gap-1.5 items-center flex-wrap min-w-0">
+                            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/50 uppercase font-semibold text-[10px] tracking-wider flex items-center shrink-0">
                               <span className="relative flex h-2 w-2 mr-1.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
@@ -2508,80 +2583,82 @@ export function MapContainer({
                                 : "Commercial"}
                             </Badge>
 
-                            <span className="font-mono text-xs font-semibold text-muted-foreground">
+                            <span className="font-mono text-[11px] font-semibold text-muted-foreground shrink-0">
                               {activeFlight.country}
                             </span>
                           </div>
 
-                          <h4 className="font-bold text-sm text-foreground leading-tight pt-1 font-mono">
+                          <h4 className="font-bold text-xs text-foreground leading-snug pt-0.5 font-mono break-words">
                             {activeFlight.callsign || activeFlight.id}
                           </h4>
                         </div>
 
                         <button
                           onClick={() => setSelectedFlight(null)}
-                          className="h-11 w-11 p-3 -mr-2 -mt-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
+                          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors shrink-0 -mr-1 -mt-1"
                           aria-label="Close popup"
                         >
-                          <X className="w-5 h-5" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
 
-                      <div className="mt-2 text-xs font-mono text-amber-300 bg-amber-950/40 p-2.5 rounded-lg border border-amber-800/40 space-y-1.5">
-                        {activeFlight.originAirport && (
-                          <div className="flex justify-between items-center text-[11px] pb-1 border-b border-amber-800/30">
-                            <span className="text-muted-foreground">Origin Airport:</span>
-                            <span className="text-amber-300 font-bold">
-                              🛫 {activeFlight.originAirport}
+                      <div className="overflow-y-auto pr-1 flex-1 space-y-2 mt-2 text-xs font-mono">
+                        <div className="text-xs font-mono text-amber-300 bg-amber-950/40 p-2 rounded-lg border border-amber-800/40 space-y-1">
+                          {activeFlight.originAirport && (
+                            <div className="flex justify-between items-center text-[10px] pb-1 border-b border-amber-800/30">
+                              <span className="text-muted-foreground">Origin Airport:</span>
+                              <span className="text-amber-300 font-bold">
+                                🛫 {activeFlight.originAirport}
+                              </span>
+                            </div>
+                          )}
+                          {activeFlight.destinationAirport && (
+                            <div className="flex justify-between items-center text-[10px] pb-1 border-b border-amber-800/30">
+                              <span className="text-muted-foreground">Destination:</span>
+                              <span className="text-cyan-300 font-bold">
+                                🛬 {activeFlight.destinationAirport}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-muted-foreground">Aircraft Model:</span>
+                            <span className="text-foreground font-semibold truncate max-w-[130px]">
+                              {activeFlight.aircraftType || "Aircraft"}{activeFlight.squawk ? ` (${activeFlight.squawk})` : ""}
                             </span>
                           </div>
-                        )}
-                        {activeFlight.destinationAirport && (
-                          <div className="flex justify-between items-center text-[11px] pb-1 border-b border-amber-800/30">
-                            <span className="text-muted-foreground">Destination:</span>
-                            <span className="text-cyan-300 font-bold">
-                              🛬 {activeFlight.destinationAirport}
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-muted-foreground">Live Altitude:</span>
+                            <span className="text-foreground font-semibold">
+                              {Math.round(activeFlight.altitude)} m ({Math.round(activeFlight.altitude * 3.28084)} ft)
                             </span>
                           </div>
-                        )}
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-muted-foreground">Aircraft Model:</span>
-                          <span className="text-foreground font-semibold">
-                            {activeFlight.aircraftType || "Aircraft"}{activeFlight.squawk ? ` (Squawk: ${activeFlight.squawk})` : ""}
-                          </span>
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-muted-foreground">Speed & Bearing:</span>
+                            <span className="text-foreground font-semibold">
+                              {Math.round(activeFlight.velocity * 3.6)} km/h · {activeFlight.heading}°
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-muted-foreground">Vertical Speed:</span>
+                            <span className="text-amber-200 font-semibold">
+                              {activeFlight.verticalRate > 0 ? `+${activeFlight.verticalRate} m/s ↗` : activeFlight.verticalRate < 0 ? `${activeFlight.verticalRate} m/s ↘` : "0 m/s →"}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-muted-foreground">Live Altitude:</span>
-                          <span className="text-foreground font-semibold">
-                            {Math.round(activeFlight.altitude)} m ({Math.round(activeFlight.altitude * 3.28084)} ft)
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-muted-foreground">Speed & Bearing:</span>
-                          <span className="text-foreground font-semibold">
-                            {Math.round(activeFlight.velocity * 3.6)} km/h ({Math.round(activeFlight.velocity * 1.94384)} kts) · {activeFlight.heading}°
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-muted-foreground">Vertical Speed:</span>
-                          <span className="text-amber-200 font-semibold">
-                            {activeFlight.verticalRate > 0 ? `+${activeFlight.verticalRate} m/s ↗` : activeFlight.verticalRate < 0 ? `${activeFlight.verticalRate} m/s ↘` : "0 m/s →"}
-                          </span>
-                        </div>
-                      </div>
 
-                      <div className="mt-3 pt-2 border-t border-border/80 font-mono text-[11px] font-semibold text-muted-foreground flex justify-between items-center">
-                        <span>
-                          ICAO24:{" "}
-                          <strong className="text-foreground font-bold uppercase">
-                            {activeFlight.id}
-                          </strong>
-                        </span>
+                        <div className="pt-2 border-t border-border/80 font-mono text-[10px] font-semibold text-muted-foreground flex justify-between items-center">
+                          <span>
+                            ICAO24:{" "}
+                            <strong className="text-foreground font-bold uppercase">
+                              {activeFlight.id}
+                            </strong>
+                          </span>
 
-                        <span className="flex items-center text-[10px] text-amber-400">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1 animate-pulse"></span>
-                          ADS-B REAL-TIME
-                        </span>
+                          <span className="flex items-center text-[9px] text-amber-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1 animate-pulse"></span>
+                            ADS-B REAL-TIME
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </Popup>
@@ -2594,30 +2671,23 @@ export function MapContainer({
 
               {selectedVehicle && (
                 <Popup
-                  latitude={
-                    selectedVehicle.lat
-                  }
-                  longitude={
-                    selectedVehicle.lng
-                  }
+                  latitude={selectedVehicle.lat}
+                  longitude={selectedVehicle.lng}
                   anchor="left"
-                  offset={36}
+                  offset={24}
+                  maxWidth="300px"
                   closeButton={false}
                   closeOnClick={false}
-                  onClose={() =>
-                    setSelectedVehicle(
-                      null,
-                    )
-                  }
+                  onClose={() => setSelectedVehicle(null)}
                 >
-                  <div className="bg-popover text-popover-foreground p-4 rounded-xl border border-border shadow-2xl max-w-xs min-w-[260px] animate-in fade-in-50 zoom-in-95">
-                    <div className="flex justify-between items-start gap-3">
-                      <div className="space-y-1">
-                        <div className="flex gap-2 items-center">
+                  <div className="bg-popover text-popover-foreground p-3.5 rounded-xl border border-border shadow-2xl w-[300px] max-w-[300px] max-h-[420px] flex flex-col animate-in fade-in-50 zoom-in-95 overflow-hidden box-border">
+                    <div className="flex justify-between items-start gap-2 shrink-0 pb-2 border-b border-border/60">
+                      <div className="space-y-0.5 min-w-0 flex-1">
+                        <div className="flex gap-1.5 items-center flex-wrap min-w-0">
                           <Badge
-                            className={`uppercase font-semibold text-[10px] tracking-wider ${selectedVehicle.type ===
+                            className={`uppercase font-semibold text-[10px] tracking-wider shrink-0 ${selectedVehicle.type ===
                                 "ambulance"
-                                ? "bg-red-500/20 text-red-400 border-red-500/50"
+                                ? "bg-sky-500/20 text-sky-400 border-sky-500/50"
                                 : selectedVehicle.type ===
                                   "police"
                                   ? "bg-blue-500/20 text-blue-400 border-blue-500/50"
@@ -2658,69 +2728,39 @@ export function MapContainer({
                             )}
                           </Badge>
 
-                          <span className="font-mono text-xs font-semibold text-muted-foreground">
-                            {
-                              selectedVehicle.speed
-                            }{" "}
-                            km/h
+                          <span className="font-mono text-[11px] font-semibold text-muted-foreground shrink-0">
+                            {selectedVehicle.speed} km/h
                           </span>
                         </div>
 
-                        <h4 className="font-bold text-sm text-foreground leading-tight pt-1">
-                          {
-                            selectedVehicle.name
-                          }
+                        <h4 className="font-bold text-xs text-foreground leading-snug pt-0.5 break-words">
+                          {selectedVehicle.name}
                         </h4>
                       </div>
 
                       <button
-                        onClick={() =>
-                          setSelectedVehicle(
-                            null,
-                          )
-                        }
-                        className="h-11 w-11 p-3 -mr-2 -mt-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
+                        onClick={() => setSelectedVehicle(null)}
+                        className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors shrink-0 -mr-1 -mt-1"
                         aria-label="Close popup"
                       >
-                        <X className="w-5 h-5" />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <p className="text-xs font-medium mt-2 leading-relaxed text-foreground/90">
-                      Heading{" "}
-                      {
-                        selectedVehicle.heading
-                      }
-                      ° toward{" "}
-                      {
-                        selectedVehicle.destination
-                      }
-                      . Currently{" "}
-                      {selectedVehicle.status.replace(
-                        "_",
-                        " ",
-                      )}
-                      .
-                    </p>
+                    <div className="overflow-y-auto pr-1 flex-1 space-y-2 mt-2 text-xs">
+                      <p className="text-xs font-medium leading-relaxed text-foreground/90 break-words">
+                        Heading {selectedVehicle.heading}° toward {selectedVehicle.destination}. Currently {selectedVehicle.status.replace("_", " ")}.
+                      </p>
 
-                    <div className="mt-3 pt-2 border-t border-border/80 font-mono text-[11px] font-semibold text-muted-foreground flex justify-between items-center">
-                      <span>
-                        UNIT:{" "}
-                        <strong className="text-foreground font-bold">
-                          {
-                            selectedVehicle.id
-                          }
-                        </strong>
-                      </span>
+                      <div className="pt-2 border-t border-border/80 font-mono text-[10px] font-semibold text-muted-foreground flex justify-between items-center">
+                        <span>
+                          UNIT: <strong className="text-foreground font-bold">{selectedVehicle.id}</strong>
+                        </span>
 
-                      <span>
-                        STATUS:{" "}
-                        <strong className="text-foreground font-bold uppercase">
-                          {
-                            selectedVehicle.status
-                          }
-                        </strong>
-                      </span>
+                        <span>
+                          STATUS: <strong className="text-foreground font-bold uppercase">{selectedVehicle.status}</strong>
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </Popup>
@@ -2732,42 +2772,28 @@ export function MapContainer({
 
               {selectedEmergencyService && (
                 <Popup
-                  latitude={
-                    selectedEmergencyService.lat
-                  }
-                  longitude={
-                    selectedEmergencyService.lng
-                  }
+                  latitude={selectedEmergencyService.lat}
+                  longitude={selectedEmergencyService.lng}
                   anchor="left"
-                  offset={36}
+                  offset={24}
+                  maxWidth="300px"
                   closeButton={false}
                   closeOnClick={false}
-                  onClose={() =>
-                    setSelectedEmergencyService(
-                      null,
-                    )
-                  }
+                  onClose={() => setSelectedEmergencyService(null)}
+                  style={{ zIndex: 9999999 }}
                 >
                   <EmergencyServicePopup
-                    service={
-                      selectedEmergencyService
-                    }
-                    onClose={() =>
-                      setSelectedEmergencyService(
-                        null,
-                      )
-                    }
+                    service={selectedEmergencyService}
+                    onClose={() => setSelectedEmergencyService(null)}
                     onCenter={() => {
-                      mapRef.current?.flyTo(
-                        {
-                          center: [
-                            selectedEmergencyService.lng,
-                            selectedEmergencyService.lat,
-                          ],
-                          zoom: 15.5,
-                          duration: 1000,
-                        },
-                      );
+                      mapRef.current?.flyTo({
+                        center: [
+                          selectedEmergencyService.lng,
+                          selectedEmergencyService.lat,
+                        ],
+                        zoom: 15.5,
+                        duration: 1000,
+                      });
                     }}
                   />
                 </Popup>
@@ -2778,10 +2804,12 @@ export function MapContainer({
                   latitude={selectedTransportHub.lat}
                   longitude={selectedTransportHub.lng}
                   anchor="left"
-                  offset={36}
+                  offset={24}
+                  maxWidth="300px"
                   closeButton={false}
                   closeOnClick={false}
                   onClose={() => setSelectedTransportHub(null)}
+                  style={{ zIndex: 9999999 }}
                 >
                   <TransportHubPopup
                     hub={selectedTransportHub}

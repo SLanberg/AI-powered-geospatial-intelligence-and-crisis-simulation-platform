@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { vesselsService } from "../services/vessels.service";
 import { flightsService } from "../services/flights.service";
 import { infrastructureService } from "../services/infrastructure.service";
+import { startTelemetryWsServer } from "../ws/telemetryWsServer";
 import { VesselResponseSchema, FlightResponseSchema } from "@/shared";
 
 export class TelemetryController {
@@ -10,6 +11,7 @@ export class TelemetryController {
    */
   async getVessels(): Promise<NextResponse> {
     try {
+      startTelemetryWsServer();
       const result = await vesselsService.fetchLiveVessels();
       const validated = VesselResponseSchema.parse(result);
       return NextResponse.json(validated);
@@ -24,6 +26,7 @@ export class TelemetryController {
    */
   async getFlights(): Promise<NextResponse> {
     try {
+      startTelemetryWsServer();
       const result = await flightsService.fetchLiveFlights();
       const validated = FlightResponseSchema.parse(result);
       return NextResponse.json(validated);

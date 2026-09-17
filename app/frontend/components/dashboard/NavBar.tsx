@@ -16,6 +16,8 @@ interface NavBarProps {
   setFeedOpen: React.Dispatch<React.SetStateAction<boolean>>;
   aiOpen: boolean;
   setAiOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  activeTab?: string;
+  setActiveTab?: (tab: string) => void;
 }
 
 export function NavBar({
@@ -25,6 +27,8 @@ export function NavBar({
   setFeedOpen,
   aiOpen,
   setAiOpen,
+  activeTab,
+  setActiveTab,
 }: NavBarProps) {
   return (
     <header className="sticky top-0 z-40 w-full bg-card border-b border-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-md">
@@ -45,6 +49,31 @@ export function NavBar({
             <PanelLeftOpen className="h-3.5 w-3.5 text-foreground" />
           )}
         </button>
+
+        {setActiveTab && (
+          <div className="flex items-center bg-muted/90 border border-border/80 rounded-lg p-1 font-mono text-xs shadow-inner">
+            <button
+              type="button"
+              onClick={() => setActiveTab("map")}
+              className={`px-3 py-1.5 rounded-md transition-all font-semibold ${activeTab === "map"
+                ? "bg-primary/25 text-primary font-bold shadow-sm ring-1 ring-primary/40"
+                : "text-zinc-200 hover:text-white hover:bg-white/10"
+                }`}
+            >
+              Tallinn Grid
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("nepal")}
+              className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 font-semibold ${activeTab === "nepal"
+                ? "bg-red-500/25 text-red-300 font-bold border border-red-500/50 shadow-sm ring-1 ring-red-500/40"
+                : "text-zinc-200 hover:text-white hover:bg-white/10"
+                }`}
+            >
+              Nepal Cascade Replay
+            </button>
+          </div>
+        )}
       </div>
       {/* Right Action Controls */}
       <div className="flex items-center gap-3 font-mono text-xs">
@@ -53,27 +82,27 @@ export function NavBar({
           onClick={() => setFeedOpen((open) => !open)}
           aria-label={feedOpen ? "Close telemetry feed" : "Open telemetry feed"}
           title={feedOpen ? "Close telemetry feed" : "Open telemetry feed"}
-          className="group relative flex items-center justify-center rounded-lg border border-border bg-muted/80 h-7 w-7 p-0 text-foreground transition-all hover:border-primary/60 hover:text-primary"
+          className="group relative flex items-center justify-center rounded-lg border border-border/80 bg-muted/90 h-8 w-8 p-0 text-zinc-100 transition-all hover:border-primary/60 hover:text-primary hover:bg-muted"
         >
-          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 font-semibold">
             {feedOpen ? "Close telemetry feed" : "Open telemetry feed"}
           </span>
-          <Radio className="w-3.5 h-3.5" />
+          <Radio className="w-4 h-4 text-zinc-100 group-hover:text-primary" />
         </button>
         <button
           type="button"
           onClick={() => setAiOpen((open) => !open)}
           aria-label={aiOpen ? "Close secondary sidebar" : "Open secondary sidebar"}
           title={aiOpen ? "Close secondary sidebar" : "Open secondary sidebar"}
-          className="group relative flex items-center justify-center rounded-lg border border-border bg-muted/80 h-7 w-7 p-0 text-foreground transition-all hover:border-primary/60 hover:text-primary"
+          className="group relative flex items-center justify-center rounded-lg border border-border/80 bg-muted/90 h-8 w-8 p-0 text-zinc-100 transition-all hover:border-primary/60 hover:text-primary hover:bg-muted"
         >
-          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 font-semibold">
             {aiOpen ? "Close secondary sidebar" : "Open secondary sidebar"}
           </span>
           {aiOpen ? (
-            <PanelRightClose className="h-3.5 w-3.5 text-foreground" />
+            <PanelRightClose className="h-4 w-4 text-zinc-100 group-hover:text-primary" />
           ) : (
-            <PanelRightOpen className="h-3.5 w-3.5 text-foreground" />
+            <PanelRightOpen className="h-4 w-4 text-zinc-100 group-hover:text-primary" />
           )}
         </button>
       </div>
