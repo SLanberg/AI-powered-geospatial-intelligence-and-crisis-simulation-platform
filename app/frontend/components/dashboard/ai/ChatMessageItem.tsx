@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Bot, Copy, Check, Target, MapPin } from "lucide-react";
+import { Bot, Copy, Check, Target, AlertCircle, RotateCcw, PlusCircle } from "lucide-react";
 import { DashboardChatMessage } from "./schemas";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import type { MapAction } from "@/components/dashboard/data";
@@ -10,9 +10,17 @@ export interface ChatMessageItemProps {
   message: DashboardChatMessage;
   onMapAction?: (action: MapAction) => void;
   isStreaming?: boolean;
+  onRetry?: (messageId: string) => void;
+  onNewChat?: () => void;
 }
 
-export function ChatMessageItem({ message, onMapAction, isStreaming }: ChatMessageItemProps) {
+export function ChatMessageItem({
+  message,
+  onMapAction,
+  isStreaming,
+  onRetry,
+  onNewChat,
+}: ChatMessageItemProps) {
   const [copied, setCopied] = useState(false);
   const isAssistant = message.role === "assistant";
 
@@ -58,6 +66,52 @@ export function ChatMessageItem({ message, onMapAction, isStreaming }: ChatMessa
 
   const isThinking = isAssistant && (!textToRender || textToRender.trim().length === 0) && !message.isError;
 
+  if (message.isError) {
+    return (
+      <div className="group flex gap-2.5 text-xs leading-relaxed items-start">
+        <div className="w-7 h-7 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive shrink-0 mt-0.5 shadow-sm">
+          <AlertCircle className="w-4 h-4" />
+        </div>
+
+        <div className="relative max-w-[90%] rounded-xl px-4 py-3.5 shadow-sm bg-destructive/10 border border-destructive/30 text-foreground flex flex-col gap-3">
+          <div className="flex items-start gap-2">
+            <span className="text-destructive font-medium text-xs">
+              {textToRender || "An error occurred while generating the response."}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1 border-t border-destructive/20">
+            {onRetry && (
+              <button
+                type="button"
+                onClick={() => onRetry(message.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary text-xs font-mono font-medium transition-all shadow-xs cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Retry</span>
+              </button>
+            )}
+
+            {onNewChat && (
+              <button
+                type="button"
+                onClick={onNewChat}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 border border-border/60 text-muted-foreground hover:text-foreground text-xs font-mono font-medium transition-all shadow-xs cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>New chat</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground/70">
+            <span>{message.ts || ""}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`group flex gap-2.5 text-xs leading-relaxed transition-opacity ${
@@ -75,7 +129,7 @@ export function ChatMessageItem({ message, onMapAction, isStreaming }: ChatMessa
           isAssistant
             ? "bg-card/90 border border-border/60 text-foreground"
             : "bg-primary text-primary-foreground font-normal"
-        } ${message.isError ? "border-destructive/50 bg-destructive/10 text-destructive" : ""}`}
+        }`}
       >
         {isThinking ? (
           <div className="flex items-center gap-1.5 py-1 px-1 h-4">
@@ -126,4 +180,5 @@ export function ChatMessageItem({ message, onMapAction, isStreaming }: ChatMessa
     </div>
   );
 }
+
 

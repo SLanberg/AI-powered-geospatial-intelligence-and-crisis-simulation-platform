@@ -257,13 +257,13 @@ function formatShortTimelineTime(totalSeconds: number): string {
 function severityClass(severity: TimelineEvent["severity"]) {
   switch (severity) {
     case "critical":
-      return "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]";
+      return "bg-red-500 shadow-sm";
 
     case "warning":
-      return "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.65)]";
+      return "bg-amber-400 shadow-sm";
 
     case "info":
-      return "bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.55)]";
+      return "bg-blue-400 shadow-sm";
 
     default:
       return "bg-zinc-500";
@@ -1014,17 +1014,14 @@ export function CrisisTimeline({
                   left: `${playheadPosition}%`,
                 }}
               >
-                {/* Glowing vertical aura column */}
-                <div className="absolute top-0 bottom-0 w-6 -translate-x-1/2 bg-gradient-to-r from-transparent via-red-500/20 to-transparent" />
-
-                {/* High-Contrast Red Needle Body Line */}
-                <div className="absolute top-0 bottom-0 w-[2.5px] -translate-x-1/2 bg-[#FF3B30] shadow-[0_0_10px_rgba(255,59,48,0.95)]" />
+                {/* Red Needle Body Line */}
+                <div className="absolute top-0 bottom-0 w-[2px] -translate-x-1/2 bg-[#FF3B30]" />
 
                 {/* Top Needle Diamond Pin Head Handle */}
-                <div className="absolute -top-2.5 -left-[7px] h-3.5 w-3.5 rotate-45 bg-[#FF3B30] border-2 border-white shadow-lg shadow-red-500/60" />
+                <div className="absolute -top-2.5 -left-[7px] h-3.5 w-3.5 rotate-45 bg-[#FF3B30] border-2 border-white shadow-md" />
 
                 {/* Bottom Needle Pin Base Dot */}
-                <div className="absolute -bottom-1 -left-[5px] h-3 w-3 rounded-full bg-[#FF3B30] border-2 border-white shadow-md" />
+                <div className="absolute -bottom-1 -left-[5px] h-3 w-3 rounded-full bg-[#FF3B30] border-2 border-white shadow-sm" />
               </div>
 
               {/* Hover position indicator */}
@@ -1071,10 +1068,10 @@ export function CrisisTimeline({
                 return (
                   <div className={`p-1.5 rounded-lg bg-black/40 border flex items-center justify-center shrink-0 ${
                     activeEvent.severity === "critical"
-                      ? "text-red-400 border-red-500/50 shadow-sm shadow-red-500/30"
+                      ? "text-red-400 border-red-500/50 shadow-sm"
                       : activeEvent.severity === "warning"
-                        ? "text-amber-400 border-amber-500/50 shadow-sm shadow-amber-500/30"
-                        : "text-sky-400 border-sky-500/50 shadow-sm shadow-sky-500/30"
+                        ? "text-amber-400 border-amber-500/50 shadow-sm"
+                        : "text-sky-400 border-sky-500/50 shadow-sm"
                   }`}>
                     <MakiIcon name={makiName} size={16} />
                   </div>

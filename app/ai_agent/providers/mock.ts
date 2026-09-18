@@ -31,30 +31,20 @@ export class MockLLMProvider implements ILLMProvider {
       };
     }
 
-    if (
-      text.includes("fly") ||
-      text.includes("navigate") ||
-      text.includes("move") ||
-      text.includes("show me") ||
-      text.includes("show") ||
-      text.includes("go to") ||
-      text.includes("locate") ||
-      text.includes("where is") ||
-      text.includes("airport") ||
-      text.includes("tll") ||
-      text.includes("lennart") ||
-      text.includes("lennujaam") ||
-      text.includes("olerex") ||
-      text.includes("linnu tee") ||
-      text.includes("balti jaam") ||
-      text.includes("heliport") ||
-      text.includes("vanasadam") ||
-      text.includes("kristiine")
-    ) {
+    const hasNavIntent =
+      /^(fly(\s+me)?\s+to|navigate(\s+to|\s+the\s+map\s+to)?|move(\s+the)?\s+map\s+to|take\s+me\s+to|go\s+to|center\s+on|zoom\s+(in\s+on|to)|focus(\s+on|\s+map\s+on)?|where\s+is\s+the|where\s+is)\b/i.test(
+        text
+      ) || /\b(show|locate|pinpoint|find)\b.*\b(on\s+(the\s+)?map|on\s+gis|where\s+(it|this)\s+is)\b/i.test(text);
+
+    if (hasNavIntent) {
       let query =
         lastMessage?.content
-          ?.replace(/^(fly to|navigate to|show me where this is move the map|show me where this is|show me where|show me|move the map to|move map to|move me to|go to|locate|where is)\s+/i, "")
-          .trim() || lastMessage?.content || "Tallinn Airport";
+          ?.replace(
+            /^(fly(\s+me)?\s+to|navigate(\s+to|\s+the\s+map\s+to)?|move(\s+the)?\s+map\s+to|take\s+me\s+to|go\s+to|center\s+on|zoom\s+(in\s+on|to)|focus(\s+on|\s+map\s+on)?|where\s+is\s+the|where\s+is)\s+/i,
+            ""
+          )
+          .replace(/\s+(on\s+(the\s+)?map|on\s+gis|where\s+(it|this)\s+is)$/i, "")
+          .trim() || lastMessage?.content || "Tallinn Central";
 
       if (text.includes("airport") || text.includes("tll") || text.includes("lennujaam")) {
         query = "Tallinn Lennart Meri Airport (TLL)";

@@ -14,7 +14,7 @@ export class ChatController {
 
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3500);
+      const timeout = setTimeout(() => controller.abort(), 10000);
       const res = await fetch(`${ollamaUrl.replace(/\/$/, "")}/api/tags`, {
         signal: controller.signal,
       }).finally(() => clearTimeout(timeout));

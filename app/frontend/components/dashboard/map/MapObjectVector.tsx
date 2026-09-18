@@ -149,7 +149,7 @@ export const MapObjectVector = React.memo(function MapObjectVector({
             /* High-Precision Maki Heliport / Helicopter Silhouette */
             <svg
               viewBox="0 0 24 24"
-              className="w-5.5 h-5.5 drop-shadow-md"
+              className="w-5.5 h-5.5"
               fill={domainFill}
             >
               {/* Rotor disc hub */}
@@ -166,7 +166,7 @@ export const MapObjectVector = React.memo(function MapObjectVector({
             /* High-Precision Maki Airport / Airliner Airplane Silhouette */
             <svg
               viewBox="0 0 24 24"
-              className="w-5.5 h-5.5 drop-shadow-md"
+              className="w-5.5 h-5.5"
               fill={domainFill}
             >
               <path d="M12 2C11.45 2 11 2.45 11 3V8.5L3 13V15L11 12.5V18.5L8.5 20.5V22L12 21L15.5 22V20.5L13 18.5V12.5L21 15V13L13 8.5V3C13 2.45 12.55 2 12 2Z" />
@@ -177,7 +177,7 @@ export const MapObjectVector = React.memo(function MapObjectVector({
             /* Yacht / Speedboat Hull Silhouette SVG */
             <svg
               viewBox="0 0 24 24"
-              className="w-5.5 h-5.5 drop-shadow-xs"
+              className="w-5.5 h-5.5"
               fill={domainFill}
             >
               <path d="M12 1.5C10.5 4 9 7.5 8.2 12C7.5 15.5 8 19 9 22.5H15C16 19 16.5 15.5 15.8 12C15 7.5 13.5 4 12 1.5ZM12 5.5L13.8 10.5H10.2L12 5.5Z" />
@@ -186,7 +186,7 @@ export const MapObjectVector = React.memo(function MapObjectVector({
             /* Passenger Ship / Ferry Hull Silhouette SVG */
             <svg
               viewBox="0 0 24 24"
-              className="w-5.5 h-5.5 drop-shadow-xs"
+              className="w-5.5 h-5.5"
               fill={domainFill}
             >
               <path d="M12 1C10 4 8.5 7.5 8.5 12.5C8.5 17 9 20 9.5 23H14.5C15 20 15.5 17 15.5 12.5C15.5 7.5 14 4 12 1ZM9.5 7.5H14.5V9.5H9.5V7.5ZM9.5 11.5H14.5V13.5H9.5V11.5ZM9.5 15.5H14.5V17.5H9.5V15.5Z" />
@@ -195,7 +195,7 @@ export const MapObjectVector = React.memo(function MapObjectVector({
             /* Vessel Hull Silhouette SVG (Cargo/Ship/Tanker) */
             <svg
               viewBox="0 0 24 24"
-              className="w-5.5 h-5.5 drop-shadow-xs"
+              className="w-5.5 h-5.5"
               fill={domainFill}
             >
               <path d="M12 1C10 4 8.5 7.5 8.5 12.5C8.5 17 9 20 9.5 23H14.5C15 20 15.5 17 15.5 12.5C15.5 7.5 14 4 12 1ZM10 10H14V14H10V10Z" />
@@ -205,7 +205,7 @@ export const MapObjectVector = React.memo(function MapObjectVector({
           /* Ground Transport Vehicle Silhouette SVG */
           <svg
             viewBox="0 0 24 24"
-            className="w-5 h-5 drop-shadow-xs"
+            className="w-5 h-5"
             fill={domainFill}
           >
             <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />

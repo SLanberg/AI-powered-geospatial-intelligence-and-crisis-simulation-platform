@@ -688,9 +688,6 @@ const FlightMarkerItem = React.memo(function FlightMarkerItem({
         className="relative group cursor-pointer transition-transform hover:scale-110 hover:z-40 will-change-transform"
         onClick={handleClick}
       >
-        {isSelected && (
-          <span className="absolute -inset-1.5 rounded-full bg-amber-400/40 animate-ping pointer-events-none" />
-        )}
         <MapObjectVector
           domain="air"
           type={airType}
@@ -699,9 +696,11 @@ const FlightMarkerItem = React.memo(function FlightMarkerItem({
           size={30}
           isSelected={isSelected}
         />
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap bg-slate-900 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg">
-          {flight.callsign || flight.id} ({Math.round(flight.altitude)}m)
-        </div>
+        {!isSelected && (
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap bg-slate-900 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg">
+            {flight.callsign || flight.id} ({Math.round(flight.altitude)}m)
+          </div>
+        )}
       </div>
     </Marker>
   );
@@ -734,9 +733,6 @@ const VesselMarkerItem = React.memo(function VesselMarkerItem({
         className="relative group cursor-pointer transition-transform hover:scale-110 hover:z-40 will-change-transform"
         onClick={handleClick}
       >
-        {isSelected && (
-          <span className="absolute -inset-1.5 rounded-full bg-cyan-400/40 animate-ping pointer-events-none" />
-        )}
         <MapObjectVector
           domain="maritime"
           type={vessel.shipCategory}
@@ -745,9 +741,11 @@ const VesselMarkerItem = React.memo(function VesselMarkerItem({
           size={30}
           isSelected={isSelected}
         />
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap bg-slate-900 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg">
-          {vessel.name || `MMSI ${vessel.mmsi}`} ({vessel.sog} kts)
-        </div>
+        {!isSelected && (
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap bg-slate-900 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg">
+            {vessel.name || `MMSI ${vessel.mmsi}`} ({vessel.sog} kts)
+          </div>
+        )}
       </div>
     </Marker>
   );
@@ -794,9 +792,13 @@ const IncidentMarkerItem = React.memo(function IncidentMarkerItem({
       >
         <div
           className={`
-            flex items-center justify-center h-6 w-6 rounded-full border shadow-sm transition-transform group-hover:scale-110
+            flex items-center justify-center h-6 w-6 rounded-full border shadow-sm transition-all group-hover:scale-110
             ${dotBg}
-            ${isSelected ? "ring-2 ring-white ring-offset-1 ring-offset-slate-950 scale-110" : ""}
+            ${
+              isSelected
+                ? "ring-2 ring-white ring-offset-2 ring-offset-slate-950 scale-125 shadow-lg"
+                : ""
+            }
           `}
         >
           <MakiIcon name={makiIconName} size={13} />
@@ -804,7 +806,7 @@ const IncidentMarkerItem = React.memo(function IncidentMarkerItem({
         <div
           className={`
             mt-0.5 whitespace-nowrap rounded bg-slate-900/90 border border-slate-700/60 px-1 py-0.2 font-mono text-[9px] font-medium text-slate-200 shadow-sm
-            ${isSelected ? "border-white/60 text-white font-bold" : ""}
+            ${isSelected ? "border-white text-white font-bold" : ""}
           `}
         >
           {inc.nodeId}
@@ -891,15 +893,15 @@ const SelectedVehicleMarkerItem = React.memo(function SelectedVehicleMarkerItem(
         title={`${vehicle.name} (${vehicle.speed} km/h) - ${vehicle.destination}`}
       >
         {vehicle.type === "ambulance" ? (
-          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-rose-600 border-2 border-white shadow-md shadow-rose-500/50">
+          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-rose-600 border-2 border-white shadow-md">
             <Siren className="w-4 h-4 text-white animate-pulse" />
           </div>
         ) : vehicle.type === "police" ? (
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 border-2 border-white shadow-md shadow-blue-500/50">
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 border-2 border-white shadow-md">
             <Siren className="w-3.5 h-3.5 text-white" />
           </div>
         ) : vehicle.type === "fire_engine" ? (
-          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-orange-600 border-2 border-white shadow-md shadow-orange-500/50">
+          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-orange-600 border-2 border-white shadow-md">
             <Siren className="w-4 h-4 text-white animate-bounce" />
           </div>
         ) : vehicle.type === "bus" ? (
@@ -908,7 +910,7 @@ const SelectedVehicleMarkerItem = React.memo(function SelectedVehicleMarkerItem(
           </div>
         ) : vehicle.type === "yacht" ? (
           <div
-            className="flex items-center justify-center w-7 h-7 rounded-full bg-cyan-600 border-2 border-white shadow-md shadow-cyan-500/60 ring-2 ring-cyan-400/40"
+            className="flex items-center justify-center w-7 h-7 rounded-full bg-cyan-600 border-2 border-white shadow-md"
             style={{ transform: `rotate(${vehicle.heading}deg)` }}
           >
             <Anchor className="w-4 h-4 text-white" />
@@ -1746,8 +1748,58 @@ export function MapContainer({
         mapAction.center.lng,
         mapAction.center.zoom,
       );
+
+      const targetLat = mapAction.center.lat;
+      const targetLng = mapAction.center.lng;
+
+      // 1. Match nearest emergency service
+      let matchedService: EmergencyService | null = null;
+      let minServiceDist = Infinity;
+      for (const s of TALLINN_EMERGENCY_SERVICES) {
+        const d = Math.hypot(s.lat - targetLat, s.lng - targetLng);
+        if (d < 0.004 && d < minServiceDist) {
+          minServiceDist = d;
+          matchedService = s;
+        }
+      }
+
+      // 2. Match nearest transport hub
+      let matchedHub: TransportHub | null = null;
+      let minHubDist = Infinity;
+      for (const h of TALLINN_TRANSPORT_HUBS) {
+        const d = Math.hypot(h.lat - targetLat, h.lng - targetLng);
+        if (d < 0.007 && d < minHubDist) {
+          minHubDist = d;
+          matchedHub = h;
+        }
+      }
+
+      // 3. Match nearest incident
+      let matchedIncident: Incident | null = null;
+      let minIncDist = Infinity;
+      for (const inc of incidentList) {
+        const d = Math.hypot(inc.lat - targetLat, inc.lng - targetLng);
+        if (d < 0.004 && d < minIncDist) {
+          minIncDist = d;
+          matchedIncident = inc;
+        }
+      }
+
+      if (matchedService && minServiceDist <= minHubDist && minServiceDist <= minIncDist) {
+        setSelectedEmergencyService(matchedService);
+        setSelectedTransportHub(null);
+        setSelectedIncident(null);
+      } else if (matchedHub && minHubDist <= minIncDist) {
+        setSelectedTransportHub(matchedHub);
+        setSelectedEmergencyService(null);
+        setSelectedIncident(null);
+      } else if (matchedIncident) {
+        setSelectedIncident(matchedIncident);
+        setSelectedEmergencyService(null);
+        setSelectedTransportHub(null);
+      }
     }
-  }, [mapAction, flyTo]);
+  }, [mapAction, flyTo, incidentList]);
 
   const resetView = useCallback(() => {
     setIs3D(false);
@@ -2087,27 +2139,7 @@ export function MapContainer({
                 </>
               )}
 
-              {/* Tactical AI Target Beacon Pinpoint */}
-              {mapAction?.center && (
-                <Marker
-                  latitude={mapAction.center.lat}
-                  longitude={mapAction.center.lng}
-                  anchor="center"
-                >
-                  <div className="relative flex flex-col items-center justify-center pointer-events-none group z-50">
-                    <div className="absolute w-14 h-14 rounded-full bg-sky-500/25 border-2 border-sky-400 animate-ping opacity-75" />
-                    <div className="relative w-9 h-9 rounded-full bg-[#081018]/95 border-2 border-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.7)] flex items-center justify-center text-sky-400 backdrop-blur">
-                      <Target className="w-5 h-5 animate-pulse text-sky-400" />
-                    </div>
-                    {mapAction.title && (
-                      <div className="absolute top-11 whitespace-nowrap bg-card/95 border border-sky-500/60 text-sky-300 font-mono text-[10px] font-bold px-2.5 py-1 rounded-md shadow-2xl backdrop-blur flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
-                        {mapAction.title}
-                      </div>
-                    )}
-                  </div>
-                </Marker>
-              )}
+
 
               {/* ------------------------------------------------------ */}
               {/* Incident popup                                          */}
@@ -2223,7 +2255,7 @@ export function MapContainer({
                     anchor="bottom"
                   >
                     <div className="relative flex flex-col items-center cursor-pointer group">
-                      <div className="flex items-center gap-1.5 bg-slate-950/90 text-sky-300 border border-sky-400/80 px-2.5 py-1 rounded-md text-[10px] font-mono font-semibold shadow-lg shadow-sky-500/30 whitespace-nowrap animate-bounce">
+                      <div className="flex items-center gap-1.5 bg-slate-950/90 text-sky-300 border border-sky-400/80 px-2.5 py-1 rounded-md text-[10px] font-mono font-semibold shadow-md whitespace-nowrap animate-bounce">
                         <Target className="w-3.5 h-3.5 text-sky-400 animate-spin" />
 
                         <span>
@@ -2304,10 +2336,6 @@ export function MapContainer({
                           service={service}
                           isSelected={selectedEmergencyService?.id === service.id}
                           onClick={handleEmergencyServiceClick}
-                          showLabel={
-                            selectedEmergencyService?.id === service.id ||
-                            viewState.zoom >= 16.5
-                          }
                         />
                       </Marker>
                     );

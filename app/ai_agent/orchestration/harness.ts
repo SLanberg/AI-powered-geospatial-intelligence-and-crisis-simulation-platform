@@ -149,25 +149,7 @@ export class AgentHarness {
         break;
       } catch (err) {
         agentLogger.error("Harness", "Completion error in harness loop", { error: String(err) });
-        // Fallback to mock response if provider is completely offline
-        if (!(this.defaultProvider instanceof MockLLMProvider)) {
-          warnings.push("Primary provider unreachable, fallback provider engaged");
-          const fallback = new MockLLMProvider();
-          const fallbackResult = await fallback.complete({ messages: pruned });
-          if (fallbackResult.toolCalls && fallbackResult.toolCalls.length > 0) {
-            for (const tc of fallbackResult.toolCalls) {
-              const res = await globalToolRegistry.execute(tc.name, tc.arguments);
-              if (res.success && res.data && typeof res.data === "object") {
-                const d = res.data as Record<string, unknown>;
-                if (d.mapAction) capturedMapAction = d.mapAction as Record<string, unknown>;
-              }
-            }
-          }
-          finalContent = fallbackResult.content;
-        } else {
-          finalContent = "Service currently operating in degraded telemetry mode.";
-        }
-        break;
+        throw new Error(`AI model execution failed: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
 
@@ -189,32 +171,14 @@ export class AgentHarness {
     const lastUserMessage = options.messages.filter((m) => m.role === "user").pop();
     const text = lastUserMessage?.content?.toLowerCase() || "";
 
-    // If query looks like a command requiring tools (navigation, flights, substation, dispatch), run the agent loop
+    // If query looks like an operational command requiring tools (explicit navigation, substation isolation, emergency dispatch, incident search), run the agent loop
     const isToolQuery =
-      text.includes("fly") ||
-      text.includes("navigate") ||
-      text.includes("move") ||
-      text.includes("show") ||
-      text.includes("where") ||
-      text.includes("locate") ||
-      text.includes("go to") ||
-      text.includes("airport") ||
-      text.includes("tll") ||
-      text.includes("lennart") ||
-      text.includes("lennujaam") ||
-      text.includes("isolate") ||
-      text.includes("substation") ||
-      text.includes("dispatch") ||
-      text.includes("reroute") ||
-      text.includes("search") ||
-      text.includes("incident") ||
-      text.includes("linnu tee") ||
-      text.includes("olerex") ||
-      text.includes("kristiine") ||
-      text.includes("heliport") ||
-      text.includes("vanasadam") ||
-      text.includes("station") ||
-      text.includes("balti jaam");
+      /^(fly|navigate|move\s+(the\s+)?map|go\s+to|take\s+me\s+to|zoom|focus|isolate|dispatch|reroute|search\s+incidents|where\s+is)\b/i.test(
+        text
+      ) ||
+      /\b(fly\s+to|navigate\s+to|show\s+on\s+map|isolate\s+substation|dispatch\s+units|reroute\s+traffic)\b/i.test(
+        text
+      );
 
     if (!isToolQuery && this.defaultProvider.stream) {
       const systemContent = generateSystemPrompt({ telemetryContext: options.context });

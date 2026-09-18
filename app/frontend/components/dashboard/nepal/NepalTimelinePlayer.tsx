@@ -16,6 +16,10 @@ interface NepalTimelinePlayerProps {
   onSeek: (seconds: number) => void;
   activeEvent: NepalTimelineEvent;
   onSelectEvent: (event: NepalTimelineEvent) => void;
+  rightOffset?: number;
+  isCopilotDragging?: boolean;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 const PLAYBACK_SPEEDS = [
@@ -53,6 +57,10 @@ export function NepalTimelinePlayer({
   onSeek,
   activeEvent,
   onSelectEvent,
+  rightOffset = 0,
+  isCopilotDragging = false,
+  isFullscreen = false,
+  onToggleFullscreen,
 }: NepalTimelinePlayerProps) {
   // Playback states
   const [isPlaying, setIsPlaying] = useState(false);
@@ -71,7 +79,6 @@ export function NepalTimelinePlayer({
   const [hoverPosition, setHoverPosition] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [hoveredEvent, setHoveredEvent] = useState<NepalTimelineEvent | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const scrubberRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -245,34 +252,41 @@ export function NepalTimelinePlayer({
     }
   };
 
-  // Fullscreen toggle
-  const toggleFullscreen = useCallback(() => {
-    if (!document.fullscreenElement) {
-      if (containerRef.current?.requestFullscreen) {
-        containerRef.current.requestFullscreen().catch(() => {});
-      } else if ((containerRef.current as any)?.webkitRequestFullscreen) {
-        (containerRef.current as any).webkitRequestFullscreen();
-      }
-      setIsFullscreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
-      }
-      setIsFullscreen(false);
-    }
-  }, []);
-
+  // Keyboard shortcuts (YouTube style: 'f' for fullscreen, space/k for play/pause, arrows for stepping, 'c' for captions)
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement).isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.key === "f" || e.key === "F" || e.key === "а" || e.key === "А") {
+        if (onToggleFullscreen) {
+          e.preventDefault();
+          onToggleFullscreen();
+        }
+      } else if (e.key === "k" || e.key === "K" || e.key === " " || e.key === "л" || e.key === "Л") {
+        e.preventDefault();
+        setIsPlaying((p) => !p);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handleStepBack();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        handleStepForward();
+      } else if (e.key === "c" || e.key === "C" || e.key === "с" || e.key === "С") {
+        setSubtitlesEnabled((p) => !p);
+      }
     };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [onToggleFullscreen]);
 
   // Hover time string
   const hoverTimeStr = useMemo(() => {
@@ -288,7 +302,16 @@ export function NepalTimelinePlayer({
   return (
     <div
       ref={containerRef}
-      className="relative w-full bg-gradient-to-t from-black via-[#0a0a0a]/95 to-black/80 border-t border-white/10 text-white font-sans select-none z-30 shadow-2xl transition-all"
+      style={{
+        marginRight: `${rightOffset}px`,
+        width: rightOffset > 0 ? `calc(100% - ${rightOffset}px)` : "100%",
+        maxWidth: rightOffset > 0 ? `calc(100% - ${rightOffset}px)` : "100%",
+        boxSizing: "border-box",
+        transition: isCopilotDragging
+          ? "none"
+          : "all 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+      }}
+      className="relative bg-gradient-to-t from-black via-[#0a0a0a]/95 to-black/80 border-t border-white/10 text-white font-sans select-none z-30 shadow-2xl"
     >
       {/* Subtitles Overlay (YouTube Captions Bar) */}
       {subtitlesEnabled && selectedSubtitle !== "off" && (
@@ -567,7 +590,7 @@ export function NepalTimelinePlayer({
           {/* Scrubber Knob (Red Dot Slider Indicator) */}
           <div
             style={{ left: `${playheadPercent}%` }}
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#FF0000] shadow-[0_0_10px_rgba(255,0,0,0.8)] border border-white opacity-0 group-hover/scrubber:opacity-100 transition-opacity duration-150 pointer-events-none z-20"
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#FF0000] shadow-sm border border-white opacity-0 group-hover/scrubber:opacity-100 transition-opacity duration-150 pointer-events-none z-20"
           />
 
           {/* Hover Time Scrubbing Guide */}
@@ -679,9 +702,9 @@ export function NepalTimelinePlayer({
 
           {/* Fullscreen Toggle Button */}
           <button
-            onClick={toggleFullscreen}
+            onClick={onToggleFullscreen}
             className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all"
-            title="Fullscreen (f)"
+            title={isFullscreen ? "Exit full screen (f)" : "Full screen (f)"}
           >
             <span className="material-symbols-outlined text-[22px] leading-none">
               {isFullscreen ? "fullscreen_exit" : "fullscreen"}

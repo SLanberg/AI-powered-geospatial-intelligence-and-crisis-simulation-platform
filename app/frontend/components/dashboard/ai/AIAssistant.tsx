@@ -23,7 +23,7 @@ export function resolveClientMapAction(text: string): MapAction | null {
   const clean = text.trim().toLowerCase();
 
   // 1. Direct coordinates pattern: "59.4132, 24.8326"
-  const coordMatch = clean.match(/([-+]?\d{1,2}\.\d+)[,\s]+([-+]?\d{1,3}\.\d+)/);
+  const coordMatch = clean.match(/^([-+]?\d{1,2}\.\d+)[,\s]+([-+]?\d{1,3}\.\d+)$/);
   if (coordMatch) {
     const lat = parseFloat(coordMatch[1]);
     const lng = parseFloat(coordMatch[2]);
@@ -36,9 +36,29 @@ export function resolveClientMapAction(text: string): MapAction | null {
     }
   }
 
+  // Check for explicit navigation intent (do NOT trigger on general informational questions or unrelated topics)
+  const navIntentRegex =
+    /^(fly(\s+me)?\s+to|navigate(\s+to|\s+the\s+map\s+to)?|move(\s+the)?\s+map\s+to|take\s+me\s+to|go\s+to|center\s+on|zoom\s+(in\s+on|to)|focus(\s+on|\s+map\s+on)?|where\s+is\s+the|where\s+is)\b/i;
+  const onMapIntentRegex =
+    /\b(show|locate|pinpoint|display|find)\b.*\b(on\s+(the\s+)?map|on\s+gis|where\s+(it|this)\s+is)\b/i;
+
+  const hasNavIntent = navIntentRegex.test(clean) || onMapIntentRegex.test(clean);
+  if (!hasNavIntent) {
+    return null;
+  }
+
+  // Strip command prefix to isolate the place name
+  const stripped = clean
+    .replace(
+      /^(fly(\s+me)?\s+to|navigate(\s+to|\s+the\s+map\s+to)?|move(\s+the)?\s+map\s+to|take\s+me\s+to|go\s+to|center\s+on|zoom\s+(in\s+on|to)|focus(\s+on|\s+map\s+on)?|where\s+is\s+the|where\s+is)\s+/i,
+      ""
+    )
+    .replace(/\s+(on\s+(the\s+)?map|on\s+gis|where\s+(it|this)\s+is)$/i, "")
+    .trim();
+
   // 2. High-priority Transport Hubs & Airport alias matching (e.g. "TLL", "airport", "lennujaam", "balti jaam")
   const isAirportQuery =
-    /\b(tll|airport|tallinn airport|lennart meri|lennujaam|lennujaama|tallinna lennujaam)\b/i.test(clean);
+    /\b(tll|airport|tallinn airport|lennart meri|lennujaam|lennujaama|tallinna lennujaam)\b/i.test(stripped);
   if (isAirportQuery) {
     const airport = TALLINN_TRANSPORT_HUBS.find((h) => h.id === "hub-tll-airport");
     if (airport) {
@@ -58,12 +78,11 @@ export function resolveClientMapAction(text: string): MapAction | null {
     const hubEn = (hub.nameEn || "").toLowerCase();
     const hubAddr = (hub.address || "").toLowerCase();
 
-    // Word boundary or substring match on transport hub names
     if (
-      clean.includes(hubShort) ||
-      clean.includes(hubName) ||
-      (hubEn && clean.includes(hubEn)) ||
-      (clean.length > 4 && (hubName + " " + hubAddr).includes(clean))
+      stripped.includes(hubShort) ||
+      stripped.includes(hubName) ||
+      (hubEn && stripped.includes(hubEn)) ||
+      (stripped.length > 4 && (hubName + " " + hubAddr).includes(stripped))
     ) {
       return {
         type: "fly_to",
@@ -76,9 +95,7 @@ export function resolveClientMapAction(text: string): MapAction | null {
   }
 
   // 3. Official Emergency GIS Services (Hospitals, rescue stations, gas stations)
-  const searchTerms = clean
-    .replace(/^(fly to|navigate to|show me where this is move the map|show me where this is|show me|move the map to|move map to|go to|locate|where is|move me to)\s+/i, "")
-    .trim()
+  const searchTerms = stripped
     .split(/\s+/)
     .filter((w) => w.length > 2);
 
@@ -89,7 +106,7 @@ export function resolveClientMapAction(text: string): MapAction | null {
     const facName = fac.name.toLowerCase();
     const facAddr = (fac.address || "").toLowerCase();
 
-    if (facName.includes(clean) || (clean.length > 5 && (facName + " " + facAddr).includes(clean))) {
+    if (facName.includes(stripped) || (stripped.length > 5 && (facName + " " + facAddr).includes(stripped))) {
       return {
         type: "fly_to",
         center: { lat: fac.lat, lng: fac.lng, zoom: 16 },
@@ -120,21 +137,20 @@ export function resolveClientMapAction(text: string): MapAction | null {
     };
   }
 
-  // 4. District centers (Strict word-boundary matching to prevent "airport" false-matching "port")
+  // 4. District centers
   for (const [key, center] of Object.entries(DISTRICT_CENTERS)) {
     const normKey = key.replace(/-/g, " ");
     const keyRegex = new RegExp(`\\b${normKey}\\b`, "i");
     const nameRegex = new RegExp(`\\b${center.name.toLowerCase().replace(/[\/\-_]/g, "\\s*")}\\b`, "i");
 
-    // Check specific district tokens
     const districtTerms = center.name
       .toLowerCase()
       .split(/[\s/]+/)
       .filter((w) => w.length > 3 && w !== "district" && w !== "sector");
 
-    const matchesToken = districtTerms.some((term) => new RegExp(`\\b${term}\\b`, "i").test(clean));
+    const matchesToken = districtTerms.some((term) => new RegExp(`\\b${term}\\b`, "i").test(stripped));
 
-    if (keyRegex.test(clean) || nameRegex.test(clean) || matchesToken) {
+    if (keyRegex.test(stripped) || nameRegex.test(stripped) || matchesToken) {
       return {
         type: "focus_district",
         targetDistrictId: key,
@@ -303,9 +319,9 @@ export function AIAssistant({
     // Direct client-side spatial resolution for instant zero-latency map flights
     let clientAction = resolveClientMapAction(text);
     if (!clientAction) {
-      // If user said "move the map", "show me where", or "yes", check recent messages for context
-      const lower = text.toLowerCase();
-      if (lower.includes("move") || lower.includes("show") || lower.includes("fly") || lower.includes("yes") || lower.includes("where")) {
+      const lower = text.trim().toLowerCase();
+      // If user specifically said "fly there", "take me there", "move map there", "show it on map"
+      if (/^(fly|navigate|move\s+(the\s+)?map|take\s+me)\s+(there|to\s+it)\b/i.test(lower) || /^(show|locate)\s+(it|this)\s+on\s+(the\s+)?map\b/i.test(lower)) {
         for (let i = messages.length - 1; i >= 0; i--) {
           const pastAction = resolveClientMapAction(messages[i].content);
           if (pastAction) {
@@ -356,11 +372,21 @@ export function AIAssistant({
         signal: abortController.signal,
       });
 
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      if (!res.ok) {
+        let errDetail = "Failed to communicate with AI model.";
+        try {
+          const errData = await res.json();
+          if (errData?.error) errDetail = errData.error;
+        } catch {}
+        throw new Error(errDetail);
+      }
 
       const contentType = res.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
         const data = await res.json();
+        if (data && typeof data === "object" && "error" in data && typeof data.error === "string") {
+          throw new Error(data.error);
+        }
         const textContent =
           typeof data === "object" && data !== null && "content" in data
             ? String(data.content)
@@ -409,6 +435,9 @@ export function AIAssistant({
           if (accumulated.trim().startsWith("{")) {
             try {
               const parsed = JSON.parse(accumulated.trim());
+              if (parsed && typeof parsed.error === "string") {
+                throw new Error(parsed.error);
+              }
               if (parsed && typeof parsed.content === "string") {
                 displayContent = parsed.content;
                 if (parsed.mapAction) {
@@ -419,8 +448,10 @@ export function AIAssistant({
                   }
                 }
               }
-            } catch {
-              // Ignore partial JSON parsing errors while streaming
+            } catch (jsonErr) {
+              if (jsonErr instanceof Error && jsonErr.message && !jsonErr.message.includes("JSON")) {
+                throw jsonErr;
+              }
             }
           }
 
@@ -435,12 +466,13 @@ export function AIAssistant({
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
+        const errorMsg = (err as Error).message || "An error occurred while generating the response.";
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMsgId
               ? {
                   ...msg,
-                  content: "⚠️ Command failed to execute or LLM service timed out.",
+                  content: errorMsg,
                   isError: true,
                 }
               : msg
@@ -450,6 +482,38 @@ export function AIAssistant({
     } finally {
       setIsStreaming(false);
       abortControllerRef.current = null;
+    }
+  };
+
+  const handleRetry = (failedMsgId?: string) => {
+    if (isStreaming) return;
+
+    let userPromptToRetry = "";
+    if (failedMsgId) {
+      const idx = messages.findIndex((m) => m.id === failedMsgId);
+      if (idx > 0) {
+        for (let i = idx - 1; i >= 0; i--) {
+          if (messages[i].role === "user") {
+            userPromptToRetry = messages[i].content;
+            setMessages(messages.slice(0, i));
+            break;
+          }
+        }
+      }
+    }
+
+    if (!userPromptToRetry) {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === "user") {
+          userPromptToRetry = messages[i].content;
+          setMessages(messages.slice(0, i));
+          break;
+        }
+      }
+    }
+
+    if (userPromptToRetry) {
+      handleSendMessage(userPromptToRetry);
     }
   };
 
@@ -485,11 +549,11 @@ export function AIAssistant({
         title="Drag left/right to resize • Double-click to reset"
         className="absolute top-0 bottom-0 -left-2 w-4 cursor-col-resize z-50 flex items-center justify-center group touch-none select-none"
       >
-        {/* Active/Hover line glow */}
+        {/* Active/Hover line */}
         <div
           className={`absolute inset-y-0 right-2 w-[2px] transition-colors duration-150 ${
             isDragging
-              ? "bg-primary shadow-[0_0_10px_rgba(59,130,246,0.9)]"
+              ? "bg-primary"
               : "bg-transparent group-hover:bg-primary/70"
           }`}
         />
@@ -498,7 +562,7 @@ export function AIAssistant({
         <div
           className={`relative z-10 w-1.5 h-12 rounded-full flex flex-col items-center justify-center gap-1 transition-all duration-150 ${
             isDragging
-              ? "bg-primary shadow-[0_0_10px_rgba(59,130,246,0.9)] scale-110 opacity-100"
+              ? "bg-primary scale-110 opacity-100 shadow-md"
               : "bg-muted-foreground/30 group-hover:bg-primary/90 group-hover:scale-105 group-hover:opacity-100 opacity-60"
           }`}
         >
@@ -568,6 +632,8 @@ export function AIAssistant({
                   message={msg}
                   onMapAction={onMapAction}
                   isStreaming={isStreaming && index === messages.length - 1}
+                  onRetry={handleRetry}
+                  onNewChat={handleReset}
                 />
                 {index === 0 && messages.length === 1 && !isStreaming && (
                   <ChatPromptSuggestions

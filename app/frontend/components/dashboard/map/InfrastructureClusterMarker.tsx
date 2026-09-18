@@ -50,13 +50,13 @@ export const InfrastructureClusterMarker = memo(function InfrastructureClusterMa
         className="flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 transition-all duration-150 active:scale-95 focus-visible:outline-2"
         style={{
           background: isHovered
-            ? "linear-gradient(135deg, rgba(14, 23, 42, 0.98), rgba(15, 23, 42, 0.98))"
+            ? "rgba(18, 26, 40, 0.98)"
             : "rgba(10, 15, 26, 0.94)",
-          border: `2px solid ${isHovered ? "#38BDF8" : "rgba(56, 189, 248, 0.6)"}`,
+          border: isHovered ? "2px solid #38BDF8" : "2px solid rgba(56, 189, 248, 0.6)",
           boxShadow: isHovered
-            ? "0 0 16px rgba(56, 189, 248, 0.45), 0 4px 12px rgba(0,0,0,0.8)"
+            ? "0 4px 14px rgba(0,0,0,0.85)"
             : "0 2px 8px rgba(0,0,0,0.7)",
-          transform: isHovered ? "scale(1.08) translateY(-2px)" : "none",
+          transform: isHovered ? "scale(1.05) translateY(-1px)" : "none",
         }}
       >
         <div className="flex items-center -space-x-1 shrink-0">

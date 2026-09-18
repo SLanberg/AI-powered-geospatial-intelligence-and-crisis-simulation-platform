@@ -227,7 +227,47 @@ export function NepalIncidentReplayView({
   const [internalSeconds, setInternalSeconds] = useState<number>(REPLAY_START_SECONDS);
   const currentSeconds = propCurrentSeconds !== undefined ? propCurrentSeconds : internalSeconds;
 
-  const rightOffset = aiOpen ? copilotWidth : 0;
+  const replayContainerRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      if (replayContainerRef.current?.requestFullscreen) {
+        replayContainerRef.current.requestFullscreen().catch(() => {});
+      } else if ((replayContainerRef.current as any)?.webkitRequestFullscreen) {
+        (replayContainerRef.current as any).webkitRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFs = !!document.fullscreenElement && (
+        document.fullscreenElement === replayContainerRef.current ||
+        replayContainerRef.current?.contains(document.fullscreenElement) ||
+        false
+      );
+      setIsFullscreen(isFs);
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.resize();
+        }
+        window.dispatchEvent(new Event("resize"));
+      }, 100);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
+  const rightOffset = (aiOpen && !isFullscreen) ? copilotWidth : 0;
 
   const handleSeek = useCallback((secs: number) => {
     setInternalSeconds(secs);
@@ -465,11 +505,27 @@ export function NepalIncidentReplayView({
   }, [currentSeconds]);
 
   return (
-    <div className="w-full h-full flex flex-col flex-1 select-text bg-background font-sans">
+    <div
+      ref={replayContainerRef}
+      className={`w-full h-full flex flex-col flex-1 select-text bg-background font-sans ${
+        isFullscreen ? "fixed inset-0 z-[9999] bg-background" : ""
+      }`}
+    >
       {/* ---------------------------------------------------------------- */}
       {/* Top Header / Status Bar with Operational Picture Styling          */}
       {/* ---------------------------------------------------------------- */}
-      <header className="px-4 py-2.5 bg-card border-b border-border flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-sm z-20">
+      <header
+        style={{
+          marginRight: `${rightOffset}px`,
+          width: rightOffset > 0 ? `calc(100% - ${rightOffset}px)` : "100%",
+          maxWidth: rightOffset > 0 ? `calc(100% - ${rightOffset}px)` : "100%",
+          boxSizing: "border-box",
+          transition: isCopilotDragging
+            ? "none"
+            : "all 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+        className="px-4 py-2.5 bg-card border-b border-border flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-sm z-20"
+      >
         {/* Left: Replay Title & Status */}
         <div className="flex items-center gap-3">
           <div>
@@ -597,7 +653,6 @@ export function NepalIncidentReplayView({
             onMove={(e) => setMapZoom(e.viewState.zoom)}
           >
             <NavigationControl position="bottom-right" showCompass={true} showZoom={true} />
-            <FullscreenControl position="bottom-right" />
 
             {/* Base river corridor outline */}
             {showRiverCorridor && (
@@ -1071,6 +1126,10 @@ export function NepalIncidentReplayView({
         onSeek={handleSeek}
         activeEvent={activeEvent}
         onSelectEvent={handleSelectEvent}
+        rightOffset={rightOffset}
+        isCopilotDragging={isCopilotDragging}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
       />
     </div>
   );

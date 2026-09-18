@@ -16,7 +16,7 @@ export class OllamaProvider implements ILLMProvider {
 
   async complete(options: ProviderCompletionOptions): Promise<ProviderCompletionResult> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 60000);
 
     const payload: {
       model: string;
@@ -85,7 +85,7 @@ export class OllamaProvider implements ILLMProvider {
 
   async stream(options: ProviderCompletionOptions): Promise<ReadableStream<Uint8Array>> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 60000);
 
     const payload = {
       model: this.defaultModel,
