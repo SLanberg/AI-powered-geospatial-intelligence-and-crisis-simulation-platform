@@ -28,7 +28,6 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
   const [crisisActive, setCrisisActive] = useState<boolean>(true);
   const [selectedTime, setSelectedTime] = useState<string>("08:47");
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
-  const [feedOpen, setFeedOpen] = useState(true);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiContext, setAiContext] = useState<string | null>(null);
   const [mapAction, setMapAction] = useState<MapAction | null>(null);
@@ -36,6 +35,43 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
   // Nepal Replay synchronized state
   const [replaySeconds, setReplaySeconds] = useState<number>(REPLAY_START_SECONDS);
   const [copilotDefaultMode, setCopilotDefaultMode] = useState<"chat" | "analysis">("chat");
+
+  // Copilot expandable dock width
+  const [copilotWidth, setCopilotWidth] = useState<number>(446);
+  const [isCopilotDragging, setIsCopilotDragging] = useState<boolean>(false);
+
+  // Restore saved width from localStorage
+  React.useEffect(() => {
+    try {
+      const savedWidth = localStorage.getItem("nc_copilot_drawer_width");
+      if (savedWidth) {
+        const parsed = parseInt(savedWidth, 10);
+        if (!isNaN(parsed) && parsed >= 446) {
+          const maxWidth = Math.min(window.innerWidth - 40, 1400);
+          setCopilotWidth(Math.min(parsed, maxWidth));
+        } else if (!isNaN(parsed)) {
+          setCopilotWidth(446);
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Trigger map resize event when AI panel or Sidebar toggles
+  const handleToggleAi = (updater: React.SetStateAction<boolean>) => {
+    setAiOpen((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      setTimeout(() => window.dispatchEvent(new Event("resize")), 220);
+      return next;
+    });
+  };
+
+  const handleToggleSidebar = (updater: React.SetStateAction<boolean>) => {
+    setSidebarOpen((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      setTimeout(() => window.dispatchEvent(new Event("resize")), 320);
+      return next;
+    });
+  };
 
   const activeNepalEvent = useMemo(() => getActiveEvent(replaySeconds), [replaySeconds]);
 
@@ -75,25 +111,26 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen((open) => !open)}
+        onToggle={() => handleToggleSidebar((open) => !open)}
       />
 
-      {/* Main Command Center Content Area */}
+      {/* Main Command Center Content Area - Map renders full-bleed under translucent Copilot drawer */}
       <main
-        className={`flex-1 h-screen flex flex-col overflow-x-hidden transition-all duration-300 ease-in-out ${
+        style={{
+          transition: "margin-left 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+        className={`flex-1 h-screen flex flex-col overflow-x-hidden ${
           sidebarOpen ? "ml-[220px]" : "ml-0"
-        } ${aiOpen ? "mr-[440px]" : "mr-0"}`}
+        }`}
       >
-        {/* Top Command Bar */}
+        {/* Top Command Bar - Shifts smoothly with Copilot */}
         <NavBar
           sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          feedOpen={feedOpen}
-          setFeedOpen={setFeedOpen}
+          setSidebarOpen={handleToggleSidebar}
           aiOpen={aiOpen}
-          setAiOpen={setAiOpen}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setAiOpen={handleToggleAi}
+          copilotWidth={copilotWidth}
+          isCopilotDragging={isCopilotDragging}
         />
 
         {/* Viewport Content Switcher */}
@@ -106,6 +143,9 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
                 setCopilotDefaultMode("analysis");
                 setAiOpen(true);
               }}
+              copilotWidth={copilotWidth}
+              aiOpen={aiOpen}
+              isCopilotDragging={isCopilotDragging}
             />
           </div>
         ) : activeTab === "incidents" ? (
@@ -133,10 +173,11 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
               setShowIncidents={setShowIncidents}
               showHeatmap={showHeatmap}
               setShowHeatmap={setShowHeatmap}
-              showTelemetryFeed={feedOpen}
-              onCloseTelemetryFeed={() => setFeedOpen(false)}
               mapAction={mapAction}
               onClearMapAction={() => setMapAction(null)}
+              copilotWidth={copilotWidth}
+              aiOpen={aiOpen}
+              isCopilotDragging={isCopilotDragging}
             />
           </div>
         )}
@@ -144,7 +185,7 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
 
       <AIAssistant
         isOpen={aiOpen}
-        onClose={() => setAiOpen(false)}
+        onClose={() => handleToggleAi(false)}
         context={aiContext}
         onClearContext={() => setAiContext(null)}
         onMapAction={handleMapAction}
@@ -154,6 +195,10 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
         onSeekReplay={setReplaySeconds}
         selectedIncident={selectedIncident}
         defaultMode={copilotDefaultMode}
+        width={copilotWidth}
+        onWidthChange={setCopilotWidth}
+        isDragging={isCopilotDragging}
+        onDraggingChange={setIsCopilotDragging}
       />
     </div>
   );

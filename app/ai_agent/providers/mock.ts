@@ -7,9 +7,16 @@ export class MockLLMProvider implements ILLMProvider {
     const lastMessage = options.messages[options.messages.length - 1];
     const text = lastMessage?.content?.toLowerCase() || "";
 
-    if (text.includes("search") || text.includes("incident") || text.includes("outage")) {
+    if (text.includes("hear me") || text.includes("hello") || text.includes("hi") || text.includes("status")) {
       return {
-        content: "Searching Tallinn SCADA incidents for active telemetry anomalies...",
+        content: "Loud and clear. Neural City SCADA Agent is online and monitoring Tallinn Central Command Center telemetry. Power grids, transport corridors, and emergency services are operating within normal parameters. How can I assist you with city operations?",
+        usage: { promptTokens: 25, completionTokens: 45, totalTokens: 70 },
+      };
+    }
+
+    if (text.includes("search") || text.includes("incident") || text.includes("outage") || text.includes("report")) {
+      return {
+        content: "Searching Tallinn SCADA incidents for active telemetry anomalies and reported sector outages...",
         toolCalls: [
           {
             id: `call_${Date.now()}`,
@@ -21,9 +28,9 @@ export class MockLLMProvider implements ILLMProvider {
       };
     }
 
-    if (text.includes("isolate") || text.includes("substation")) {
+    if (text.includes("isolate") || text.includes("substation") || text.includes("grid")) {
       return {
-        content: "Inspecting substation EE-TLN-SUB-04 telemetry before recommending grid action.",
+        content: "Inspecting substation EE-TLN-SUB-04 telemetry before recommending grid isolation procedures.",
         toolCalls: [
           {
             id: `call_${Date.now()}`,
@@ -35,8 +42,15 @@ export class MockLLMProvider implements ILLMProvider {
       };
     }
 
+    if (text.includes("traffic") || text.includes("reroute") || text.includes("bus") || text.includes("road")) {
+      return {
+        content: "Analyzing Tallinn urban traffic corridors. Current flow rate across major arterial intersections is nominal at 94% capacity.",
+        usage: { promptTokens: 30, completionTokens: 35, totalTokens: 65 },
+      };
+    }
+
     return {
-      content: `[NEURAL CITY AI - MOCK MODE] Received operational command: "${lastMessage?.content}". All grid telemetry channels operational. Standard operating procedures active.`,
+      content: `Neural City AI online. Processed operational query: "${lastMessage?.content}". All grid telemetry channels operational. Standard SCADA operating procedures active. How else can I assist?`,
       usage: { promptTokens: 25, completionTokens: 35, totalTokens: 60 },
     };
   }

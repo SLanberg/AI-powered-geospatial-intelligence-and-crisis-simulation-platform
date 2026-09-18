@@ -33,6 +33,10 @@ export interface ExtendedAIAssistantProps extends AIAssistantProps {
   onSelectNepalEvent?: (event: NepalTimelineEvent) => void;
   selectedIncident?: Incident | null;
   defaultMode?: "chat" | "analysis";
+  width?: number;
+  onWidthChange?: (width: number) => void;
+  isDragging?: boolean;
+  onDraggingChange?: (isDragging: boolean) => void;
 }
 
 export function AIAssistant({
@@ -48,10 +52,83 @@ export function AIAssistant({
   onSelectNepalEvent,
   selectedIncident,
   defaultMode,
+  width: controlledWidth,
+  onWidthChange,
+  isDragging: controlledIsDragging,
+  onDraggingChange,
 }: ExtendedAIAssistantProps) {
   const [messages, setMessages] = useState<DashboardChatMessage[]>([DEFAULT_GREETING]);
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
   const [mode, setMode] = useState<"chat" | "analysis">("chat");
+
+  const DEFAULT_WIDTH = 446;
+  const MIN_WIDTH = 446;
+  const [internalWidth, setInternalWidth] = useState<number>(DEFAULT_WIDTH);
+  const [internalIsDragging, setInternalIsDragging] = useState<boolean>(false);
+
+  const width = controlledWidth !== undefined ? controlledWidth : internalWidth;
+  const isDragging = controlledIsDragging !== undefined ? controlledIsDragging : internalIsDragging;
+
+  const setWidth = (w: number) => {
+    if (onWidthChange) onWidthChange(w);
+    else setInternalWidth(w);
+  };
+
+  const setIsDragging = (d: boolean) => {
+    if (onDraggingChange) onDraggingChange(d);
+    else setInternalIsDragging(d);
+  };
+
+  // Restore saved width from localStorage if not controlled
+  useEffect(() => {
+    if (controlledWidth === undefined) {
+      try {
+        const savedWidth = localStorage.getItem("nc_copilot_drawer_width");
+        if (savedWidth) {
+          const parsed = parseInt(savedWidth, 10);
+          if (!isNaN(parsed) && parsed >= MIN_WIDTH) {
+            const maxWidth = Math.min(window.innerWidth - 40, 1400);
+            setWidth(Math.min(parsed, maxWidth));
+          }
+        }
+      } catch {}
+    }
+  }, []);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    const maxWidth = Math.min(window.innerWidth - 40, 1400);
+    const newWidth = Math.max(MIN_WIDTH, Math.min(maxWidth, window.innerWidth - e.clientX));
+    setWidth(newWidth);
+    window.dispatchEvent(new Event("resize"));
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDragging) {
+      setIsDragging(false);
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+      try {
+        localStorage.setItem("nc_copilot_drawer_width", width.toString());
+      } catch {}
+      window.dispatchEvent(new Event("resize"));
+    }
+  };
+
+  const handleDoubleClickReset = () => {
+    setWidth(DEFAULT_WIDTH);
+    try {
+      localStorage.setItem("nc_copilot_drawer_width", DEFAULT_WIDTH.toString());
+    } catch {}
+    setTimeout(() => window.dispatchEvent(new Event("resize")), 220);
+  };
 
   useEffect(() => {
     if (defaultMode) {
@@ -129,6 +206,19 @@ export function AIAssistant({
 
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
 
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const data = await res.json();
+        const textContent =
+          typeof data === "object" && data !== null && "content" in data
+            ? String(data.content)
+            : JSON.stringify(data);
+        setMessages((prev) =>
+          prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, content: textContent } : msg))
+        );
+        return;
+      }
+
       if (res.body) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -139,9 +229,21 @@ export function AIAssistant({
           if (done) break;
           accumulated += decoder.decode(value, { stream: true });
 
+          let displayContent = accumulated;
+          if (accumulated.trim().startsWith("{")) {
+            try {
+              const parsed = JSON.parse(accumulated.trim());
+              if (parsed && typeof parsed.content === "string") {
+                displayContent = parsed.content;
+              }
+            } catch {
+              // Ignore partial JSON parsing errors while streaming
+            }
+          }
+
           setMessages((prev) =>
             prev.map((msg) =>
-              msg.id === assistantMsgId ? { ...msg, content: accumulated } : msg
+              msg.id === assistantMsgId ? { ...msg, content: displayContent } : msg
             )
           );
         }
@@ -183,7 +285,51 @@ export function AIAssistant({
   if (!isOpen) return null;
 
   return (
-    <aside className="fixed top-0 right-0 z-40 w-[440px] h-screen bg-card/95 backdrop-blur-md border-l border-border/60 flex flex-col shadow-2xl transition-all duration-300">
+    <aside
+      style={{ width: `${width}px` }}
+      className={`fixed top-0 right-0 z-40 max-w-[calc(100vw-32px)] h-screen bg-card/95 backdrop-blur-md border-l border-border/60 flex flex-col shadow-2xl ${
+        isDragging ? "select-none" : "transition-[width] duration-150 ease-out"
+      }`}
+    >
+      {/* Draggable Resize Handle on Left Border */}
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onDoubleClick={handleDoubleClickReset}
+        title="Drag left/right to resize • Double-click to reset"
+        className="absolute top-0 bottom-0 -left-2 w-4 cursor-col-resize z-50 flex items-center justify-center group touch-none select-none"
+      >
+        {/* Active/Hover line glow */}
+        <div
+          className={`absolute inset-y-0 right-2 w-[2px] transition-colors duration-150 ${
+            isDragging
+              ? "bg-primary shadow-[0_0_10px_rgba(59,130,246,0.9)]"
+              : "bg-transparent group-hover:bg-primary/70"
+          }`}
+        />
+
+        {/* Grab Handle Pill Indicator */}
+        <div
+          className={`relative z-10 w-1.5 h-12 rounded-full flex flex-col items-center justify-center gap-1 transition-all duration-150 ${
+            isDragging
+              ? "bg-primary shadow-[0_0_10px_rgba(59,130,246,0.9)] scale-110 opacity-100"
+              : "bg-muted-foreground/30 group-hover:bg-primary/90 group-hover:scale-105 group-hover:opacity-100 opacity-60"
+          }`}
+        >
+          <span className="w-0.5 h-0.5 rounded-full bg-background" />
+          <span className="w-0.5 h-0.5 rounded-full bg-background" />
+          <span className="w-0.5 h-0.5 rounded-full bg-background" />
+        </div>
+
+        {/* Live Width Badge when dragging */}
+        {isDragging && (
+          <div className="absolute right-6 top-1/2 -translate-y-1/2 bg-popover/95 border border-primary/50 text-primary text-[10px] font-mono px-2 py-0.5 rounded-md shadow-xl backdrop-blur pointer-events-none whitespace-nowrap animate-in fade-in">
+            {Math.round(width)}px
+          </div>
+        )}
+      </div>
+
       <ChatHeader
         modelStatus={modelStatus}
         onReset={handleReset}

@@ -2,7 +2,6 @@
 
 import React from "react";
 import {
-  Radio,
   PanelRightOpen,
   PanelRightClose,
   PanelLeftClose,
@@ -12,26 +11,30 @@ import {
 interface NavBarProps {
   sidebarOpen: boolean;
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  feedOpen: boolean;
-  setFeedOpen: React.Dispatch<React.SetStateAction<boolean>>;
   aiOpen: boolean;
   setAiOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  activeTab?: string;
-  setActiveTab?: (tab: string) => void;
+  copilotWidth?: number;
+  isCopilotDragging?: boolean;
 }
 
 export function NavBar({
   sidebarOpen,
   setSidebarOpen,
-  feedOpen,
-  setFeedOpen,
   aiOpen,
   setAiOpen,
-  activeTab,
-  setActiveTab,
+  copilotWidth = 446,
+  isCopilotDragging = false,
 }: NavBarProps) {
   return (
-    <header className="sticky top-0 z-40 w-full bg-card border-b border-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-md">
+    <header
+      style={{
+        marginRight: aiOpen ? `${copilotWidth}px` : 0,
+        transition: isCopilotDragging
+          ? "none"
+          : "margin-right 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+      }}
+      className="sticky top-0 z-40 bg-card border-b border-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-md"
+    >
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -50,45 +53,9 @@ export function NavBar({
           )}
         </button>
 
-        {setActiveTab && (
-          <div className="flex items-center bg-muted/90 border border-border/80 rounded-lg p-1 font-mono text-xs shadow-inner">
-            <button
-              type="button"
-              onClick={() => setActiveTab("map")}
-              className={`px-3 py-1.5 rounded-md transition-all font-semibold ${activeTab === "map"
-                ? "bg-primary/25 text-primary font-bold shadow-sm ring-1 ring-primary/40"
-                : "text-zinc-200 hover:text-white hover:bg-white/10"
-                }`}
-            >
-              Tallinn Grid
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("nepal")}
-              className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 font-semibold ${activeTab === "nepal"
-                ? "bg-red-500/25 text-red-300 font-bold border border-red-500/50 shadow-sm ring-1 ring-red-500/40"
-                : "text-zinc-200 hover:text-white hover:bg-white/10"
-                }`}
-            >
-              Nepal Cascade Replay
-            </button>
-          </div>
-        )}
       </div>
       {/* Right Action Controls */}
       <div className="flex items-center gap-3 font-mono text-xs">
-        <button
-          type="button"
-          onClick={() => setFeedOpen((open) => !open)}
-          aria-label={feedOpen ? "Close telemetry feed" : "Open telemetry feed"}
-          title={feedOpen ? "Close telemetry feed" : "Open telemetry feed"}
-          className="group relative flex items-center justify-center rounded-lg border border-border/80 bg-muted/90 h-8 w-8 p-0 text-zinc-100 transition-all hover:border-primary/60 hover:text-primary hover:bg-muted"
-        >
-          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 font-semibold">
-            {feedOpen ? "Close telemetry feed" : "Open telemetry feed"}
-          </span>
-          <Radio className="w-4 h-4 text-zinc-100 group-hover:text-primary" />
-        </button>
         <button
           type="button"
           onClick={() => setAiOpen((open) => !open)}

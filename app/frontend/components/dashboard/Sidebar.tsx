@@ -6,7 +6,7 @@ import {
   AlertTriangle,
   Cpu,
   Newspaper,
-  Mountain,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,10 +41,9 @@ export function Sidebar({
     { id: "map", label: "Operational picture", icon: Map, badge: null },
     {
       id: "nepal",
-      label: "Nepal Replay",
-      icon: Mountain,
-      badge: "CASCADE",
-      badgeVariant: "destructive" as const,
+      label: "Replays",
+      icon: History,
+      badge: null,
     },
     {
       id: "incidents",

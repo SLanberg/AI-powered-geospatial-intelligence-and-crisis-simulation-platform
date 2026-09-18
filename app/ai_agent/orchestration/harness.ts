@@ -165,10 +165,14 @@ export class AgentHarness {
         { role: "system", content: systemContent },
         ...options.messages.filter((m) => m.role !== "system"),
       ];
-      return this.defaultProvider.stream({
-        messages: activeMessages,
-        temperature: options.temperatureOverride,
-      });
+      try {
+        return await this.defaultProvider.stream({
+          messages: activeMessages,
+          temperature: options.temperatureOverride,
+        });
+      } catch (streamErr) {
+        agentLogger.warn("Harness", "Stream request failed on provider, falling back to run()", { error: String(streamErr) });
+      }
     }
 
     // Fallback: run and stream result content as stream chunks

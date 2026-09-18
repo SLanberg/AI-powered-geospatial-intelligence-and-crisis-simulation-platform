@@ -38,7 +38,7 @@ export function RealTimeAnalysisPanel({
   onSelectNepalEvent,
   selectedIncident,
 }: RealTimeAnalysisPanelProps) {
-  const isNepal = activeTab === "nepal" || (!selectedIncident && activeNepalEvent);
+  const isNepal = activeTab === "nepal";
 
   if (isNepal) {
     const activeEvent = activeNepalEvent || NEPAL_TIMELINE_EVENTS[1];

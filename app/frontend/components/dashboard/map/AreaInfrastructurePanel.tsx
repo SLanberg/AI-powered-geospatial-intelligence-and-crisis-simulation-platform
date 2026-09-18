@@ -29,6 +29,9 @@ interface AreaInfrastructurePanelProps {
   onViewMoreHub: (hub: TransportHub) => void;
   onViewMoreService: (service: EmergencyService) => void;
   onViewFullAreaModal: () => void;
+  rightOffset?: number;
+  isDragging?: boolean;
+  style?: React.CSSProperties;
 }
 
 export function AreaInfrastructurePanel({
@@ -37,9 +40,19 @@ export function AreaInfrastructurePanel({
   onViewMoreHub,
   onViewMoreService,
   onViewFullAreaModal,
+  rightOffset = 0,
+  isDragging = false,
+  style,
 }: AreaInfrastructurePanelProps) {
   return (
-    <div className="absolute right-4 top-4 z-[9999] w-84 sm:w-92 max-h-[calc(100%-5rem)] flex flex-col rounded-xl border border-sky-500/40 bg-[#0C1017]/95 backdrop-blur-md shadow-[0_12px_36px_rgba(0,0,0,0.85)] text-slate-100 overflow-hidden animate-in slide-in-from-right-5 duration-200">
+    <div
+      style={{
+        right: 16 + rightOffset,
+        transition: isDragging ? "none" : "right 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+        ...style,
+      }}
+      className="absolute top-4 z-[9999] w-84 sm:w-92 max-h-[calc(100%-5rem)] flex flex-col rounded-xl border border-sky-500/40 bg-[#0C1017]/95 backdrop-blur-md shadow-[0_12px_36px_rgba(0,0,0,0.85)] text-slate-100 overflow-hidden animate-in slide-in-from-right-5 duration-200"
+    >
       
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-[#121824]/90">
@@ -107,7 +120,7 @@ export function AreaInfrastructurePanel({
                       {hub.passengerVolume}
                     </span>
                   ) : (
-                    <span className="text-[10px] text-slate-500 font-mono">Nepal Transit Node</span>
+                    <span className="text-[10px] text-slate-500 font-mono">Transit Node</span>
                   )}
 
                   <button

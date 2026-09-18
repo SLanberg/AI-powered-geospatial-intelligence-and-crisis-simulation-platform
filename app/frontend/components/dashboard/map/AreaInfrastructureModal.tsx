@@ -185,7 +185,7 @@ export function AreaInfrastructureModal({
                     <div className="grid grid-cols-2 gap-2 text-xs bg-slate-900/60 p-2.5 rounded border border-slate-800">
                       <div>
                         <span className="text-slate-400 font-medium">District/Location:</span>{" "}
-                        <span className="text-slate-200 font-bold">{hub.district || hub.city || "Nepal Corridor"}</span>
+                        <span className="text-slate-200 font-bold">{hub.district || hub.city || "Transit Corridor"}</span>
                       </div>
                       {hub.passengerVolume && (
                         <div>

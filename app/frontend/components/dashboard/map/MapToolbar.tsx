@@ -15,6 +15,7 @@ import {
   Satellite,
   Bus,
   Flame,
+  Activity,
 } from "lucide-react";
 
 /* -------------------------------------------------------------------------- */
@@ -56,6 +57,10 @@ export interface MapToolbarProps {
 
   /* Custom layers extension */
   customLayers?: LayerConfig[];
+
+  /* Offset & Resizing */
+  rightOffset?: number;
+  isDragging?: boolean;
 
   /* Counts */
   flightCount?: number;
@@ -545,6 +550,8 @@ export const MapToolbar = React.memo(function MapToolbar({
   showHeatmap = false,
   setShowHeatmap,
   customLayers = [],
+  rightOffset = 0,
+  isDragging = false,
   flightCount = 0,
   vehicleCount = 0,
   emergencyCount = 0,
@@ -599,8 +606,8 @@ export const MapToolbar = React.memo(function MapToolbar({
       ? [
           {
             id: "emergency",
-            label: "Emergency Services",
-            icon: <Siren size={14} />,
+            label: "Emergency",
+            icon: <Siren size={14} className="text-[#FF3B30]" />,
             visible: showEmergencyServices,
             count: emergencyCount,
             onToggle: () => setShowEmergencyServices((p: boolean) => !p),
@@ -611,8 +618,8 @@ export const MapToolbar = React.memo(function MapToolbar({
       ? [
           {
             id: "transport_hubs",
-            label: "Transport Hubs",
-            icon: <Bus size={14} />,
+            label: "Hubs",
+            icon: <Plane size={14} className="text-sky-400" />,
             visible: showTransportHubs,
             count: transportHubCount,
             onToggle: () => setShowTransportHubs((p: boolean) => !p),
@@ -624,7 +631,7 @@ export const MapToolbar = React.memo(function MapToolbar({
           {
             id: "incidents",
             label: "Incidents",
-            icon: <AlertTriangle size={14} />,
+            icon: <AlertTriangle size={14} className="text-amber-400" />,
             visible: showIncidents,
             count: incidentCount,
             onToggle: () => setShowIncidents((p: boolean) => !p),
@@ -635,10 +642,10 @@ export const MapToolbar = React.memo(function MapToolbar({
       ? [
           {
             id: "heatmap",
-            label: "Incident Heatmap",
-            icon: <Flame size={14} />,
+            label: "Heatmap",
+            icon: <Activity size={14} className="text-rose-400" />,
             visible: showHeatmap,
-            count: incidentCount,
+            count: "",
             onToggle: () => setShowHeatmap((p: boolean) => !p),
           },
         ]
@@ -709,7 +716,13 @@ export const MapToolbar = React.memo(function MapToolbar({
       {/* ============================================================= */}
       {/* RIGHT TOOLBAR – Viewport & Basemap                             */}
       {/* ============================================================= */}
-      <div style={{ ...barStyle, right: 12 }}>
+      <div
+        style={{
+          ...barStyle,
+          right: 12 + rightOffset,
+          transition: isDragging ? "none" : "right 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
         <ToolButton
           icon={<Box size={18} />}
           label={is3D ? "Disable 3D" : "Enable 3D"}

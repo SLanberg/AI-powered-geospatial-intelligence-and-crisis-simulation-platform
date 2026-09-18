@@ -211,15 +211,23 @@ export interface NepalIncidentReplayViewProps {
   currentSeconds?: number;
   onSeek?: (seconds: number) => void;
   onOpenRealTimeAnalysis?: () => void;
+  copilotWidth?: number;
+  aiOpen?: boolean;
+  isCopilotDragging?: boolean;
 }
 
 export function NepalIncidentReplayView({
   currentSeconds: propCurrentSeconds,
   onSeek: propOnSeek,
   onOpenRealTimeAnalysis,
+  copilotWidth = 446,
+  aiOpen = false,
+  isCopilotDragging = false,
 }: NepalIncidentReplayViewProps) {
   const [internalSeconds, setInternalSeconds] = useState<number>(REPLAY_START_SECONDS);
   const currentSeconds = propCurrentSeconds !== undefined ? propCurrentSeconds : internalSeconds;
+
+  const rightOffset = aiOpen ? copilotWidth : 0;
 
   const handleSeek = useCallback((secs: number) => {
     setInternalSeconds(secs);
@@ -233,7 +241,7 @@ export function NepalIncidentReplayView({
   const [showClusterSidePanel, setShowClusterSidePanel] = useState(false);
   const [showFullClusterModal, setShowFullClusterModal] = useState(false);
   const [mapTheme, setMapTheme] = useState<"dark" | "voyager" | "satellite">("dark");
-  const [is3D, setIs3D] = useState(true);
+  const [is3D, setIs3D] = useState(false);
 
   // Layer toggles
   const [showRiverCorridor, setShowRiverCorridor] = useState(true);
@@ -551,7 +559,13 @@ export function NepalIncidentReplayView({
       {/* ---------------------------------------------------------------- */}
       {/* Map Viewport Area - Layout Matching Operational Picture          */}
       {/* ---------------------------------------------------------------- */}
-      <div className="relative w-full h-full flex-1 min-h-[580px]">
+      <div
+        className="relative w-full h-full flex-1 min-h-[580px] [&_.maplibregl-ctrl-bottom-right]:!right-[var(--map-ctrl-right,10px)] [&_.maplibregl-ctrl-top-right]:!right-[var(--map-ctrl-right,10px)] [&_.maplibregl-ctrl-bottom-right]:transition-[right] [&_.maplibregl-ctrl-top-right]:transition-[right] [&_.maplibregl-ctrl-bottom-right]:duration-200 [&_.maplibregl-ctrl-top-right]:duration-200"
+        style={{
+          // @ts-ignore
+          "--map-ctrl-right": `${rightOffset + 10}px`,
+        }}
+      >
         {/* Compact vertical toolbars overlaid on map */}
         <MapToolbar
           mapTheme={mapTheme}
@@ -560,22 +574,26 @@ export function NepalIncidentReplayView({
           toggle3D={handleToggle3D}
           resetView={handleResetView}
           customLayers={nepalCustomLayers}
+          rightOffset={rightOffset}
+          isDragging={isCopilotDragging}
         />
 
         {/* Map Container Frame matching Operational Picture MapContainer */}
         <div className="absolute inset-0 overflow-hidden rounded-xl border border-border bg-background">
           <Map
             ref={mapRef}
+            reuseMaps={true}
             initialViewState={{
               longitude: 85.05,
               latitude: 28.05,
               zoom: 9.3,
-              pitch: 35,
-              bearing: -15,
+              pitch: 0,
+              bearing: 0,
             }}
             mapStyle={MAP_STYLES[mapTheme]}
             style={{ width: "100%", height: "100%" }}
             attributionControl={false}
+            fadeDuration={0}
             onMove={(e) => setMapZoom(e.viewState.zoom)}
           >
             <NavigationControl position="bottom-right" showCompass={true} showZoom={true} />
@@ -999,6 +1017,8 @@ export function NepalIncidentReplayView({
               onViewFullAreaModal={() => {
                 setShowFullClusterModal(true);
               }}
+              rightOffset={rightOffset}
+              isDragging={isCopilotDragging}
             />
           )}
         </div>

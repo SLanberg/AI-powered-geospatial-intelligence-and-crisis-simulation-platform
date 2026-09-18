@@ -38,7 +38,7 @@ export function loadAiConfig() {
     version: "2.0.0",
     app: { environment: process.env.NODE_ENV || "development" },
     model: {
-      name: process.env.AI_MODEL || "qwen2.5:latest",
+      name: process.env.AI_MODEL || "qwen2.5:7b",
       provider: process.env.OPENAI_API_KEY ? "openai" : "ollama",
     },
   };

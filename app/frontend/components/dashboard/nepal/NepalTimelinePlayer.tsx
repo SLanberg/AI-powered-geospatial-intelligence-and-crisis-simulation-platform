@@ -159,8 +159,8 @@ export function NepalTimelinePlayer({
     Math.min(100, ((currentSeconds - TIMELINE_MIN_SECONDS) / totalDuration) * 100)
   );
 
-  // Simulated buffer percent (slightly ahead of playhead)
-  const bufferedPercent = Math.min(100, playheadPercent + 15);
+  // Simulated buffer percent (always 100% fully loaded)
+  const bufferedPercent = 100;
 
   // Milestones
   const milestones = useMemo(() => {

@@ -19,15 +19,6 @@ export function ChatHeader({ modelStatus, onReset, onClose, isStreaming }: ChatH
           <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
             <Sparkles className="w-4 h-4 animate-pulse" />
           </div>
-          <div
-            className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-background ${
-              modelStatus.status === "online"
-                ? "bg-emerald-500 shadow-sm shadow-emerald-500/50"
-                : modelStatus.status === "degraded"
-                ? "bg-amber-500"
-                : "bg-destructive"
-            }`}
-          />
         </div>
         <div>
           <div className="flex items-center gap-2">

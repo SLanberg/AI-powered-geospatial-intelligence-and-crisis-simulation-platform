@@ -5,7 +5,7 @@ export class OllamaProvider implements ILLMProvider {
   readonly name = "ollama";
   private defaultModel: string;
 
-  constructor(defaultModel = "qwen2.5:latest") {
+  constructor(defaultModel = process.env.AI_MODEL || "qwen2.5:7b") {
     this.defaultModel = defaultModel;
   }
 
@@ -107,24 +107,28 @@ export class OllamaProvider implements ILLMProvider {
 
     return new ReadableStream({
       async pull(controller) {
-        const { done, value } = await reader.read();
-        if (done) {
-          controller.close();
-          return;
-        }
-
-        const chunkText = decoder.decode(value);
-        const lines = chunkText.split("\n").filter((l) => l.trim().length > 0);
-
-        for (const line of lines) {
-          try {
-            const parsed = JSON.parse(line) as { message?: { content?: string } };
-            if (parsed.message?.content) {
-              controller.enqueue(encoder.encode(parsed.message.content));
-            }
-          } catch {
-            // Partial JSON ignored
+        try {
+          const { done, value } = await reader.read();
+          if (done) {
+            controller.close();
+            return;
           }
+
+          const chunkText = decoder.decode(value);
+          const lines = chunkText.split("\n").filter((l) => l.trim().length > 0);
+
+          for (const line of lines) {
+            try {
+              const parsed = JSON.parse(line) as { message?: { content?: string } };
+              if (parsed.message?.content) {
+                controller.enqueue(encoder.encode(parsed.message.content));
+              }
+            } catch {
+              // Partial JSON ignored
+            }
+          }
+        } catch {
+          controller.close();
         }
       },
     });

@@ -41,9 +41,8 @@ import { MapToolbar } from "./map/MapToolbar";
 import { MapIncidentPopup } from "./map/MapIncidentPopup";
 import { useMapInteractions } from "./map/useMapInteractions";
 import { MapObjectVector } from "./map/MapObjectVector";
-import { clusterEmergencyServices } from "./map/useDecluttering";
+import { clusterInfrastructure, type InfrastructureCluster } from "./map/useDecluttering";
 import { MakiIcon, getMakiIconNameForIncident } from "./map/MakiIcon";
-import { TelemetryFeed } from "./map/TelemetryFeed";
 
 import {
   MOCK_INCIDENTS,
@@ -53,7 +52,9 @@ import {
 } from "./data";
 
 import { AppleMapsMarker } from "./map/AppleMapsMarker";
-import { EmergencyServiceClusterMarker } from "./map/EmergencyServiceClusterMarker";
+import { InfrastructureClusterMarker } from "./map/InfrastructureClusterMarker";
+import { AreaInfrastructurePanel } from "./map/AreaInfrastructurePanel";
+import { AreaInfrastructureModal } from "./map/AreaInfrastructureModal";
 import { EmergencyServicePopup } from "./map/EmergencyServicePopup";
 
 import {
@@ -636,13 +637,15 @@ interface MapContainerProps {
 
   onVehicleCountChange?: (count: number) => void;
 
-  showTelemetryFeed?: boolean;
-
-  onCloseTelemetryFeed?: () => void;
-
   mapAction?: MapAction | null;
 
   onClearMapAction?: () => void;
+
+  copilotWidth?: number;
+
+  aiOpen?: boolean;
+
+  isCopilotDragging?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -935,22 +938,15 @@ export function MapContainer({
   setShowHeatmap,
   onFlightCountChange,
   onVehicleCountChange,
-  showTelemetryFeed = true,
-  onCloseTelemetryFeed,
   mapAction,
   onClearMapAction,
+  copilotWidth = 446,
+  aiOpen = false,
+  isCopilotDragging = false,
 }: MapContainerProps) {
   const mapRef = useRef<MapRef | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!mapContainerRef.current) return;
-    const observer = new ResizeObserver(() => {
-      mapRef.current?.resize();
-    });
-    observer.observe(mapContainerRef.current);
-    return () => observer.disconnect();
-  }, []);
+  const rightOffset = aiOpen ? copilotWidth : 0;
 
   const [mapTheme, setMapTheme] =
     useState<MapTheme>("dark");
@@ -982,17 +978,12 @@ export function MapContainer({
   const [isMapReady, setIsMapReady] =
     useState(false);
 
-  /*
-   * This is intentionally preserved.
-   *
-   * It is emergency-service declustering, not incident clustering.
-   */
   const [
-    emergencyServiceClusters,
-    setEmergencyServiceClusters,
-  ] = useState<
-    ReturnType<typeof clusterEmergencyServices>
-  >([]);
+    selectedInfrastructureCluster,
+    setSelectedInfrastructureCluster,
+  ] = useState<InfrastructureCluster | null>(null);
+  const [showClusterSidePanel, setShowClusterSidePanel] = useState(false);
+  const [showFullClusterModal, setShowFullClusterModal] = useState(false);
 
   const [feedMinimized, setFeedMinimized] =
     useState(false);
@@ -1470,21 +1461,12 @@ export function MapContainer({
       },
     });
 
-  /* Emergency-service declustering updates as the map zoom changes. */
-  useEffect(() => {
-    if (!isMapReady) return;
-
-    setEmergencyServiceClusters(
-      clusterEmergencyServices(
-        TALLINN_EMERGENCY_SERVICES,
-        mapRef.current,
-        viewState.zoom,
-      ),
-    );
-  }, [
-    isMapReady,
-    viewState.zoom,
-  ]);
+  // Unified Area Infrastructure clusters (Emergency Services + Transport Hubs)
+  const infraClusters = useMemo(() => {
+    const services = showEmergencyServices ? TALLINN_EMERGENCY_SERVICES : [];
+    const hubs = showTransportHubs ? TALLINN_TRANSPORT_HUBS : [];
+    return clusterInfrastructure(services, hubs, mapRef.current, viewState.zoom);
+  }, [showEmergencyServices, showTransportHubs, isMapReady, viewState.zoom]);
 
   /* ---------------------------------------------------------------------- */
   /* Viewport bounds filtering for HTML DOM markers to maintain 60 FPS       */
@@ -1952,7 +1934,13 @@ export function MapContainer({
       {/* Map                                                               */}
       {/* ---------------------------------------------------------------- */}
 
-      <div className="relative w-full h-full flex-1 min-h-[580px]">
+      <div
+        className="relative w-full h-full flex-1 min-h-[580px] [&_.maplibregl-ctrl-bottom-right]:!right-[var(--map-ctrl-right,10px)] [&_.maplibregl-ctrl-top-right]:!right-[var(--map-ctrl-right,10px)] [&_.maplibregl-ctrl-bottom-right]:transition-[right] [&_.maplibregl-ctrl-top-right]:transition-[right] [&_.maplibregl-ctrl-bottom-right]:duration-200 [&_.maplibregl-ctrl-top-right]:duration-200"
+        style={{
+          // @ts-ignore
+          "--map-ctrl-right": `${rightOffset + 10}px`,
+        }}
+      >
         {/* Compact vertical toolbars overlaid on map */}
         <MapToolbar
           mapTheme={mapTheme}
@@ -1977,6 +1965,8 @@ export function MapContainer({
           emergencyCount={TALLINN_EMERGENCY_SERVICES.length}
           transportHubCount={TALLINN_TRANSPORT_HUBS.length}
           incidentCount={MOCK_INCIDENTS.length}
+          rightOffset={rightOffset}
+          isDragging={isCopilotDragging}
         />
 
         {mapAction && (
@@ -2007,7 +1997,7 @@ export function MapContainer({
           </div>
         )}
 
-        <div ref={mapContainerRef} className="absolute inset-0 overflow-hidden rounded-xl border border-border bg-background">
+        <div className="absolute inset-0 overflow-hidden rounded-xl border border-border bg-background">
           {isClient ? (
             <Map
               ref={mapRef}
@@ -2304,98 +2294,83 @@ export function MapContainer({
               )}
 
               {/* ------------------------------------------------------ */}
-              {/* Emergency services                                     */}
+              {/* Unified Area Infrastructure & Transport Hub Clusters   */}
               {/* ------------------------------------------------------ */}
 
-              {showEmergencyServices &&
-                emergencyServiceClusters.map(
-                  (cluster) =>
-                    cluster.services.length >
-                      1 ? (
+              {(showEmergencyServices || showTransportHubs) &&
+                infraClusters.map((cluster) => {
+                  const isClustered = cluster.totalCount > 1;
+
+                  if (isClustered) {
+                    return (
                       <Marker
                         key={cluster.id}
-                        latitude={
-                          cluster.lat
-                        }
-                        longitude={
-                          cluster.lng
-                        }
+                        latitude={cluster.lat}
+                        longitude={cluster.lng}
                         anchor="center"
                       >
-                        <EmergencyServiceClusterMarker
-                          services={
-                            cluster.services
-                          }
+                        <InfrastructureClusterMarker
+                          cluster={cluster}
                           onClick={() => {
-                            setSelectedEmergencyService(
-                              null,
-                            );
-
-                            flyTo(
-                              cluster.lat,
-                              cluster.lng,
-                              Math.max(
-                                14.5,
-                                viewState.zoom +
-                                1.75,
-                              ),
-                            );
+                            setSelectedIncident(null);
+                            setSelectedFlight(null);
+                            setSelectedVessel(null);
+                            setSelectedVehicle(null);
+                            setSelectedEmergencyService(null);
+                            setSelectedTransportHub(null);
+                            setSelectedInfrastructureCluster(cluster);
+                            setShowClusterSidePanel(true);
+                            setShowFullClusterModal(false);
                           }}
                         />
                       </Marker>
-                    ) : (
+                    );
+                  }
+
+                  // Single facility or transport hub
+                  const service = cluster.services[0];
+                  const hub = cluster.hubs[0];
+
+                  if (service) {
+                    return (
                       <Marker
                         key={cluster.id}
-                        latitude={
-                          cluster.lat
-                        }
-                        longitude={
-                          cluster.lng
-                        }
+                        latitude={cluster.lat}
+                        longitude={cluster.lng}
                         anchor="bottom"
                       >
                         <AppleMapsMarker
-                          service={
-                            cluster.services[0]
-                          }
-                          isSelected={
-                            selectedEmergencyService?.id ===
-                            cluster
-                              .services[0]
-                              .id
-                          }
-                          onClick={
-                            handleEmergencyServiceClick
-                          }
+                          service={service}
+                          isSelected={selectedEmergencyService?.id === service.id}
+                          onClick={handleEmergencyServiceClick}
                           showLabel={
-                            selectedEmergencyService?.id ===
-                            cluster.services[0].id ||
+                            selectedEmergencyService?.id === service.id ||
                             viewState.zoom >= 16.5
                           }
                         />
                       </Marker>
-                    ),
-                )}
+                    );
+                  }
 
-              {/* ------------------------------------------------------ */}
-              {/* Transport Hubs (Airports, Railway Stations, Ports)     */}
-              {/* ------------------------------------------------------ */}
+                  if (hub) {
+                    return (
+                      <Marker
+                        key={cluster.id}
+                        latitude={cluster.lat}
+                        longitude={cluster.lng}
+                        anchor="bottom"
+                      >
+                        <TransportHubMarker
+                          hub={hub}
+                          isSelected={selectedTransportHub?.id === hub.id}
+                          onClick={handleTransportHubClick}
+                        />
+                      </Marker>
+                    );
+                  }
 
-              {showTransportHubs &&
-                TALLINN_TRANSPORT_HUBS.map((hub) => (
-                  <Marker
-                    key={hub.id}
-                    latitude={hub.lat}
-                    longitude={hub.lng}
-                    anchor="bottom"
-                  >
-                    <TransportHubMarker
-                      hub={hub}
-                      isSelected={selectedTransportHub?.id === hub.id}
-                      onClick={handleTransportHubClick}
-                    />
-                  </Marker>
-                ))}
+                  return null;
+                })}
 
               {/* ------------------------------------------------------ */}
               {/* WebGL Flight Path Trails (FlightRadar24 Style)        */}
@@ -2828,20 +2803,47 @@ export function MapContainer({
           ) : null}
         </div>
 
-        {/* Telemetry Feed overlay inside map */}
-        {showTelemetryFeed && (
-          <TelemetryFeed
-            filteredIncidents={filteredIncidents}
-            setSelectedIncident={setSelectedIncident}
-            flyTo={flyTo}
-            onClose={() => onCloseTelemetryFeed?.()}
-            onSelectIncident={(incident) => setSelectedIncident(incident)}
+        {/* Right-side Area Infrastructure Panel Card */}
+        {showClusterSidePanel && selectedInfrastructureCluster && (
+          <AreaInfrastructurePanel
+            cluster={selectedInfrastructureCluster}
+            onClose={() => setShowClusterSidePanel(false)}
+            onViewMoreHub={(hub) => {
+              setSelectedEmergencyService(null);
+              setSelectedTransportHub(hub);
+              flyTo(hub.lat, hub.lng, 14.5);
+            }}
+            onViewMoreService={(service) => {
+              setSelectedTransportHub(null);
+              setSelectedEmergencyService(service);
+              flyTo(service.lat, service.lng, 14.5);
+            }}
+            onViewFullAreaModal={() => {
+              setShowFullClusterModal(true);
+            }}
+            rightOffset={rightOffset}
+            isDragging={isCopilotDragging}
           />
         )}
       </div>
 
-
-
+      {/* Area Infrastructure Modal */}
+      {showFullClusterModal && selectedInfrastructureCluster && (
+        <AreaInfrastructureModal
+          cluster={selectedInfrastructureCluster}
+          onClose={() => setShowFullClusterModal(false)}
+          onSelectHub={(hub) => {
+            setSelectedEmergencyService(null);
+            setSelectedTransportHub(hub);
+            flyTo(hub.lat, hub.lng, 14);
+          }}
+          onSelectService={(service) => {
+            setSelectedTransportHub(null);
+            setSelectedEmergencyService(service);
+            flyTo(service.lat, service.lng, 14);
+          }}
+        />
+      )}
     </div>
   );
 }
