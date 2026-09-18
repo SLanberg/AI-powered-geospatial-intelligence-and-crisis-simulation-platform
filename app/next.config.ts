@@ -21,6 +21,14 @@ for (const file of [
 }
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["ws"],
+  turbopack: {},
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [...(config.externals || []), "ws"];
+    }
+    return config;
+  },
   async headers() {
     return [
       {
