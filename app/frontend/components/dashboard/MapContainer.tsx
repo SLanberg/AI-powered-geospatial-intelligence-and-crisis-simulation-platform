@@ -29,6 +29,11 @@ import { Badge } from "@/components/ui/badge";
 
 import type { FlightVector } from "@/app/api/flights/route";
 import type { VesselData } from "@/app/api/vessels/route";
+import {
+  SIMULATED_MARITIME_FLEET,
+  calculateMaritimePosition,
+  sanitizeVesselWaterPosition,
+} from "@/backend/services/vessels.service";
 
 import {
   ROAD_CORRIDORS,
@@ -1230,14 +1235,9 @@ export function MapContainer({
               const prev = prevDict[incoming.id] || (incoming.callsign ? prevDict[incoming.callsign] : undefined);
               if (!prev) return incoming;
 
-              // Retain smooth current position from tick interval if coordinate delta is tiny
-              const latDelta = Math.abs(incoming.lat - prev.lat);
-              const lngDelta = Math.abs(incoming.lng - prev.lng);
-
               return {
                 ...incoming,
-                lat: latDelta < 0.0005 ? prev.lat : incoming.lat,
-                lng: lngDelta < 0.0005 ? prev.lng : incoming.lng,
+                path: prev.path || incoming.path,
               };
             });
 
@@ -1292,28 +1292,7 @@ export function MapContainer({
           data.vessels &&
           Array.isArray(data.vessels)
         ) {
-          setVessels((prevVessels) => {
-            if (!prevVessels || prevVessels.length === 0) return data.vessels;
-            const prevDict: Record<number, VesselData> = {};
-            prevVessels.forEach((v) => {
-              prevDict[v.mmsi] = v;
-            });
-            return data.vessels.map((incoming: VesselData) => {
-              const prev = prevDict[incoming.mmsi];
-              if (!prev) return incoming;
-              const dLat = incoming.lat - prev.lat;
-              const dLng = incoming.lng - prev.lng;
-              const distSq = dLat * dLat + dLng * dLng;
-              if (distSq < 0.002) {
-                return {
-                  ...incoming,
-                  lat: prev.lat,
-                  lng: prev.lng,
-                };
-              }
-              return incoming;
-            });
-          });
+          setVessels(data.vessels);
         }
       } catch (_err) {
         // silent fallback
@@ -1324,7 +1303,7 @@ export function MapContainer({
 
     const interval = setInterval(
       fetchVessels,
-      15000,
+      10000,
     );
 
     return () => {
@@ -1353,8 +1332,12 @@ export function MapContainer({
   /* ---------------------------------------------------------------------- */
 
   useEffect(() => {
+    const simVesselMap = new globalThis.Map(SIMULATED_MARITIME_FLEET.map((r) => [r.mmsi, r]));
+
     const moveInterval = setInterval(() => {
-      // 1. Advance flights based on heading and velocity (m/s) + vertical rate
+      const nowSec = Math.floor(Date.now() / 1000);
+
+      // 1. Advance real flights based on true ADS-B telemetry kinematics
       setFlights((prevFlights) => {
         if (!prevFlights || prevFlights.length === 0) return prevFlights;
         return prevFlights.map((f) => {
@@ -1381,10 +1364,24 @@ export function MapContainer({
         });
       });
 
-      // 2. Advance vessels based on heading/cog and sog (knots)
+      // 2. Advance vessels strictly along designated Baltic Sea corridors & fairways
       setVessels((prevVessels) => {
         if (!prevVessels || prevVessels.length === 0) return prevVessels;
         return prevVessels.map((v) => {
+          const sim = simVesselMap.get(v.mmsi);
+          if (sim) {
+            const next = calculateMaritimePosition(sim, nowSec);
+            const safe = sanitizeVesselWaterPosition(next.lat, next.lng);
+            return {
+              ...v,
+              lat: safe.lat,
+              lng: safe.lng,
+              sog: next.sog,
+              cog: next.heading,
+              heading: next.heading,
+            };
+          }
+
           if (!v.sog || v.sog <= 0) return v;
           const speedMs = v.sog * 0.514444; // knots to m/s
           const headingToUse = (v.heading && v.heading !== 511) ? v.heading : (v.cog || 0);
@@ -1392,10 +1389,13 @@ export function MapContainer({
           const distMeters = speedMs * 1.0; // 1s step
           const dLat = (distMeters * Math.cos(headingRad)) / 111320;
           const dLng = (distMeters * Math.sin(headingRad)) / (111320 * Math.cos((v.lat * Math.PI) / 180));
+          const rawLat = v.lat + dLat;
+          const rawLng = v.lng + dLng;
+          const safe = sanitizeVesselWaterPosition(rawLat, rawLng);
           return {
             ...v,
-            lat: v.lat + dLat,
-            lng: v.lng + dLng,
+            lat: safe.lat,
+            lng: safe.lng,
           };
         });
       });
@@ -2087,66 +2087,27 @@ export function MapContainer({
                 </>
               )}
 
-              {/* ------------------------------------------------------ */}
-              {/* District Boundary Polygons & District Heatmap Overlay  */}
-              {/* ------------------------------------------------------ */}
-              {districtBoundariesGeoJSON.features.length > 0 && (
-                <Source
-                  id="district-polygons-source"
-                  type="geojson"
-                  data={districtBoundariesGeoJSON}
+              {/* Tactical AI Target Beacon Pinpoint */}
+              {mapAction?.center && (
+                <Marker
+                  latitude={mapAction.center.lat}
+                  longitude={mapAction.center.lng}
+                  anchor="center"
                 >
-                  {/* Glowing background stroke along district perimeter */}
-                  <Layer
-                    id="district-polygons-glow"
-                    type="line"
-                    paint={{
-                      "line-color": ["get", "strokeColor"],
-                      "line-width": 9,
-                      "line-opacity": 0.45,
-                      "line-blur": 4,
-                    }}
-                  />
-                  {/* Crisp primary boundary outline */}
-                  <Layer
-                    id="district-polygons-stroke"
-                    type="line"
-                    paint={{
-                      "line-color": ["get", "strokeColor"],
-                      "line-width": 3.5,
-                      "line-opacity": 0.95,
-                    }}
-                  />
-                  {/* Heatmap Area Fill covering entire district block */}
-                  <Layer
-                    id="district-polygons-fill"
-                    type="fill"
-                    paint={{
-                      "fill-color": ["get", "fillColor"],
-                      "fill-opacity": 0.4,
-                    }}
-                  />
-                </Source>
+                  <div className="relative flex flex-col items-center justify-center pointer-events-none group z-50">
+                    <div className="absolute w-14 h-14 rounded-full bg-sky-500/25 border-2 border-sky-400 animate-ping opacity-75" />
+                    <div className="relative w-9 h-9 rounded-full bg-[#081018]/95 border-2 border-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.7)] flex items-center justify-center text-sky-400 backdrop-blur">
+                      <Target className="w-5 h-5 animate-pulse text-sky-400" />
+                    </div>
+                    {mapAction.title && (
+                      <div className="absolute top-11 whitespace-nowrap bg-card/95 border border-sky-500/60 text-sky-300 font-mono text-[10px] font-bold px-2.5 py-1 rounded-md shadow-2xl backdrop-blur flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+                        {mapAction.title}
+                      </div>
+                    )}
+                  </div>
+                </Marker>
               )}
-
-              {/* Incident Point Heatmap Layer (when heatmap toggled) */}
-              {activeShowHeatmap && (
-                <Source
-                  id="incidents-heatmap"
-                  type="geojson"
-                  data={incidentHeatmapGeoJSON}
-                >
-                  <Layer {...INCIDENT_HEATMAP} />
-                </Source>
-              )}
-
-              {/* District Centroid Badges for Highlighted / Heatmap Districts */}
-              {districtBoundariesGeoJSON.features.map((feat, idx) => (
-                <DistrictCentroidMarkerItem
-                  key={`district-poly-label-${feat.properties.id}-${idx}`}
-                  props={feat.properties}
-                />
-              ))}
 
               {/* ------------------------------------------------------ */}
               {/* Incident popup                                          */}

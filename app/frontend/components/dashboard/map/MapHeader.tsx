@@ -1,4 +1,4 @@
-import { Crosshair, Box, Satellite, Map as MapIcon, ShieldAlert, Plane, Anchor, Siren, AlertTriangle, Flame, Compass } from "lucide-react";
+import { Crosshair, Box, Satellite, Map as MapIcon, ShieldAlert, Plane, Anchor, Siren, AlertTriangle, Compass } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -205,22 +205,6 @@ export function MapHeader({
                 )}
               </button>
             )}
-
-            {setShowHeatmap && (
-              <button
-                onClick={() => setShowHeatmap((prev) => !prev)}
-                title="Toggle Heatmap Density Overlay"
-                className={`min-h-[38px] px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
-                  showHeatmap
-                    ? "bg-amber-500/25 text-amber-200 border border-amber-500/80 shadow-lg shadow-amber-500/20"
-                    : "text-slate-300 hover:text-white hover:bg-white/10"
-                }`}
-              >
-                <Flame className="w-4 h-4 text-amber-400" />
-                <span>Heatmap</span>
-              </button>
-            )}
-
             </div>
           </div>
         )}

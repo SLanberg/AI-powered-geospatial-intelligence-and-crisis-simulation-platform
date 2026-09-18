@@ -99,6 +99,7 @@ export class ChatController {
         stepsCount: result.stepsCount,
         executionTimeMs: result.executionTimeMs,
         warnings: result.warnings,
+        mapAction: result.mapAction,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to execute AI agent.";

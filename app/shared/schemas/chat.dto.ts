@@ -38,6 +38,7 @@ export const ChatResponseSchema = z.object({
   stepsCount: z.number().nonnegative(),
   executionTimeMs: z.number().nonnegative(),
   warnings: z.array(z.string()).optional(),
+  mapAction: z.record(z.string(), z.unknown()).optional(),
 });
 export type ChatResponse = z.infer<typeof ChatResponseSchema>;
 

@@ -16,7 +16,7 @@ export class OllamaProvider implements ILLMProvider {
 
   async complete(options: ProviderCompletionOptions): Promise<ProviderCompletionResult> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), 3500);
 
     const payload: {
       model: string;
@@ -84,6 +84,9 @@ export class OllamaProvider implements ILLMProvider {
   }
 
   async stream(options: ProviderCompletionOptions): Promise<ReadableStream<Uint8Array>> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+
     const payload = {
       model: this.defaultModel,
       stream: true,
@@ -91,11 +94,17 @@ export class OllamaProvider implements ILLMProvider {
       options: options.temperature !== undefined ? { temperature: options.temperature } : undefined,
     };
 
-    const res = await fetch(`${this.baseUrl}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeout));
+    } catch (err) {
+      throw new Error(`Ollama stream failed to connect: ${err instanceof Error ? err.message : String(err)}`);
+    }
 
     if (!res.ok || !res.body) {
       throw new Error(`Ollama stream request failed with status ${res.status}`);

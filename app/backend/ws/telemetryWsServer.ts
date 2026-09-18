@@ -1,6 +1,11 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { flightsService } from "../services/flights.service";
-import { vesselsService } from "../services/vessels.service";
+import {
+  vesselsService,
+  SIMULATED_MARITIME_FLEET,
+  calculateMaritimePosition,
+  sanitizeVesselWaterPosition,
+} from "../services/vessels.service";
 import type { FlightData, VesselData } from "@/shared";
 
 export interface TelemetryWsMessage {
@@ -121,6 +126,8 @@ class TelemetryWsManager {
               heading: incoming.heading || existing.heading,
             };
           });
+        } else {
+          this.flights = [];
         }
       }
 
@@ -138,7 +145,12 @@ class TelemetryWsManager {
   }
 
   private tickMovement() {
-    // 1. Advance flights based on heading and velocity (m/s)
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    // Map for fast route lookup
+    const simVesselMap = new Map(SIMULATED_MARITIME_FLEET.map((r) => [r.mmsi, r]));
+
+    // 1. Advance real flights based on true ADS-B kinematics
     this.flights = this.flights.map((f) => {
       if (f.onGround || !f.velocity || f.velocity <= 0) return f;
 
@@ -152,7 +164,7 @@ class TelemetryWsManager {
       let newLat = f.lat + dLat;
       let newLng = f.lng + dLng;
 
-      // Wrap around airspace bounds gracefully
+      // Airspace boundary bounds
       if (newLat > 60.8) newLat = 58.0;
       if (newLat < 58.0) newLat = 60.8;
       if (newLng > 27.5) newLng = 22.0;
@@ -169,8 +181,23 @@ class TelemetryWsManager {
       };
     });
 
-    // 2. Advance vessels based on SOG (knots) and heading/COG
+    // 2. Advance vessels based on maritime fairway waypoints and sea safety
     this.vessels = this.vessels.map((v) => {
+      const simRoute = simVesselMap.get(v.mmsi);
+      if (simRoute) {
+        const nextPos = calculateMaritimePosition(simRoute, nowSec);
+        const safePos = sanitizeVesselWaterPosition(nextPos.lat, nextPos.lng);
+        return {
+          ...v,
+          lat: safePos.lat,
+          lng: safePos.lng,
+          sog: nextPos.sog,
+          cog: nextPos.heading,
+          heading: nextPos.heading,
+          timestamp: Date.now(),
+        };
+      }
+
       if (!v.sog || v.sog <= 0.1) return v;
 
       const speedMs = v.sog * 0.514444; // knots to m/s
@@ -183,19 +210,14 @@ class TelemetryWsManager {
         (distMeters * Math.sin(headingRad)) /
         (111320 * Math.cos((v.lat * Math.PI) / 180));
 
-      let newLat = v.lat + dLat;
-      let newLng = v.lng + dLng;
-
-      // Wrap around Gulf of Finland bounds
-      if (newLat > 59.6) newLat = 59.35;
-      if (newLat < 59.35) newLat = 59.6;
-      if (newLng > 25.0) newLng = 24.5;
-      if (newLng < 24.5) newLng = 25.0;
+      const rawLat = v.lat + dLat;
+      const rawLng = v.lng + dLng;
+      const safe = sanitizeVesselWaterPosition(rawLat, rawLng);
 
       return {
         ...v,
-        lat: newLat,
-        lng: newLng,
+        lat: safe.lat,
+        lng: safe.lng,
         timestamp: Date.now(),
       };
     });

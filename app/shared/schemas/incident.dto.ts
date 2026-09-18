@@ -29,6 +29,14 @@ export const MakiIconNameSchema = z.enum([
   "hospital",
   "police",
   "water",
+  "car",
+  "bus",
+  "rail",
+  "hazard",
+  "alert",
+  "drone",
+  "uav",
+  "default",
 ]);
 export type MakiIconName = z.infer<typeof MakiIconNameSchema>;
 
@@ -63,7 +71,7 @@ export const CreateIncidentPayloadSchema = z.object({
   lat: z.number().min(59.0).max(60.0).default(59.4372),
   lng: z.number().min(24.0).max(25.5).default(24.7453),
   description: z.string().min(5, "Description must be at least 5 characters"),
-  status: z.enum(["active", "investigating", "mitigated"]).default("active"),
+  status: z.enum(["active", "investigating", "mitigated", "resolved"]).default("active"),
   district: z.string().nullable().optional(),
   nodeId: z.string().optional(),
   makiIcon: z.string().optional(),

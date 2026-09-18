@@ -15,6 +15,137 @@ import {
 import { MapAction } from "@/components/dashboard/data";
 import type { NepalTimelineEvent } from "@/frontend/data/nepalIncidentData";
 import type { Incident } from "@/shared";
+import { TALLINN_EMERGENCY_SERVICES } from "../emergencyServicesData";
+import { TALLINN_TRANSPORT_HUBS } from "../transportHubsData";
+import { DISTRICT_CENTERS } from "../districtBoundaries";
+
+export function resolveClientMapAction(text: string): MapAction | null {
+  const clean = text.trim().toLowerCase();
+
+  // 1. Direct coordinates pattern: "59.4132, 24.8326"
+  const coordMatch = clean.match(/([-+]?\d{1,2}\.\d+)[,\s]+([-+]?\d{1,3}\.\d+)/);
+  if (coordMatch) {
+    const lat = parseFloat(coordMatch[1]);
+    const lng = parseFloat(coordMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return {
+        type: "fly_to",
+        center: { lat, lng, zoom: 16 },
+        title: `Coordinates (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+      };
+    }
+  }
+
+  // 2. High-priority Transport Hubs & Airport alias matching (e.g. "TLL", "airport", "lennujaam", "balti jaam")
+  const isAirportQuery =
+    /\b(tll|airport|tallinn airport|lennart meri|lennujaam|lennujaama|tallinna lennujaam)\b/i.test(clean);
+  if (isAirportQuery) {
+    const airport = TALLINN_TRANSPORT_HUBS.find((h) => h.id === "hub-tll-airport");
+    if (airport) {
+      return {
+        type: "fly_to",
+        center: { lat: airport.lat, lng: airport.lng, zoom: 16 },
+        title: "Tallinn Lennart Meri Airport (TLL)",
+        address: airport.address,
+        targetDistrictId: airport.district,
+      };
+    }
+  }
+
+  for (const hub of TALLINN_TRANSPORT_HUBS) {
+    const hubName = hub.name.toLowerCase();
+    const hubShort = hub.shortName.toLowerCase();
+    const hubEn = (hub.nameEn || "").toLowerCase();
+    const hubAddr = (hub.address || "").toLowerCase();
+
+    // Word boundary or substring match on transport hub names
+    if (
+      clean.includes(hubShort) ||
+      clean.includes(hubName) ||
+      (hubEn && clean.includes(hubEn)) ||
+      (clean.length > 4 && (hubName + " " + hubAddr).includes(clean))
+    ) {
+      return {
+        type: "fly_to",
+        center: { lat: hub.lat, lng: hub.lng, zoom: 16 },
+        title: hub.name,
+        address: hub.address,
+        targetDistrictId: hub.district,
+      };
+    }
+  }
+
+  // 3. Official Emergency GIS Services (Hospitals, rescue stations, gas stations)
+  const searchTerms = clean
+    .replace(/^(fly to|navigate to|show me where this is move the map|show me where this is|show me|move the map to|move map to|go to|locate|where is|move me to)\s+/i, "")
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 2);
+
+  let bestFacility: (typeof TALLINN_EMERGENCY_SERVICES)[0] | null = null;
+  let maxScore = 0;
+
+  for (const fac of TALLINN_EMERGENCY_SERVICES) {
+    const facName = fac.name.toLowerCase();
+    const facAddr = (fac.address || "").toLowerCase();
+
+    if (facName.includes(clean) || (clean.length > 5 && (facName + " " + facAddr).includes(clean))) {
+      return {
+        type: "fly_to",
+        center: { lat: fac.lat, lng: fac.lng, zoom: 16 },
+        title: fac.name,
+        address: fac.address,
+        targetDistrictId: fac.district,
+      };
+    }
+
+    let score = 0;
+    for (const term of searchTerms) {
+      if (facName.includes(term)) score += 3;
+      if (facAddr.includes(term)) score += 2;
+    }
+    if (score > maxScore) {
+      maxScore = score;
+      bestFacility = fac;
+    }
+  }
+
+  if (bestFacility && maxScore >= 4) {
+    return {
+      type: "fly_to",
+      center: { lat: bestFacility.lat, lng: bestFacility.lng, zoom: 16 },
+      title: bestFacility.name,
+      address: bestFacility.address,
+      targetDistrictId: bestFacility.district,
+    };
+  }
+
+  // 4. District centers (Strict word-boundary matching to prevent "airport" false-matching "port")
+  for (const [key, center] of Object.entries(DISTRICT_CENTERS)) {
+    const normKey = key.replace(/-/g, " ");
+    const keyRegex = new RegExp(`\\b${normKey}\\b`, "i");
+    const nameRegex = new RegExp(`\\b${center.name.toLowerCase().replace(/[\/\-_]/g, "\\s*")}\\b`, "i");
+
+    // Check specific district tokens
+    const districtTerms = center.name
+      .toLowerCase()
+      .split(/[\s/]+/)
+      .filter((w) => w.length > 3 && w !== "district" && w !== "sector");
+
+    const matchesToken = districtTerms.some((term) => new RegExp(`\\b${term}\\b`, "i").test(clean));
+
+    if (keyRegex.test(clean) || nameRegex.test(clean) || matchesToken) {
+      return {
+        type: "focus_district",
+        targetDistrictId: key,
+        center: { lat: center.lat, lng: center.lng, zoom: 13.5 },
+        title: `District Sector: ${center.name}`,
+      };
+    }
+  }
+
+  return null;
+}
 
 const DEFAULT_GREETING: DashboardChatMessage = {
   id: "greeting",
@@ -169,6 +300,26 @@ export function AIAssistant({
   const handleSendMessage = async (text: string) => {
     if (isStreaming) return;
 
+    // Direct client-side spatial resolution for instant zero-latency map flights
+    let clientAction = resolveClientMapAction(text);
+    if (!clientAction) {
+      // If user said "move the map", "show me where", or "yes", check recent messages for context
+      const lower = text.toLowerCase();
+      if (lower.includes("move") || lower.includes("show") || lower.includes("fly") || lower.includes("yes") || lower.includes("where")) {
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const pastAction = resolveClientMapAction(messages[i].content);
+          if (pastAction) {
+            clientAction = pastAction;
+            break;
+          }
+        }
+      }
+    }
+
+    if (clientAction && onMapAction) {
+      onMapAction(clientAction);
+    }
+
     const userMsg: DashboardChatMessage = {
       id: `usr_${Date.now()}`,
       role: "user",
@@ -185,6 +336,7 @@ export function AIAssistant({
       id: assistantMsgId,
       role: "assistant",
       content: "",
+      mapAction: clientAction || undefined,
       ts: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
     };
     setMessages([...newMessages, placeholderMsg]);
@@ -213,8 +365,16 @@ export function AIAssistant({
           typeof data === "object" && data !== null && "content" in data
             ? String(data.content)
             : JSON.stringify(data);
+        const mapAct = data.mapAction || clientAction;
+        if (mapAct && onMapAction) {
+          onMapAction(mapAct);
+        }
         setMessages((prev) =>
-          prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, content: textContent } : msg))
+          prev.map((msg) =>
+            msg.id === assistantMsgId
+              ? { ...msg, content: textContent, mapAction: mapAct }
+              : msg
+          )
         );
         return;
       }
@@ -223,6 +383,7 @@ export function AIAssistant({
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let accumulated = "";
+        let triggeredAction = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -230,11 +391,33 @@ export function AIAssistant({
           accumulated += decoder.decode(value, { stream: true });
 
           let displayContent = accumulated;
+          let activeMapAction = clientAction;
+
+          // Check for embedded MAP_ACTION comment in stream
+          const actionMatch = accumulated.match(/<!--\s*MAP_ACTION:\s*(\{.*?\})\s*-->/);
+          if (actionMatch) {
+            try {
+              const parsed = JSON.parse(actionMatch[1]);
+              activeMapAction = parsed;
+              if (!triggeredAction && onMapAction) {
+                onMapAction(parsed);
+                triggeredAction = true;
+              }
+            } catch {}
+          }
+
           if (accumulated.trim().startsWith("{")) {
             try {
               const parsed = JSON.parse(accumulated.trim());
               if (parsed && typeof parsed.content === "string") {
                 displayContent = parsed.content;
+                if (parsed.mapAction) {
+                  activeMapAction = parsed.mapAction;
+                  if (!triggeredAction && onMapAction) {
+                    onMapAction(parsed.mapAction);
+                    triggeredAction = true;
+                  }
+                }
               }
             } catch {
               // Ignore partial JSON parsing errors while streaming
@@ -243,7 +426,9 @@ export function AIAssistant({
 
           setMessages((prev) =>
             prev.map((msg) =>
-              msg.id === assistantMsgId ? { ...msg, content: displayContent } : msg
+              msg.id === assistantMsgId
+                ? { ...msg, content: displayContent, mapAction: activeMapAction || msg.mapAction }
+                : msg
             )
           );
         }
@@ -376,14 +561,21 @@ export function AIAssistant({
         />
       ) : (
         <>
-          <ChatPromptSuggestions
-            onSelectPrompt={handleSendMessage}
-            disabled={isStreaming}
-          />
-
           <div ref={scrollAreaRef} className="flex-1 p-4 overflow-y-auto space-y-4">
-            {messages.map((msg) => (
-              <ChatMessageItem key={msg.id} message={msg} />
+            {messages.map((msg, index) => (
+              <React.Fragment key={msg.id}>
+                <ChatMessageItem
+                  message={msg}
+                  onMapAction={onMapAction}
+                  isStreaming={isStreaming && index === messages.length - 1}
+                />
+                {index === 0 && messages.length === 1 && !isStreaming && (
+                  <ChatPromptSuggestions
+                    onSelectPrompt={handleSendMessage}
+                    disabled={isStreaming}
+                  />
+                )}
+              </React.Fragment>
             ))}
           </div>
 

@@ -220,11 +220,13 @@ export interface MapHighlightRegion {
 }
 
 export interface MapAction {
-  type: "highlight_incidents_by_district" | "focus_district" | "reset";
+  type: "highlight_incidents_by_district" | "focus_district" | "reset" | "fly_to";
   targetDistrictId?: string;
   highlightedDistricts?: MapHighlightRegion[];
   center?: { lat: number; lng: number; zoom: number };
   title?: string;
+  address?: string;
+  locationName?: string;
 }
 
 export interface DistrictAggregation {

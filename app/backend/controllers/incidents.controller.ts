@@ -61,6 +61,72 @@ export class IncidentsController {
       );
     }
   }
+
+  /**
+   * GET /api/incidents/[id]
+   */
+  async getIncidentById(id: string): Promise<NextResponse> {
+    try {
+      const incident = await incidentsService.getIncidentById(id);
+      if (!incident) {
+        return NextResponse.json(
+          { status: "error", error: `Incident ${id} not found` },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({
+        status: "success",
+        incident,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to fetch incident";
+      return NextResponse.json(
+        { status: "error", error: message },
+        { status: 500 }
+      );
+    }
+  }
+
+  /**
+   * PATCH /api/incidents/[id]
+   */
+  async updateIncident(request: Request, id: string): Promise<NextResponse> {
+    try {
+      const body = await request.json();
+      const updated = await incidentsService.updateIncident(id, body);
+      return NextResponse.json({
+        status: "updated",
+        message: `Successfully updated incident ${id}`,
+        incident: updated,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update incident";
+      return NextResponse.json(
+        { status: "error", error: message },
+        { status: 500 }
+      );
+    }
+  }
+
+  /**
+   * DELETE /api/incidents/[id]
+   */
+  async deleteIncident(id: string): Promise<NextResponse> {
+    try {
+      await incidentsService.deleteIncident(id);
+      return NextResponse.json({
+        status: "deleted",
+        message: `Successfully deleted incident ${id}`,
+        id,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete incident";
+      return NextResponse.json(
+        { status: "error", error: message },
+        { status: 500 }
+      );
+    }
+  }
 }
 
 export const incidentsController = new IncidentsController();

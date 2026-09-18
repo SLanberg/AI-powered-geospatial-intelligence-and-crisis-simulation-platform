@@ -195,15 +195,30 @@ export class IncidentsService {
     const updated = await prisma.incident.update({
       where: { id },
       data: {
-        ...(data.title ? { title: data.title } : {}),
-        ...(data.severity ? { severity: data.severity } : {}),
-        ...(data.category ? { category: data.category } : {}),
-        ...(data.description ? { description: data.description } : {}),
-        ...(data.status ? { status: data.status } : {}),
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.severity !== undefined ? { severity: data.severity } : {}),
+        ...(data.category !== undefined ? { category: data.category } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
         ...(data.district !== undefined ? { district: data.district } : {}),
+        ...(data.lat !== undefined ? { lat: data.lat } : {}),
+        ...(data.lng !== undefined ? { lng: data.lng } : {}),
+        ...(data.nodeId !== undefined ? { nodeId: data.nodeId } : {}),
+        ...(data.makiIcon !== undefined ? { makiIcon: data.makiIcon } : {}),
+        ...(data.timestamp !== undefined ? { timestamp: data.timestamp } : {}),
       },
     });
     return IncidentSchema.parse(updated);
+  }
+
+  /**
+   * Delete an incident by ID
+   */
+  async deleteIncident(id: string): Promise<boolean> {
+    await prisma.incident.delete({
+      where: { id },
+    });
+    return true;
   }
 }
 

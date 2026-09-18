@@ -24,6 +24,7 @@ export interface AgentRunResult {
   stepsCount: number;
   executionTimeMs: number;
   warnings?: string[];
+  mapAction?: Record<string, unknown>;
 }
 
 export class AgentHarness {
@@ -92,6 +93,9 @@ export class AgentHarness {
     // 4. Execution loop (reasoning + tool calling)
     let stepsCount = 0;
     let finalContent = "";
+    let capturedMapAction: Record<string, unknown> | undefined = undefined;
+
+    const availableTools = globalToolRegistry.getToolsForProvider();
 
     while (stepsCount < maxSteps) {
       stepsCount++;
@@ -100,6 +104,7 @@ export class AgentHarness {
         const completion = await this.defaultProvider.complete({
           messages: pruned,
           temperature: options.temperatureOverride,
+          tools: availableTools,
         });
 
         if (completion.toolCalls && completion.toolCalls.length > 0) {
@@ -121,6 +126,14 @@ export class AgentHarness {
 
             // Execute in Zod-typed registry
             const result = await globalToolRegistry.execute(tc.name, tc.arguments);
+
+            if (result.success && result.data && typeof result.data === "object") {
+              const dataObj = result.data as Record<string, unknown>;
+              if (dataObj.mapAction) {
+                capturedMapAction = dataObj.mapAction as Record<string, unknown>;
+              }
+            }
+
             pruned.push({
               role: "tool",
               name: tc.name,
@@ -141,6 +154,15 @@ export class AgentHarness {
           warnings.push("Primary provider unreachable, fallback provider engaged");
           const fallback = new MockLLMProvider();
           const fallbackResult = await fallback.complete({ messages: pruned });
+          if (fallbackResult.toolCalls && fallbackResult.toolCalls.length > 0) {
+            for (const tc of fallbackResult.toolCalls) {
+              const res = await globalToolRegistry.execute(tc.name, tc.arguments);
+              if (res.success && res.data && typeof res.data === "object") {
+                const d = res.data as Record<string, unknown>;
+                if (d.mapAction) capturedMapAction = d.mapAction as Record<string, unknown>;
+              }
+            }
+          }
           finalContent = fallbackResult.content;
         } else {
           finalContent = "Service currently operating in degraded telemetry mode.";
@@ -149,17 +171,52 @@ export class AgentHarness {
       }
     }
 
+    if (capturedMapAction && !finalContent.includes("<!-- MAP_ACTION:")) {
+      finalContent += `\n\n<!-- MAP_ACTION: ${JSON.stringify(capturedMapAction)} -->`;
+    }
+
     return {
       content: finalContent || "Operational assessment completed.",
       model: options.modelOverride || this.defaultProvider.name,
       stepsCount,
       executionTimeMs: Math.round(performance.now() - startTime),
       warnings: warnings.length > 0 ? warnings : undefined,
+      mapAction: capturedMapAction,
     };
   }
 
   async stream(options: AgentRunOptions): Promise<ReadableStream<Uint8Array>> {
-    if (this.defaultProvider.stream) {
+    const lastUserMessage = options.messages.filter((m) => m.role === "user").pop();
+    const text = lastUserMessage?.content?.toLowerCase() || "";
+
+    // If query looks like a command requiring tools (navigation, flights, substation, dispatch), run the agent loop
+    const isToolQuery =
+      text.includes("fly") ||
+      text.includes("navigate") ||
+      text.includes("move") ||
+      text.includes("show") ||
+      text.includes("where") ||
+      text.includes("locate") ||
+      text.includes("go to") ||
+      text.includes("airport") ||
+      text.includes("tll") ||
+      text.includes("lennart") ||
+      text.includes("lennujaam") ||
+      text.includes("isolate") ||
+      text.includes("substation") ||
+      text.includes("dispatch") ||
+      text.includes("reroute") ||
+      text.includes("search") ||
+      text.includes("incident") ||
+      text.includes("linnu tee") ||
+      text.includes("olerex") ||
+      text.includes("kristiine") ||
+      text.includes("heliport") ||
+      text.includes("vanasadam") ||
+      text.includes("station") ||
+      text.includes("balti jaam");
+
+    if (!isToolQuery && this.defaultProvider.stream) {
       const systemContent = generateSystemPrompt({ telemetryContext: options.context });
       const activeMessages: ChatMessage[] = [
         { role: "system", content: systemContent },
@@ -175,12 +232,21 @@ export class AgentHarness {
       }
     }
 
-    // Fallback: run and stream result content as stream chunks
+    // Run harness loop with tools and stream output
     const result = await this.run(options);
     const encoder = new TextEncoder();
+    const words = result.content.split(" ");
+
     return new ReadableStream({
-      start(controller) {
-        controller.enqueue(encoder.encode(result.content));
+      async start(controller) {
+        // Natural thinking pause before first token is streamed
+        await new Promise((r) => setTimeout(r, 650));
+
+        for (let i = 0; i < words.length; i++) {
+          const suffix = i === words.length - 1 ? "" : " ";
+          controller.enqueue(encoder.encode(words[i] + suffix));
+          await new Promise((r) => setTimeout(r, 14));
+        }
         controller.close();
       },
     });

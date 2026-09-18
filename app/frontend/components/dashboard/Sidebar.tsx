@@ -110,7 +110,7 @@ export function Sidebar({
                     <Badge
                       variant={item.badgeVariant || "outline"}
                       className={`ml-auto text-[10px] px-1.5 py-0 h-4 font-mono font-normal ${item.badge === "LIVE"
-                          ? "bg-rose-950/80 text-rose-300 border-rose-800 animate-pulse"
+                          ? "bg-emerald-950/80 text-emerald-300 border-emerald-800"
                           : isActive
                             ? "bg-primary/20 text-primary border-primary/40"
                             : "bg-muted text-muted-foreground border-border"

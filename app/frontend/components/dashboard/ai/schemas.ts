@@ -8,6 +8,7 @@ export const DashboardChatMessageSchema = z.object({
   ts: z.string().optional(),
   isError: z.boolean().optional(),
   model: z.string().optional(),
+  mapAction: z.any().optional(),
 });
 export type DashboardChatMessage = z.infer<typeof DashboardChatMessageSchema>;
 

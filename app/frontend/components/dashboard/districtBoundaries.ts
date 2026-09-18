@@ -148,82 +148,15 @@ export const DISTRICT_CENTERS: Record<string, { name: string; lat: number; lng: 
 };
 
 /**
- * Generates a GeoJSON FeatureCollection of district polygons for rendering boundaries and polygon heatmaps.
+ * Generates a GeoJSON FeatureCollection of district polygons (disabled per user request)
  */
 export function getDistrictBoundariesGeoJSON(
-  highlightedDistricts?: MapHighlightRegion[],
-  targetDistrictId?: string,
-  showAllDistrictsHeatmap: boolean = false
+  _highlightedDistricts?: MapHighlightRegion[],
+  _targetDistrictId?: string,
+  _showAllDistrictsHeatmap: boolean = false
 ): FeatureCollection<Polygon, DistrictPolygonProps> {
-  const features: Feature<Polygon, DistrictPolygonProps>[] = [];
-
-  const districtMap = new Map<string, MapHighlightRegion>();
-  if (highlightedDistricts) {
-    highlightedDistricts.forEach((d) => districtMap.set(d.id, d));
-  }
-
-  const allDistrictIds = Object.keys(TALLINN_DISTRICT_POLYGONS);
-
-  allDistrictIds.forEach((distId) => {
-    const polygonCoords = TALLINN_DISTRICT_POLYGONS[distId];
-    if (!polygonCoords) return;
-
-    const highlightInfo = districtMap.get(distId);
-    const isTarget = distId === targetDistrictId;
-    const isHighlighted = !!highlightInfo || isTarget;
-
-    // If neither highlighted nor showing all heatmap, skip or render subtly
-    if (!isHighlighted && !showAllDistrictsHeatmap) {
-      return;
-    }
-
-    const severity: "critical" | "warning" | "info" | "none" =
-      highlightInfo?.severity ?? (isTarget ? "critical" : "info");
-
-    const count = highlightInfo?.count ?? (isHighlighted ? 1 : 0);
-    const center = DISTRICT_CENTERS[distId] || {
-      name: highlightInfo?.name || distId,
-      lat: highlightInfo?.lat || 59.437,
-      lng: highlightInfo?.lng || 24.753,
-    };
-
-    let fillColor = "rgba(14, 165, 233, 0.25)";
-    let strokeColor = "#0ea5e9";
-
-    if (severity === "critical") {
-      fillColor = "rgba(239, 68, 68, 0.40)";
-      strokeColor = "#ef4444";
-    } else if (isTarget) {
-      fillColor = "rgba(56, 189, 248, 0.35)";
-      strokeColor = "#38bdf8";
-    } else if (severity === "warning") {
-      fillColor = "rgba(245, 158, 11, 0.35)";
-      strokeColor = "#f59e0b";
-    }
-
-    features.push({
-      type: "Feature",
-      geometry: {
-        type: "Polygon",
-        coordinates: polygonCoords,
-      },
-      properties: {
-        id: distId,
-        name: highlightInfo?.name || center.name,
-        count,
-        severity,
-        isTarget,
-        isHighlighted,
-        fillColor,
-        strokeColor,
-        centerLat: center.lat,
-        centerLng: center.lng,
-      },
-    });
-  });
-
   return {
     type: "FeatureCollection",
-    features,
+    features: [],
   };
 }

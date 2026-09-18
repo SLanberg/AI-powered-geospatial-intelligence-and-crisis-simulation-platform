@@ -638,18 +638,6 @@ export const MapToolbar = React.memo(function MapToolbar({
           },
         ]
       : []),
-    ...(setShowHeatmap
-      ? [
-          {
-            id: "heatmap",
-            label: "Heatmap",
-            icon: <Activity size={14} className="text-rose-400" />,
-            visible: showHeatmap,
-            count: "",
-            onToggle: () => setShowHeatmap((p: boolean) => !p),
-          },
-        ]
-      : []),
     ...customLayers,
   ];
 

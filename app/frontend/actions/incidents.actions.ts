@@ -32,19 +32,34 @@ export async function createIncidentAction(
 }
 
 /**
- * Server Action: Query incidents with strict Zod filtering
+ * Server Action: Update an incident
  */
-export async function queryIncidentsAction(
-  rawFilter?: unknown
-): Promise<ServerActionResult<Incident[]>> {
+export async function updateIncidentAction(
+  id: string,
+  rawPayload: unknown
+): Promise<ServerActionResult<Incident>> {
   try {
-    const validatedFilter: IncidentFilter | undefined = rawFilter
-      ? IncidentFilterSchema.parse(rawFilter)
-      : undefined;
-    const incidents = await incidentsService.getIncidents(validatedFilter);
-    return { success: true, data: incidents };
+    const validatedPartial: Partial<CreateIncidentPayload> = CreateIncidentPayloadSchema.partial().parse(rawPayload);
+    const incident = await incidentsService.updateIncident(id, validatedPartial);
+    return { success: true, data: incident };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to query incidents";
+    const message = err instanceof Error ? err.message : "Failed to update incident";
     return { success: false, error: message };
   }
 }
+
+/**
+ * Server Action: Delete an incident
+ */
+export async function deleteIncidentAction(
+  id: string
+): Promise<ServerActionResult<{ id: string }>> {
+  try {
+    await incidentsService.deleteIncident(id);
+    return { success: true, data: { id } };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to delete incident";
+    return { success: false, error: message };
+  }
+}
+
