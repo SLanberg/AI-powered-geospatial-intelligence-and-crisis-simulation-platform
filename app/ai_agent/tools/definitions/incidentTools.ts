@@ -8,6 +8,14 @@ import {
   CreateIncidentOutputSchema,
   CreateIncidentInput,
   CreateIncidentOutput,
+  UpdateIncidentInputSchema,
+  UpdateIncidentOutputSchema,
+  UpdateIncidentInput,
+  UpdateIncidentOutput,
+  DeleteIncidentInputSchema,
+  DeleteIncidentOutputSchema,
+  DeleteIncidentInput,
+  DeleteIncidentOutput,
 } from "@/shared";
 
 export const searchIncidentsTool = {
@@ -69,6 +77,51 @@ export const createIncidentTool = {
       success: true,
       incidentId: incident.id,
       message: `Incident registered in database: [${incident.id}] ${incident.title}`,
+    };
+  },
+};
+
+export const updateIncidentTool = {
+  name: "update_incident",
+  description: "Update details or status of an existing incident in Tallinn DB.",
+  isWriteOperation: true,
+  inputSchema: UpdateIncidentInputSchema,
+  outputSchema: UpdateIncidentOutputSchema,
+  execute: async (rawInput: unknown): Promise<UpdateIncidentOutput> => {
+    const input: UpdateIncidentInput = UpdateIncidentInputSchema.parse(rawInput);
+    const updated = await incidentsService.updateIncident(input.id, {
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.category !== undefined ? { category: input.category } : {}),
+      ...(input.severity !== undefined ? { severity: input.severity } : {}),
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.district !== undefined ? { district: input.district } : {}),
+      ...(input.description !== undefined ? { description: input.description } : {}),
+      ...(input.lat !== undefined ? { lat: input.lat } : {}),
+      ...(input.lng !== undefined ? { lng: input.lng } : {}),
+    });
+
+    return {
+      success: true,
+      incidentId: updated.id,
+      message: `Incident updated in database: [${updated.id}] ${updated.title} (Status: ${updated.status})`,
+    };
+  },
+};
+
+export const deleteIncidentTool = {
+  name: "delete_incident",
+  description: "Decommission and remove an incident record from Tallinn DB.",
+  isWriteOperation: true,
+  inputSchema: DeleteIncidentInputSchema,
+  outputSchema: DeleteIncidentOutputSchema,
+  execute: async (rawInput: unknown): Promise<DeleteIncidentOutput> => {
+    const input: DeleteIncidentInput = DeleteIncidentInputSchema.parse(rawInput);
+    await incidentsService.deleteIncident(input.id);
+
+    return {
+      success: true,
+      incidentId: input.id,
+      message: `Incident [${input.id}] successfully decommissioned from database.`,
     };
   },
 };

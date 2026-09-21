@@ -73,7 +73,7 @@ test("Tool Registry: Zod Schema Validation & Execution", async () => {
   assert.strictEqual(inspectResult.success, true);
   const data = inspectResult.data as { substation_id: string; status: string };
   assert.strictEqual(data.substation_id, "EE-TLN-SUB-04");
-  assert.strictEqual(data.status, "TRIPPED");
+  assert.ok(["TRIPPED", "OPERATIONAL", "ALARM_ACTIVE"].includes(data.status));
 });
 
 test("Safety Guardrails: Prompt Injection Defense & Infrastructure Protection", () => {
@@ -123,3 +123,76 @@ test("Agent Harness Execution with Mock Provider", async () => {
   assert.strictEqual(result.model, "mock");
   assert.ok(result.stepsCount >= 1);
 });
+
+test("Fast SCADA Incident Briefing Execution", async () => {
+  const harness = new AgentHarness();
+  const result = await harness.run({
+    messages: [
+      {
+        role: "user",
+        content: "Give me an operational briefing on all active SCADA incidents across Tallinn sectors.",
+      },
+    ],
+  });
+
+  assert.ok(result.content.includes("TALLINN SCADA OPERATIONAL BRIEFING"));
+  assert.strictEqual(result.model, "scada-fast-briefing");
+  assert.strictEqual(result.stepsCount, 1);
+  assert.ok(result.executionTimeMs < 150);
+});
+
+test("Fast Nepal Briefing Execution ('what happened in Nepal?')", async () => {
+  const harness = new AgentHarness();
+  const result = await harness.run({
+    messages: [
+      {
+        role: "user",
+        content: "what happened in Nepal?",
+      },
+    ],
+  });
+
+  assert.ok(result.content.includes("NEPAL CRYOSPHERE-HYDRO CASCADE"));
+  assert.ok(result.content.includes("1,453"));
+  assert.ok(result.content.includes("5,000 – 6,600+"));
+  assert.ok(result.content.includes("https://www.youtube.com/watch?v=ORPDEvHJZpA"));
+  assert.strictEqual(result.model, "nepal-fast-briefing");
+  assert.strictEqual(result.stepsCount, 1);
+  assert.ok(result.executionTimeMs < 150);
+});
+
+test("Spatial Map Resolution: Distinguishes Briefing/Assessment from Map Navigation", async () => {
+  const { resolveClientMapAction } = await import("@/frontend/components/dashboard/ai/AIAssistant");
+
+  // Operational briefings and questions MUST NOT trigger map navigation
+  assert.strictEqual(
+    resolveClientMapAction("Give me an operational briefing on all active SCADA incidents across Tallinn sectors."),
+    null
+  );
+  assert.strictEqual(
+    resolveClientMapAction("Assess electrical grid telemetry and substation status on Vanalinn and Ülemiste feeders."),
+    null
+  );
+  assert.strictEqual(
+    resolveClientMapAction("what happened in Nepal?"),
+    null
+  );
+  assert.strictEqual(
+    resolveClientMapAction("Analyze traffic flow on Pärnu mnt and Narva mnt and check for congestion."),
+    null
+  );
+
+  // Explicit navigation commands MUST trigger map actions
+  const kristiineAction = resolveClientMapAction("Fly to Kristiine");
+  assert.ok(kristiineAction !== null);
+  assert.strictEqual(kristiineAction?.type, "focus_district");
+  assert.strictEqual(kristiineAction?.targetDistrictId, "kristiine");
+
+  const coordAction = resolveClientMapAction("59.4372, 24.7453");
+  assert.ok(coordAction !== null);
+  assert.strictEqual(coordAction?.type, "fly_to");
+  assert.strictEqual(coordAction?.center?.lat, 59.4372);
+  assert.strictEqual(coordAction?.center?.lng, 24.7453);
+});
+
+

@@ -1,56 +1,98 @@
 "use client";
 
-import React from "react";
-import { Zap, ShieldAlert, Target, Activity, FileText, ArrowUpRight, HelpCircle } from "lucide-react";
+import {
+  Zap,
+  ShieldAlert,
+  Target,
+  Activity,
+  FileText,
+  ArrowUpRight,
+  HelpCircle,
+  Waves,
+  Radio,
+  Navigation,
+} from "lucide-react";
 
 export interface ChatPromptSuggestionsProps {
   onSelectPrompt: (promptText: string) => void;
   disabled?: boolean;
+  activeTab?: string;
 }
 
-const QUESTION_OPTIONS = [
+const OP_PICTURE_OPTIONS = [
   {
-    icon: Zap,
+    icon: FileText,
     iconColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-    label: "Grid Telemetry Status",
-    prompt: "Provide a complete telemetry assessment of tripped transformers and substations across Tallinn.",
+    label: "Active Incidents Briefing",
+    prompt: "Give me an operational briefing on all active SCADA incidents across Tallinn sectors.",
   },
   {
-    icon: ShieldAlert,
+    icon: Zap,
     iconColor: "text-rose-400 bg-rose-500/10 border-rose-500/20",
-    label: "Hospital Feeder Check",
-    prompt: "Verify power supply stability and secondary backup status for Tallinn regional hospitals.",
+    label: "Grid & Substation Telemetry",
+    prompt: "Assess electrical grid telemetry and substation status on Vanalinn and Ülemiste feeders.",
   },
   {
     icon: Target,
     iconColor: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-    label: "Traffic & Transit Diversion",
-    prompt: "Analyze traffic flow on Pärnu mnt and Narva mnt and formulate rerouting around Viru junction.",
+    label: "Traffic & Transit Corridors",
+    prompt: "Analyze traffic flow on Pärnu mnt and Narva mnt and check for congestion.",
   },
   {
     icon: Activity,
     iconColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-    label: "Cascading Failure Analysis",
-    prompt: "Identify critical infrastructure risks and cascading failure points across the city grid.",
-  },
-  {
-    icon: FileText,
-    iconColor: "text-purple-400 bg-purple-500/10 border-purple-500/20",
-    label: "Generate SCADA Brief",
-    prompt: "Generate an executive SCADA incident brief with recommended mitigation protocols.",
+    label: "Operational Picture Status",
+    prompt: "What is the current operational picture status of Tallinn municipal infrastructure?",
   },
 ];
 
-export function ChatPromptSuggestions({ onSelectPrompt, disabled }: ChatPromptSuggestionsProps) {
+const REPLAY_OPTIONS = [
+  {
+    icon: Waves,
+    iconColor: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+    label: "Nepal Disaster Briefing",
+    prompt: "what happened in Nepal?",
+  },
+  {
+    icon: Radio,
+    iconColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+    label: "Downstream Alert Status",
+    prompt: "Review mass emergency SMS warning dispatches and population evacuation in downstream valleys.",
+  },
+  {
+    icon: Navigation,
+    iconColor: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+    label: "Highway Inundation & Diversions",
+    prompt: "Analyze road damage on Prithvi Highway (H04) and alternate routing via BP Highway (H06).",
+  },
+  {
+    icon: Activity,
+    iconColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    label: "Hydrometric Gauge Readings",
+    prompt: "Analyze river crest levels at Rasuwagadhi, Betrawati, Galchhi, and Devghat stations.",
+  },
+];
+
+export function ChatPromptSuggestions({
+  onSelectPrompt,
+  disabled,
+  activeTab,
+}: ChatPromptSuggestionsProps) {
+  const options = activeTab === "nepal" ? REPLAY_OPTIONS : OP_PICTURE_OPTIONS;
+
   return (
     <div className="mt-3 pl-9 pr-1 flex flex-col gap-2.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
         <HelpCircle className="w-3.5 h-3.5 text-primary" />
-        <span>Questions you can ask your AI agent:</span>
+        <span>
+          {activeTab === "nepal"
+            ? "Replay simulation inquiries:"
+            : "Operational Picture inquiries:"}
+        </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        {QUESTION_OPTIONS.map((item, idx) => {
+        {options.map((item, idx) => {
           const Icon = item.icon;
           return (
             <button
@@ -62,7 +104,9 @@ export function ChatPromptSuggestions({ onSelectPrompt, disabled }: ChatPromptSu
             >
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-2">
-                  <div className={`w-6 h-6 rounded-md border flex items-center justify-center shrink-0 ${item.iconColor}`}>
+                  <div
+                    className={`w-6 h-6 rounded-md border flex items-center justify-center shrink-0 ${item.iconColor}`}
+                  >
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   <span className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors">

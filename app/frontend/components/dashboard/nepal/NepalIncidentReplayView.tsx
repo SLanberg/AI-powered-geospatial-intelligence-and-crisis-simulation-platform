@@ -17,7 +17,6 @@ import {
   AlertTriangle,
   Radio,
   Waves,
-  ShieldAlert,
   Send,
   Route,
   Navigation,
@@ -426,11 +425,13 @@ export function NepalIncidentReplayView({
   }, [selectedStation]);
 
   // Unified Area Infrastructure clusters (Emergency Services + Transport Hubs)
+  const quantizedZoom = Math.round(mapZoom * 2) / 2;
+
   const infraClusters = useMemo(() => {
     const services = showEmergencyServices ? NEPAL_EMERGENCY_SERVICES : [];
     const hubs = showTransportHubs ? NEPAL_TRANSPORT_HUBS : [];
-    return clusterInfrastructure(services, hubs, mapRef.current, mapZoom);
-  }, [showEmergencyServices, showTransportHubs, mapZoom]);
+    return clusterInfrastructure(services, hubs, mapRef.current, quantizedZoom);
+  }, [showEmergencyServices, showTransportHubs, quantizedZoom]);
 
   // Jump to event
   const handleSelectEvent = (event: NepalTimelineEvent) => {
@@ -596,19 +597,6 @@ export function NepalIncidentReplayView({
               )}
             </div>
           </div>
-
-          {/* Open Real Time Analysis inside Neural City Copilot */}
-          {onOpenRealTimeAnalysis && (
-            <button
-              type="button"
-              onClick={onOpenRealTimeAnalysis}
-              className="px-2.5 py-1 bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 text-xs font-mono font-semibold rounded-md flex items-center gap-1.5 transition-all shadow-sm"
-              title="Open Real time analysis in Neural City Copilot"
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-              <span>Real time analysis</span>
-            </button>
-          )}
         </div>
       </header>
 
@@ -649,8 +637,13 @@ export function NepalIncidentReplayView({
             mapStyle={MAP_STYLES[mapTheme]}
             style={{ width: "100%", height: "100%" }}
             attributionControl={false}
-            fadeDuration={0}
-            onMove={(e) => setMapZoom(e.viewState.zoom)}
+            onMove={(e) => {
+              const newQuantized = Math.round(e.viewState.zoom * 2) / 2;
+              if (Math.abs(newQuantized - quantizedZoom) >= 0.5) {
+                setMapZoom(e.viewState.zoom);
+              }
+            }}
+            onMoveEnd={(e) => setMapZoom(e.viewState.zoom)}
           >
             <NavigationControl position="bottom-right" showCompass={true} showZoom={true} />
 
@@ -658,21 +651,12 @@ export function NepalIncidentReplayView({
             {showRiverCorridor && (
               <Source id="full-river" type="geojson" data={fullRiverGeoJson}>
                 <Layer
-                  id="river-base-glow"
-                  type="line"
-                  paint={{
-                    "line-color": "#0ea5e9",
-                    "line-width": 5,
-                    "line-opacity": 0.25,
-                  }}
-                />
-                <Layer
                   id="river-base-line"
                   type="line"
                   paint={{
                     "line-color": "#0284c7",
                     "line-width": 2.5,
-                    "line-opacity": 0.5,
+                    "line-opacity": 0.7,
                     "line-dasharray": [2, 1],
                   }}
                 />
@@ -683,20 +667,11 @@ export function NepalIncidentReplayView({
             {showRiverCorridor && (
               <Source id="active-wave" type="geojson" data={activeWaveGeoJson}>
                 <Layer
-                  id="wave-glow"
-                  type="line"
-                  paint={{
-                    "line-color": "#ef4444",
-                    "line-width": 8,
-                    "line-opacity": 0.6,
-                  }}
-                />
-                <Layer
                   id="wave-core"
                   type="line"
                   paint={{
-                    "line-color": "#fbbf24",
-                    "line-width": 3.5,
+                    "line-color": "#ef4444",
+                    "line-width": 4,
                     "line-opacity": 0.95,
                   }}
                 />
@@ -706,15 +681,6 @@ export function NepalIncidentReplayView({
             {/* Selected Station Affected Route Highlight on Map */}
             {selectedStationSegmentGeoJson && (
               <Source id="selected-station-route" type="geojson" data={selectedStationSegmentGeoJson}>
-                <Layer
-                  id="station-route-glow"
-                  type="line"
-                  paint={{
-                    "line-color": "#f59e0b",
-                    "line-width": 10,
-                    "line-opacity": 0.5,
-                  }}
-                />
                 <Layer
                   id="station-route-core"
                   type="line"
@@ -837,8 +803,6 @@ export function NepalIncidentReplayView({
                           <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-600 border border-white flex items-center justify-center shadow">
                             <X className="w-2 h-2 text-white stroke-[3]" />
                           </div>
-                        ) : state.status === "SURGING" || state.status === "DANGER" ? (
-                          <span className="absolute inset-0 rounded-full bg-white/40 animate-ping pointer-events-none" />
                         ) : null}
                       </div>
 

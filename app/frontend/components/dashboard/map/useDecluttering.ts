@@ -124,17 +124,35 @@ export function calculateDeclutteredOffsets(
 }
 
 /**
+ * Projects (lng, lat) to standard Web Mercator world pixel coordinates at a given zoom level.
+ * This coordinate system is completely invariant to camera center/panning, which prevents
+ * cluster thrashing and icon flickering during map movement, fast forwarding, and animations.
+ */
+export function projectToWorldPixels(lng: number, lat: number, zoom: number): { x: number; y: number } {
+  const scale = 256 * Math.pow(2, zoom);
+  const x = scale * ((lng + 180) / 360);
+  const sinLat = Math.sin((lat * Math.PI) / 180);
+  const clampedSinLat = Math.max(-0.9999, Math.min(0.9999, sinLat));
+  const y = scale * (0.5 - Math.log((1 + clampedSinLat) / (1 - clampedSinLat)) / (4 * Math.PI));
+  return { x, y };
+}
+
+/**
  * Groups emergency facilities by their rendered distance instead of their
- * geographic distance. That keeps the result stable across latitude and lets
- * the map progressively reveal individual facilities as an operator zooms in.
+ * geographic distance. Uses world-pixel coordinates to guarantee rock-solid
+ * stability across panning and camera movement.
  */
 export function clusterEmergencyServices(
   services: EmergencyService[],
   map: MapRef | null,
   zoom: number,
 ): EmergencyServiceCluster[] {
-  if (!map || zoom >= 14.0) {
-    return services.map((service) => ({
+  if (services.length === 0) return [];
+
+  const sortedServices = [...services].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  if (zoom >= 14.0) {
+    return sortedServices.map((service) => ({
       id: `emergency-${service.id}`,
       lat: service.lat,
       lng: service.lng,
@@ -144,41 +162,71 @@ export function clusterEmergencyServices(
 
   // Dynamic screen-space radius based on zoom level to eliminate badge stacking in high-density corridors
   const radius = zoom < 11.5 ? 64 : zoom < 12.8 ? 48 : 36;
-  const projected = services.map((service) => {
-    const point = map.project([service.lng, service.lat]);
-    return { service, x: point.x, y: point.y };
-  });
-  const remaining = new Set(projected.map((_, index) => index));
+  const cellSize = radius;
+
+  const projected: Array<{ service: EmergencyService; x: number; y: number }> = [];
+  const grid = new Map<string, number[]>();
+
+  for (let i = 0; i < sortedServices.length; i++) {
+    const s = sortedServices[i];
+    const { x, y } = projectToWorldPixels(s.lng, s.lat, zoom);
+    projected.push({ service: s, x, y });
+
+    const cellKey = `${Math.floor(x / cellSize)},${Math.floor(y / cellSize)}`;
+    let cell = grid.get(cellKey);
+    if (!cell) {
+      cell = [];
+      grid.set(cellKey, cell);
+    }
+    cell.push(i);
+  }
+
+  const visited = new Uint8Array(projected.length);
   const clusters: EmergencyServiceCluster[] = [];
 
-  while (remaining.size > 0) {
-    const [seedIndex] = remaining;
-    remaining.delete(seedIndex);
+  for (let i = 0; i < projected.length; i++) {
+    if (visited[i]) continue;
+    visited[i] = 1;
 
-    const group = [projected[seedIndex]];
-    const queue = [seedIndex];
+    const group: typeof projected = [projected[i]];
+    const queue: number[] = [i];
 
     while (queue.length > 0) {
-      const current = projected[queue.pop()!];
+      const currIdx = queue.pop()!;
+      const curr = projected[currIdx];
 
-      for (const candidateIndex of Array.from(remaining)) {
-        const candidate = projected[candidateIndex];
-        const distance = Math.hypot(
-          current.x - candidate.x,
-          current.y - candidate.y,
-        );
+      const gx = Math.floor(curr.x / cellSize);
+      const gy = Math.floor(curr.y / cellSize);
 
-        if (distance <= radius) {
-          remaining.delete(candidateIndex);
-          queue.push(candidateIndex);
-          group.push(candidate);
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const neighborKey = `${gx + dx},${gy + dy}`;
+          const cell = grid.get(neighborKey);
+          if (!cell) continue;
+
+          for (let k = 0; k < cell.length; k++) {
+            const candIdx = cell[k];
+            if (visited[candIdx]) continue;
+
+            const cand = projected[candIdx];
+            const dist = Math.hypot(curr.x - cand.x, curr.y - cand.y);
+
+            if (dist <= radius) {
+              visited[candIdx] = 1;
+              queue.push(candIdx);
+              group.push(cand);
+            }
+          }
         }
       }
     }
 
     const count = group.length;
+    const sortedIds = group.map(({ service }) => service.id).sort();
+    const clusterId = count === 1 ? `emergency-${sortedIds[0]}` : `emergency-${sortedIds.join("-")}`;
+
     clusters.push({
-      id: `emergency-${group.map(({ service }) => service.id).join("-")}`,
+      id: clusterId,
       lat: group.reduce((sum, { service }) => sum + service.lat, 0) / count,
       lng: group.reduce((sum, { service }) => sum + service.lng, 0) / count,
       services: group.map(({ service }) => service),
@@ -189,8 +237,9 @@ export function clusterEmergencyServices(
 }
 
 /**
- * Clusters both emergency facilities AND transport hubs together in screen space.
+ * Clusters both emergency facilities AND transport hubs together in world pixel space.
  * Prevents overlapping marker icons and enables area infrastructure inspection.
+ * Uses O(N) Spatial Grid Hashing with camera-invariant Web Mercator coordinates.
  */
 export function clusterInfrastructure(
   services: EmergencyService[],
@@ -207,7 +256,12 @@ export function clusterInfrastructure(
     ...hubs.map((h) => ({ kind: "hub" as const, item: h, lat: h.lat, lng: h.lng, id: `hub-${h.id}` })),
   ];
 
-  if (!map || zoom >= 14.0) {
+  if (allEntries.length === 0) return [];
+
+  // Deterministic sorting to guarantee rock-solid cluster keys and prevent re-order flickering
+  allEntries.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  if (zoom >= 14.0) {
     return allEntries.map((entry) => ({
       id: entry.id,
       lat: entry.lat,
@@ -219,39 +273,61 @@ export function clusterInfrastructure(
   }
 
   const radius = zoom < 11.5 ? 64 : zoom < 12.8 ? 48 : 36;
-  const projected = allEntries.map((entry) => {
-    try {
-      const point = map.project([entry.lng, entry.lat]);
-      return { entry, x: point.x, y: point.y };
-    } catch {
-      return { entry, x: 0, y: 0 };
-    }
-  });
+  const cellSize = radius;
 
-  const remaining = new Set(projected.map((_, index) => index));
+  const projected: Array<{ entry: ItemEntry; x: number; y: number }> = [];
+  const grid = new Map<string, number[]>();
+
+  for (let i = 0; i < allEntries.length; i++) {
+    const entry = allEntries[i];
+    const { x, y } = projectToWorldPixels(entry.lng, entry.lat, zoom);
+    projected.push({ entry, x, y });
+
+    const cellKey = `${Math.floor(x / cellSize)},${Math.floor(y / cellSize)}`;
+    let cell = grid.get(cellKey);
+    if (!cell) {
+      cell = [];
+      grid.set(cellKey, cell);
+    }
+    cell.push(i);
+  }
+
+  const visited = new Uint8Array(projected.length);
   const clusters: InfrastructureCluster[] = [];
 
-  while (remaining.size > 0) {
-    const [seedIndex] = remaining;
-    remaining.delete(seedIndex);
+  for (let i = 0; i < projected.length; i++) {
+    if (visited[i]) continue;
+    visited[i] = 1;
 
-    const group = [projected[seedIndex]];
-    const queue = [seedIndex];
+    const group: typeof projected = [projected[i]];
+    const queue: number[] = [i];
 
     while (queue.length > 0) {
-      const current = projected[queue.pop()!];
+      const currIdx = queue.pop()!;
+      const curr = projected[currIdx];
 
-      for (const candidateIndex of Array.from(remaining)) {
-        const candidate = projected[candidateIndex];
-        const distance = Math.hypot(
-          current.x - candidate.x,
-          current.y - candidate.y,
-        );
+      const gx = Math.floor(curr.x / cellSize);
+      const gy = Math.floor(curr.y / cellSize);
 
-        if (distance <= radius) {
-          remaining.delete(candidateIndex);
-          queue.push(candidateIndex);
-          group.push(candidate);
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const neighborKey = `${gx + dx},${gy + dy}`;
+          const cell = grid.get(neighborKey);
+          if (!cell) continue;
+
+          for (let k = 0; k < cell.length; k++) {
+            const candIdx = cell[k];
+            if (visited[candIdx]) continue;
+
+            const cand = projected[candIdx];
+            const dist = Math.hypot(curr.x - cand.x, curr.y - cand.y);
+
+            if (dist <= radius) {
+              visited[candIdx] = 1;
+              queue.push(candIdx);
+              group.push(cand);
+            }
+          }
         }
       }
     }
@@ -260,13 +336,17 @@ export function clusterInfrastructure(
     const servicesList: EmergencyService[] = [];
     const hubsList: TransportHub[] = [];
 
-    group.forEach(({ entry }) => {
-      if (entry.kind === "service") servicesList.push(entry.item);
-      else hubsList.push(entry.item);
-    });
+    for (let g = 0; g < group.length; g++) {
+      const e = group[g].entry;
+      if (e.kind === "service") servicesList.push(e.item);
+      else hubsList.push(e.item);
+    }
+
+    const sortedIds = group.map(({ entry }) => entry.id).sort();
+    const clusterId = count === 1 ? sortedIds[0] : `infra-${sortedIds.join("-")}`;
 
     clusters.push({
-      id: `infra-${group.map(({ entry }) => entry.id).join("-")}`,
+      id: clusterId,
       lat: group.reduce((sum, { entry }) => sum + entry.lat, 0) / count,
       lng: group.reduce((sum, { entry }) => sum + entry.lng, 0) / count,
       services: servicesList,

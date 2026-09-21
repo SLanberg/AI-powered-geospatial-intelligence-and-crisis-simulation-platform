@@ -34,7 +34,10 @@ const PLAYBACK_SPEEDS = [
   { label: "15x (Replay)", value: 15 },
   { label: "30x (Sim)", value: 30 },
   { label: "60x (Turbo)", value: 60 },
-  { label: "120x (Max)", value: 120 },
+  { label: "120x", value: 120 },
+  { label: "250x", value: 250 },
+  { label: "500x", value: 500 },
+  { label: "1000x (Hyper)", value: 1000 },
 ];
 
 const QUALITIES = [
@@ -166,8 +169,6 @@ export function NepalTimelinePlayer({
     Math.min(100, ((currentSeconds - TIMELINE_MIN_SECONDS) / totalDuration) * 100)
   );
 
-  // Simulated buffer percent (always 100% fully loaded)
-  const bufferedPercent = 100;
 
   // Milestones
   const milestones = useMemo(() => {
@@ -546,15 +547,10 @@ export function NepalTimelinePlayer({
           className="relative h-3 w-full flex items-center cursor-pointer py-1"
         >
           {/* Background Track Bar */}
-          <div className="relative h-1 group-hover/scrubber:h-1.5 w-full bg-white/20 rounded-full overflow-hidden transition-all duration-150">
-            {/* Buffered Track Bar */}
-            <div
-              className="absolute top-0 bottom-0 left-0 bg-white/40 transition-all duration-300"
-              style={{ width: `${bufferedPercent}%` }}
-            />
+          <div className="relative h-1 group-hover/scrubber:h-1.5 w-full bg-white/20 rounded-full overflow-hidden transition-[height] duration-150">
             {/* Played Progress Track Bar (YouTube Signature Red #FF0000) */}
             <div
-              className="absolute top-0 bottom-0 left-0 bg-[#FF0000] transition-all duration-75"
+              className="absolute top-0 bottom-0 left-0 bg-[#FF0000]"
               style={{ width: `${playheadPercent}%` }}
             />
           </div>
@@ -649,7 +645,7 @@ export function NepalTimelinePlayer({
 
           {/* Active Milestone Event Badge */}
           <div className="hidden lg:flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded bg-white/10 border border-white/15 text-xs">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-red-500" />
             <span className="font-mono text-red-400 font-bold">{activeEvent.eventId}</span>
             <span className="text-zinc-300 truncate max-w-[140px]">{activeEvent.eventType}</span>
           </div>

@@ -207,6 +207,25 @@
   }
 }
 
+/* =========================================================
+   MAP MARKER & POPUP Z-INDEX ELEVATION
+   ========================================================= */
+
+/* Ensure hovered markers have the highest z-index above all other map markers and layers */
+.maplibregl-marker {
+  transition: z-index 0s !important;
+}
+
+.maplibregl-marker:hover,
+.mapboxgl-marker:hover,
+.maplibregl-marker:focus-within,
+.mapboxgl-marker:focus-within,
+.maplibregl-marker:has(:hover),
+.mapboxgl-marker:has(:hover),
+.maplibregl-marker.is-hovered {
+  z-index: 999999 !important;
+}
+
 /* MapLibre / Mapbox popup */
 .maplibregl-popup,
 .mapboxgl-popup {
@@ -301,13 +320,75 @@ li {
   -webkit-user-select: text !important;
 }
 
-/* Custom glowing tactical selection highlight styling */
+/* High-contrast accessible text selection styling */
 ::selection {
-  background-color: rgba(63, 125, 204, 0.45) !important;
+  background-color: #3f7dcc !important;
   color: #ffffff !important;
 }
 
 ::-moz-selection {
-  background-color: rgba(63, 125, 204, 0.45) !important;
+  background-color: #3f7dcc !important;
+  color: #ffffff !important;
+}
+
+.dark ::selection {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.dark ::-moz-selection {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+/* Chat bubble selection overrides:
+   - For user bubbles (blue bg), selection is bright white background with dark blue text so it is strikingly visible.
+   - For assistant bubbles (card bg), selection is rich primary blue with white text.
+*/
+.chat-user-bubble,
+.chat-user-bubble * {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+.chat-user-bubble ::selection,
+.chat-user-bubble::selection {
+  background-color: #ffffff !important;
+  color: #1e3a8a !important;
+}
+
+.chat-user-bubble ::-moz-selection,
+.chat-user-bubble::-moz-selection {
+  background-color: #ffffff !important;
+  color: #1e3a8a !important;
+}
+
+.chat-assistant-bubble,
+.chat-assistant-bubble * {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+.chat-assistant-bubble ::selection,
+.chat-assistant-bubble::selection {
+  background-color: #3f7dcc !important;
+  color: #ffffff !important;
+}
+
+.chat-assistant-bubble ::-moz-selection,
+.chat-assistant-bubble::-moz-selection {
+  background-color: #3f7dcc !important;
+  color: #ffffff !important;
+}
+
+.dark .chat-assistant-bubble ::selection,
+.dark .chat-assistant-bubble::selection {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.dark .chat-assistant-bubble ::-moz-selection,
+.dark .chat-assistant-bubble::-moz-selection {
+  background-color: #2563eb !important;
   color: #ffffff !important;
 }

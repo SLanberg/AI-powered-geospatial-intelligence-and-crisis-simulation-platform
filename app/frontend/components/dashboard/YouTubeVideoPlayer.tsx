@@ -11,7 +11,7 @@ interface YouTubeVideoPlayerProps {
   className?: string;
 }
 
-const PLAYBACK_SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+const PLAYBACK_SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 5, 10, 50, 100, 250, 500, 1000];
 const QUALITIES = ["1080p60 HD", "720p60", "480p", "360p", "Auto"];
 const SUBTITLE_LANGS = ["Off", "English (Auto-generated)", "Spanish", "French", "German"];
 
@@ -81,7 +81,6 @@ export function YouTubeVideoPlayer({
   };
 
   const progressPercent = (currentTime / durationSeconds) * 100;
-  const bufferedPercent = Math.min(100, progressPercent + 20);
 
   // Progress bar pointer events
   const handleSeek = (clientX: number) => {
@@ -343,12 +342,7 @@ export function YouTubeVideoPlayer({
           className="relative h-3 w-full flex items-center cursor-pointer group/scrubber"
         >
           {/* Base track */}
-          <div className="relative h-1 group-hover/scrubber:h-1.5 w-full bg-white/30 rounded-full overflow-hidden transition-all">
-            {/* Buffered track */}
-            <div
-              className="absolute top-0 bottom-0 left-0 bg-white/50"
-              style={{ width: `${bufferedPercent}%` }}
-            />
+          <div className="relative h-1 group-hover/scrubber:h-1.5 w-full bg-white/30 rounded-full overflow-hidden transition-[height] duration-150">
             {/* Played track (YouTube Red) */}
             <div
               className="absolute top-0 bottom-0 left-0 bg-[#FF0000]"

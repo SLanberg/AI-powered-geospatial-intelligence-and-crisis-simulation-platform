@@ -74,7 +74,7 @@ export const TransportHubMarker = memo(function TransportHubMarker({
   return (
     <div
       className="relative flex flex-col items-center select-none group"
-      style={{ zIndex: isSelected ? 99999 : isHovered ? 9999 : 20 }}
+      style={{ zIndex: isSelected ? 1000000 : isHovered ? 999999 : 20 }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

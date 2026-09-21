@@ -13,7 +13,6 @@ import { useIncidents } from "@/frontend/hooks/useIncidents";
 import { IncidentFilters } from "./IncidentFilters";
 import { IncidentRow } from "./IncidentRow";
 import { IncidentModal } from "./IncidentModal";
-import { IncidentDeleteDialog } from "./IncidentDeleteDialog";
 import { CheckCircle2, AlertCircle, X } from "lucide-react";
 
 export interface IncidentMatrixProps {
@@ -41,19 +40,19 @@ export function IncidentMatrix({ onSelectIncident, initialIncidents }: IncidentM
   // Modal / Dialog states
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
   const [editingIncident, setEditingIncident] = useState<Incident | null>(null);
-  const [deletingIncident, setDeletingIncident] = useState<Incident | null>(null);
 
-  // Success / Info Banner
-  const [feedbackBanner, setFeedbackBanner] = useState<{
+  // Snack Bar state
+  const [snackbar, setSnackbar] = useState<{
     type: "success" | "error";
+    title: string;
     message: string;
   } | null>(null);
 
-  const showFeedback = (type: "success" | "error", message: string) => {
-    setFeedbackBanner({ type, message });
+  const showSnackbar = (type: "success" | "error", title: string, message: string) => {
+    setSnackbar({ type, title, message });
     setTimeout(() => {
-      setFeedbackBanner((prev) => (prev?.message === message ? null : prev));
-    }, 4000);
+      setSnackbar((prev) => (prev?.message === message ? null : prev));
+    }, 4500);
   };
 
   const filteredIncidents = useMemo(() => {
@@ -83,55 +82,52 @@ export function IncidentMatrix({ onSelectIncident, initialIncidents }: IncidentM
     if (editingIncident) {
       const ok = await updateIncident(editingIncident.id, payload);
       if (ok) {
-        showFeedback("success", `Incident [${editingIncident.id}] updated successfully.`);
+        showSnackbar("success", "Incident Updated", `Incident #${editingIncident.id.slice(0, 8)} updated successfully in database.`);
+      } else {
+        showSnackbar("error", "Update Failed", "Could not update incident details.");
       }
       return ok;
     } else {
       const ok = await createIncident(payload);
       if (ok) {
-        showFeedback("success", "New SCADA incident successfully registered and dispatched.");
+        showSnackbar("success", "Incident Created", "New SCADA incident registered and persisted to database.");
+      } else {
+        showSnackbar("error", "Creation Failed", "Could not register new incident.");
       }
       return ok;
     }
   };
 
-  const handleDeleteConfirm = async (id: string): Promise<boolean> => {
-    const ok = await deleteIncident(id);
-    if (ok) {
-      showFeedback("success", `Incident [${id}] decommissioned and removed from registry.`);
+  const handleDelete = async (id: string): Promise<boolean> => {
+    try {
+      const ok = await deleteIncident(id);
+      if (ok) {
+        showSnackbar(
+          "success",
+          "Incident Deleted",
+          `Incident #${id.slice(0, 8)} was decommissioned and permanently removed from database.`
+        );
+      } else {
+        showSnackbar(
+          "error",
+          "Deletion Failed",
+          `Failed to delete incident #${id.slice(0, 8)}. Please try again.`
+        );
+      }
+      return ok;
+    } catch (err) {
+      showSnackbar(
+        "error",
+        "Deletion Error",
+        err instanceof Error ? err.message : `Failed to delete incident #${id.slice(0, 8)}.`
+      );
+      return false;
     }
-    return ok;
   };
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Feedback banner */}
-      {feedbackBanner && (
-        <div
-          className={`flex items-center justify-between px-4 py-2.5 rounded-xl border text-xs animate-in fade-in slide-in-from-top-2 duration-200 ${
-            feedbackBanner.type === "success"
-              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-              : "bg-destructive/15 border-destructive/30 text-destructive"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            {feedbackBanner.type === "success" ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-            )}
-            <span>{feedbackBanner.message}</span>
-          </div>
-          <button
-            onClick={() => setFeedbackBanner(null)}
-            className="hover:opacity-80 p-0.5"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {error && !feedbackBanner && (
+      {error && (
         <div className="flex items-center justify-between px-4 py-2.5 rounded-xl border bg-destructive/15 border-destructive/30 text-destructive text-xs">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -163,7 +159,7 @@ export function IncidentMatrix({ onSelectIncident, initialIncidents }: IncidentM
         loading={loading}
       />
 
-      <div className="rounded-xl border border-border/50 bg-card/40 backdrop-blur-md overflow-hidden">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -201,7 +197,7 @@ export function IncidentMatrix({ onSelectIncident, initialIncidents }: IncidentM
                     setIsCreateOpen(true);
                   }}
                   onDelete={(inc) => {
-                    setDeletingIncident(inc);
+                    handleDelete(inc.id);
                   }}
                 />
               ))
@@ -221,13 +217,52 @@ export function IncidentMatrix({ onSelectIncident, initialIncidents }: IncidentM
         onSave={handleSaveModal}
       />
 
-      {/* Delete Confirmation Dialog */}
-      <IncidentDeleteDialog
-        isOpen={Boolean(deletingIncident)}
-        incident={deletingIncident}
-        onClose={() => setDeletingIncident(null)}
-        onConfirm={handleDeleteConfirm}
-      />
+      {/* Bottom-right Corner Snack Bar */}
+      {snackbar && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 max-w-sm w-full animate-in fade-in slide-in-from-bottom-5 duration-200 pointer-events-auto"
+        >
+          <div
+            className={`flex items-start gap-3 p-4 rounded-xl border shadow-lg transition-all duration-200 ${
+              snackbar.type === "success"
+                ? "bg-card border-emerald-500/40 text-foreground"
+                : "bg-card border-destructive/50 text-foreground"
+            }`}
+          >
+            <div
+              className={`p-2 rounded-lg shrink-0 ${
+                snackbar.type === "success"
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "bg-destructive/20 text-destructive border border-destructive/30"
+              }`}
+            >
+              {snackbar.type === "success" ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-destructive" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5">
+              <h4 className="text-xs font-semibold text-foreground tracking-wide">
+                {snackbar.title}
+              </h4>
+              <p className="text-xs text-muted-foreground mt-0.5 break-words leading-relaxed">
+                {snackbar.message}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSnackbar(null)}
+              className="text-muted-foreground hover:text-foreground transition-colors p-1 -mr-1 -mt-1 rounded-md hover:bg-muted/50"
+              aria-label="Close notification"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

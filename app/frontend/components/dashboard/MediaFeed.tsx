@@ -24,8 +24,9 @@ const sourceStyles = {
 };
 
 export function MediaFeed() {
+  const [mounted, setMounted] = useState(false);
   const [data, setData] = useState<MediaResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
   const loadArticles = useCallback(async () => {
@@ -44,10 +45,11 @@ export function MediaFeed() {
   }, []);
 
   useEffect(() => {
+    setMounted(true);
     void loadArticles();
   }, [loadArticles]);
 
-  const updatedAt = data
+  const updatedAt = mounted && data
     ? new Intl.DateTimeFormat("et-EE", {
         hour: "2-digit",
         minute: "2-digit",
@@ -104,7 +106,7 @@ export function MediaFeed() {
                   <span className="font-mono text-[10px] text-muted-foreground">{articles.length} HEADLINES</span>
                 </div>
                 <div className="divide-y divide-border">
-                  {loading && !data
+                  {!data
                     ? Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-[69px] animate-pulse bg-muted/20" />)
                     : articles.map((article) => (
                         <a key={article.id} href={article.url} target="_blank" rel="noreferrer" className="group flex items-start gap-3 p-4 transition-colors hover:bg-muted/40">
@@ -113,7 +115,7 @@ export function MediaFeed() {
                           <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                         </a>
                       ))}
-                  {!loading && articles.length === 0 && <p className="p-4 text-sm text-muted-foreground">No headlines are available right now.</p>}
+                  {data && articles.length === 0 && <p className="p-4 text-sm text-muted-foreground">No headlines are available right now.</p>}
                 </div>
               </div>
             );

@@ -715,29 +715,52 @@ export class VesselsService {
         }
       }
 
-      const vessels: VesselData[] = features.map((f) => {
-        const meta = metadataCache.get(f.mmsi);
-        const shipType = meta?.shipType || 0;
-        const rawLat = f.geometry.coordinates[1];
-        const rawLng = f.geometry.coordinates[0];
-        const { lat, lng } = sanitizeVesselWaterPosition(rawLat, rawLng);
+      const vessels: VesselData[] = features
+        .filter(
+          (f) =>
+            f &&
+            typeof f.mmsi === "number" &&
+            f.mmsi > 0 &&
+            f.geometry?.coordinates &&
+            typeof f.geometry.coordinates[0] === "number" &&
+            typeof f.geometry.coordinates[1] === "number"
+        )
+        .map((f) => {
+          const meta = metadataCache.get(f.mmsi);
+          const shipType = meta?.shipType || 0;
+          const rawLat = f.geometry.coordinates[1];
+          const rawLng = f.geometry.coordinates[0];
+          const { lat, lng } = sanitizeVesselWaterPosition(rawLat, rawLng);
 
-        return {
-          mmsi: f.mmsi,
-          name: meta?.name || `VESSEL-${f.mmsi}`,
-          shipType,
-          shipCategory: getShipCategory(shipType),
-          lat,
-          lng,
-          sog: f.properties.sog || 0,
-          cog: f.properties.cog || 0,
-          heading: f.properties.heading || f.properties.cog || 0,
-          navStatus: f.properties.navStat || 0,
-          destination: meta?.destination || "GULF OF FINLAND",
-          callSign: meta?.callSign || "",
-          timestamp: f.properties.timestampExternal || Date.now(),
-        };
-      });
+          let cog = typeof f.properties?.cog === "number" && !isNaN(f.properties.cog) ? f.properties.cog : 0;
+          if (cog < 0 || cog > 360) {
+            cog = ((cog % 360) + 360) % 360;
+          }
+
+          let heading = typeof f.properties?.heading === "number" && !isNaN(f.properties.heading) ? f.properties.heading : cog;
+          if (heading === 511 || heading < 0 || heading > 360) {
+            heading = cog;
+          }
+
+          const sog = typeof f.properties?.sog === "number" && !isNaN(f.properties.sog) ? Math.max(0, f.properties.sog) : 0;
+          const navStatus = typeof f.properties?.navStat === "number" && !isNaN(f.properties.navStat) ? Math.floor(f.properties.navStat) : 0;
+
+          return {
+            mmsi: Math.floor(f.mmsi),
+            name: meta?.name || `VESSEL-${f.mmsi}`,
+            shipType: Math.floor(shipType),
+            shipCategory: getShipCategory(shipType),
+            lat,
+            lng,
+            sog: Math.round(sog * 10) / 10,
+            cog: Math.round(cog * 10) / 10,
+            heading: Math.round(heading * 10) / 10,
+            navStatus,
+            destination: meta?.destination || "GULF OF FINLAND",
+            callSign: meta?.callSign || "",
+            timestamp: typeof f.properties?.timestampExternal === "number" ? f.properties.timestampExternal : Date.now(),
+          };
+        });
 
       const response: VesselResponse = {
         status: "success",
@@ -760,6 +783,8 @@ export class VesselsService {
     const vessels: VesselData[] = SIMULATED_MARITIME_FLEET.map((route) => {
       const pos = calculateMaritimePosition(route, timestampSec);
       const safePos = sanitizeVesselWaterPosition(pos.lat, pos.lng);
+      const heading = ((pos.heading % 360) + 360) % 360;
+      const sog = Math.max(0, pos.sog);
 
       return {
         mmsi: route.mmsi,
@@ -768,9 +793,9 @@ export class VesselsService {
         shipCategory: getShipCategory(route.shipType),
         lat: safePos.lat,
         lng: safePos.lng,
-        sog: pos.sog,
-        cog: pos.heading,
-        heading: pos.heading,
+        sog: Math.round(sog * 10) / 10,
+        cog: Math.round(heading * 10) / 10,
+        heading: Math.round(heading * 10) / 10,
         navStatus: pos.sog > 0.5 ? 0 : 1,
         destination: route.destination,
         callSign: route.callSign || `ES${route.mmsi.toString().slice(-4)}`,

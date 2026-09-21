@@ -18,7 +18,7 @@ export const VesselDataSchema = z.object({
   lng: z.number(),
   sog: z.number().nonnegative(), // speed over ground (knots)
   cog: z.number().min(0).max(360), // course over ground (degrees)
-  heading: z.number().min(0).max(360), // true heading
+  heading: z.number().min(0).max(512), // true heading (0-360 or 511 if unavailable)
   navStatus: z.number().int(),
   destination: z.string(),
   callSign: z.string(),

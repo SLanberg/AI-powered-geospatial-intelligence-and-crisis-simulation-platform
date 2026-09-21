@@ -32,7 +32,7 @@ export const InfrastructureClusterMarker = memo(function InfrastructureClusterMa
   return (
     <div
       className="relative flex flex-col items-center select-none group"
-      style={{ zIndex: isHovered ? 99999 : 40 }}
+      style={{ zIndex: isHovered ? 999999 : 40 }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

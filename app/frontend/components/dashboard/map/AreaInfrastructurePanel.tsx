@@ -51,7 +51,7 @@ export function AreaInfrastructurePanel({
         transition: isDragging ? "none" : "right 200ms cubic-bezier(0.4, 0, 0.2, 1)",
         ...style,
       }}
-      className="absolute top-4 z-[9999] w-84 sm:w-92 max-h-[calc(100%-5rem)] flex flex-col rounded-xl border border-sky-500/40 bg-[#0C1017]/95 backdrop-blur-md shadow-[0_12px_36px_rgba(0,0,0,0.85)] text-slate-100 overflow-hidden animate-in slide-in-from-right-5 duration-200"
+      className="absolute top-4 z-[9999] w-84 sm:w-92 max-h-[calc(100%-5rem)] flex flex-col rounded-xl border border-sky-500/40 bg-[#0C1017] shadow-lg text-slate-100 overflow-hidden animate-in slide-in-from-right-5 duration-200"
     >
       
       {/* Header */}
@@ -115,18 +115,21 @@ export function AreaInfrastructurePanel({
                 </div>
 
                 <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 mt-0.5">
-                  {hub.passengerVolume ? (
-                    <span className="text-[10px] font-mono text-slate-400 truncate">
-                      {hub.passengerVolume}
+                  <div className="flex flex-col min-w-0 pr-1">
+                    <span className="text-[10px] font-mono text-sky-300 font-semibold truncate">
+                      {hub.passengerVolume || (hub.dailyPassengers ? `${hub.dailyPassengers.toLocaleString()} / day` : "Transit Node")}
                     </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-500 font-mono">Transit Node</span>
-                  )}
+                    {(hub.hourlyCapacity || hub.capacity || hub.throughput) && (
+                      <span className="text-[9px] font-mono text-emerald-400/90 truncate">
+                        Cap: {hub.hourlyCapacity || hub.capacity || hub.throughput}
+                      </span>
+                    )}
+                  </div>
 
                   <button
                     type="button"
                     onClick={() => onViewMoreHub(hub)}
-                    className="px-2 py-0.5 rounded text-[10.5px] font-extrabold bg-sky-500/15 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/30 transition-all flex items-center gap-1 shrink-0"
+                    className="px-2 py-0.5 rounded text-[10.5px] font-extrabold bg-sky-500/15 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/30 transition-all flex items-center gap-1 shrink-0 cursor-pointer"
                   >
                     View more <ChevronRight className="w-3 h-3" />
                   </button>

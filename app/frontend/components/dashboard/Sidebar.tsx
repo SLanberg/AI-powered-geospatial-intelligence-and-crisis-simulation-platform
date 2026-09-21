@@ -17,19 +17,29 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   isOpen?: boolean;
   onToggle?: () => void;
+  incidentCount?: number;
 }
 
 export function Sidebar({
   activeTab,
   setActiveTab,
   isOpen = true,
+  incidentCount: externalIncidentCount,
 }: SidebarProps) {
-  const [incidentCount, setIncidentCount] = React.useState<number>(6);
+  const [incidentCount, setIncidentCount] = React.useState<number>(
+    externalIncidentCount ?? 0
+  );
+
+  React.useEffect(() => {
+    if (externalIncidentCount !== undefined) {
+      setIncidentCount(externalIncidentCount);
+    }
+  }, [externalIncidentCount]);
 
   React.useEffect(() => {
     const handleUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<unknown[]>;
-      if (customEvent.detail) {
+      if (customEvent.detail && Array.isArray(customEvent.detail)) {
         setIncidentCount(customEvent.detail.length);
       }
     };
@@ -76,7 +86,7 @@ export function Sidebar({
 
             <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
               <span>TALLINN GRID</span>
-              <span className="text-primary font-medium">CORE v0.2</span>
+              <span className="text-primary font-medium">CORE v0.3</span>
             </div>
           </div>
 
@@ -97,8 +107,8 @@ export function Sidebar({
                   variant="ghost"
                   onClick={() => setActiveTab(item.id)}
                   className={`w-full justify-start h-9 px-2.5 text-xs font-medium transition-all ${isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary rounded-r-md rounded-l-none font-semibold"
-                      : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary rounded-r-md rounded-l-none font-semibold"
+                    : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                     }`}
                 >
                   <Icon
@@ -110,10 +120,10 @@ export function Sidebar({
                     <Badge
                       variant={item.badgeVariant || "outline"}
                       className={`ml-auto text-[10px] px-1.5 py-0 h-4 font-mono font-normal ${item.badge === "LIVE"
-                          ? "bg-emerald-950/80 text-emerald-300 border-emerald-800"
-                          : isActive
-                            ? "bg-primary/20 text-primary border-primary/40"
-                            : "bg-muted text-muted-foreground border-border"
+                        ? "bg-emerald-950/80 text-emerald-300 border-emerald-800"
+                        : isActive
+                          ? "bg-primary/20 text-primary border-primary/40"
+                          : "bg-muted text-muted-foreground border-border"
                         }`}
                     >
                       {item.badge}

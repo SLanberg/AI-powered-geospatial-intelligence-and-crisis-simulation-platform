@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Bot, Copy, Check, Target, AlertCircle, RotateCcw, PlusCircle } from "lucide-react";
+import { Copy, Check, Target, AlertCircle, RotateCcw, PlusCircle } from "lucide-react";
 import { DashboardChatMessage } from "./schemas";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import type { MapAction } from "@/components/dashboard/data";
@@ -14,7 +14,7 @@ export interface ChatMessageItemProps {
   onNewChat?: () => void;
 }
 
-export function ChatMessageItem({
+export const ChatMessageItem = React.memo(function ChatMessageItem({
   message,
   onMapAction,
   isStreaming,
@@ -58,18 +58,39 @@ export function ChatMessageItem({
 
   const textToRender = getDisplayContent(message.content);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(textToRender);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToRender);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = textToRender;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy message:", err);
+    }
   };
 
-  const isThinking = isAssistant && (!textToRender || textToRender.trim().length === 0) && !message.isError;
+  const isThinking =
+    Boolean(isStreaming) &&
+    isAssistant &&
+    (!textToRender || textToRender.trim().length === 0) &&
+    !attachedMapAction &&
+    !message.isError;
 
   if (message.isError) {
     return (
-      <div className="group flex gap-2.5 text-xs leading-relaxed items-start">
-        <div className="w-7 h-7 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive shrink-0 mt-0.5 shadow-sm">
+      <div className="group flex gap-2.5 text-xs leading-relaxed items-start animate-fadeIn">
+        <div className="w-7 h-7 rounded-lg bg-destructive/15 border border-destructive/30 flex items-center justify-center text-destructive shrink-0 mt-0.5 shadow-sm">
           <AlertCircle className="w-4 h-4" />
         </div>
 
@@ -119,18 +140,38 @@ export function ChatMessageItem({
       }`}
     >
       {isAssistant && (
-        <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 mt-0.5 shadow-sm">
-          <Bot className="w-4 h-4" />
+        <div className="relative shrink-0 mt-0.5">
+          <div className="w-8 h-8 rounded-lg overflow-hidden border border-primary/40 bg-primary/10 flex items-center justify-center shadow-xs">
+            <img
+              src="/cassandra-avatar.jpg"
+              alt="Cassandra AI Agent"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          </div>
+          <span className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground text-[8px] font-bold font-mono px-1 rounded shadow-xs leading-tight">
+            AI
+          </span>
         </div>
       )}
 
       <div
-        className={`relative max-w-[90%] rounded-xl px-4 py-3 shadow-xs transition-all ${
+        className={`relative max-w-[90%] rounded-xl px-4 py-3 shadow-sm transition-all select-text ${
           isAssistant
-            ? "bg-card/90 border border-border/60 text-foreground"
-            : "bg-primary text-primary-foreground font-normal"
+            ? "chat-assistant-bubble bg-card border border-border text-foreground hover:border-primary/40"
+            : "chat-user-bubble bg-primary text-primary-foreground font-normal rounded-tr-xs"
         }`}
       >
+        {isAssistant && (
+          <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-border/40 text-[11px] font-mono">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-foreground tracking-tight">Cassandra</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground/60">{message.ts || ""}</span>
+          </div>
+        )}
         {isThinking ? (
           <div className="flex items-center gap-1.5 py-1 px-1 h-4">
             <span className="w-1.5 h-1.5 rounded-full bg-foreground/60 animate-bounce [animation-delay:-0.32s]" />
@@ -138,20 +179,23 @@ export function ChatMessageItem({
             <span className="w-1.5 h-1.5 rounded-full bg-foreground/60 animate-bounce" />
           </div>
         ) : (
-          <MarkdownRenderer content={textToRender} isUser={!isAssistant} />
+          <MarkdownRenderer content={textToRender} isUser={!isAssistant} onMapAction={onMapAction} />
         )}
 
         {/* Tactical Map Focus Action Chip */}
         {attachedMapAction && onMapAction && (
-          <div className="mt-2 pt-2 border-t border-border/40 flex items-center gap-2">
+          <div className={`${textToRender ? "mt-2 pt-2 border-t border-border/40" : ""} flex items-center gap-2`}>
             <button
               type="button"
               onClick={() => attachedMapAction && onMapAction(attachedMapAction)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-500/15 border border-sky-500/40 hover:bg-sky-500/25 text-sky-400 hover:text-sky-300 text-[11px] font-mono font-medium transition-all shadow-xs group/btn cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/15 border border-primary/35 hover:bg-primary/25 text-primary text-[11px] font-mono font-medium transition-all shadow-xs group/btn cursor-pointer"
             >
-              <Target className="w-3.5 h-3.5 text-sky-400 group-hover/btn:animate-spin" />
+              <Target className="w-3.5 h-3.5 text-primary group-hover/btn:animate-spin" />
               <span>
-                Focus Map: {attachedMapAction.title || "Target Coordinates"}
+                {attachedMapAction.type === "focus_district" ? "Focus District: " : "Focus Map: "}
+                {attachedMapAction.title
+                  ? attachedMapAction.title.replace(/^District Sector:\s*/i, "").replace(/^Station:\s*/i, "")
+                  : "Target Coordinates"}
               </span>
             </button>
           </div>
@@ -165,20 +209,39 @@ export function ChatMessageItem({
           >
             <span>{message.ts || ""}</span>
 
-            {isAssistant && (
-              <button
-                onClick={handleCopy}
-                className="opacity-0 group-hover:opacity-100 p-1 hover:text-foreground transition-opacity rounded hover:bg-muted/50"
-                title="Copy message"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleCopy}
+              className={`opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 transition-all rounded cursor-pointer ${
+                isAssistant
+                  ? "hover:text-foreground hover:bg-muted/60 text-muted-foreground/80"
+                  : "hover:text-primary-foreground hover:bg-white/20 text-primary-foreground/80"
+              }`}
+              title={copied ? "Copied to clipboard!" : "Copy message"}
+              aria-label="Copy message"
+            >
+              {copied ? (
+                <Check className={`w-3.5 h-3.5 ${isAssistant ? "text-emerald-500 dark:text-emerald-400" : "text-emerald-200"}`} />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+            </button>
           </div>
         )}
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  if (prevProps.isStreaming !== nextProps.isStreaming) return false;
+  if (prevProps.message.id !== nextProps.message.id) return false;
+  if (prevProps.message.content !== nextProps.message.content) return false;
+  if (prevProps.message.isError !== nextProps.message.isError) return false;
+  if (prevProps.message.mapAction !== nextProps.message.mapAction) {
+    if (JSON.stringify(prevProps.message.mapAction) !== JSON.stringify(nextProps.message.mapAction)) {
+      return false;
+    }
+  }
+  return true;
+});
 
 

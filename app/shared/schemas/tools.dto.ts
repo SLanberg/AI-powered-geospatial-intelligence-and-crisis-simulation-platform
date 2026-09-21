@@ -61,6 +61,44 @@ export const CreateIncidentOutputSchema = z.object({
 export type CreateIncidentOutput = z.infer<typeof CreateIncidentOutputSchema>;
 
 /**
+ * Tool: update_incident Schemas
+ */
+export const UpdateIncidentInputSchema = z.object({
+  id: z.string().describe("Unique identifier of the incident to update"),
+  title: z.string().min(2).optional().describe("Updated incident title"),
+  category: z.string().optional().describe("Updated incident category"),
+  severity: SeveritySchema.optional().describe("Updated severity level"),
+  status: z.enum(["active", "investigating", "mitigated", "resolved"]).optional().describe("Updated status"),
+  district: z.string().optional().describe("Updated district or sector"),
+  description: z.string().optional().describe("Updated detailed description"),
+  lat: z.number().optional().describe("Updated latitude"),
+  lng: z.number().optional().describe("Updated longitude"),
+});
+export type UpdateIncidentInput = z.infer<typeof UpdateIncidentInputSchema>;
+
+export const UpdateIncidentOutputSchema = z.object({
+  success: z.boolean(),
+  incidentId: z.string(),
+  message: z.string(),
+});
+export type UpdateIncidentOutput = z.infer<typeof UpdateIncidentOutputSchema>;
+
+/**
+ * Tool: delete_incident Schemas
+ */
+export const DeleteIncidentInputSchema = z.object({
+  id: z.string().describe("Unique identifier of the incident to decommission/delete"),
+});
+export type DeleteIncidentInput = z.infer<typeof DeleteIncidentInputSchema>;
+
+export const DeleteIncidentOutputSchema = z.object({
+  success: z.boolean(),
+  incidentId: z.string(),
+  message: z.string(),
+});
+export type DeleteIncidentOutput = z.infer<typeof DeleteIncidentOutputSchema>;
+
+/**
  * Tool 3: inspect_substation Schemas
  */
 export const InspectSubstationInputSchema = z.object({
@@ -172,7 +210,7 @@ export type DispatchEmergencyUnitOutput = z.infer<typeof DispatchEmergencyUnitOu
  * Tool 8: query_vessels Schemas
  */
 export const QueryVesselsInputSchema = z.object({
-  category: z.enum(["all", "cargo", "tanker", "passenger", "yacht"]).optional().describe("Ship category filter"),
+  category: z.enum(["all", "cargo", "tanker", "passenger", "yacht", "other"]).optional().describe("Ship category filter"),
   limit: z.number().min(1).max(50).default(10).describe("Maximum number of vessels to return"),
 });
 export type QueryVesselsInput = z.infer<typeof QueryVesselsInputSchema>;

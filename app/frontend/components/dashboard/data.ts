@@ -1,16 +1,5 @@
-export interface Incident {
-  id: string;
-  title: string;
-  timestamp: string;
-  severity: "critical" | "warning" | "info";
-  category: "Grid Failure" | "Traffic Flow" | "Telecom Node" | "Emergency Dispatch" | "Sensor Anomaly";
-  makiIcon: "lightning" | "caution" | "traffic-light" | "emergency-phone" | "communications-tower" | "waveform" | string;
-  lat: number;
-  lng: number;
-  description: string;
-  status: "active" | "investigating" | "mitigated";
-  nodeId: string;
-}
+import { Incident } from "@/shared";
+export type { Incident };
 
 
 export const CRISIS_TIMESTAMP = "08:47:00";
@@ -107,16 +96,22 @@ export const INITIAL_INCIDENTS: Incident[] = [
 
 export let MOCK_INCIDENTS: Incident[] = [...INITIAL_INCIDENTS];
 
+if (typeof window !== "undefined") {
+  window.addEventListener("scada-incidents-updated", (e: Event) => {
+    const customEvent = e as CustomEvent<Incident[]>;
+    if (customEvent.detail && Array.isArray(customEvent.detail)) {
+      MOCK_INCIDENTS = [...customEvent.detail];
+    }
+  });
+}
+
 export async function fetchIncidentsFromDb(): Promise<Incident[]> {
   try {
-    const res = await fetch("/api/incidents");
+    const res = await fetch("/api/incidents", { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data.incidents) && data.incidents.length > 0) {
+      if (Array.isArray(data.incidents)) {
         MOCK_INCIDENTS = data.incidents;
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("scada-incidents-updated", { detail: MOCK_INCIDENTS }));
-        }
         return MOCK_INCIDENTS;
       }
     }

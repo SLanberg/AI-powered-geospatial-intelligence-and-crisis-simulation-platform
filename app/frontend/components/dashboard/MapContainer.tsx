@@ -24,7 +24,7 @@ import Map, {
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { Car, Siren, Bus, MapPin, Target, Anchor, X, Plane } from "lucide-react";
+import { Car, Siren, Bus, MapPin, Anchor, X, Plane, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 import type { FlightVector } from "@/app/api/flights/route";
@@ -57,6 +57,7 @@ import {
 } from "./data";
 
 import { AppleMapsMarker } from "./map/AppleMapsMarker";
+import { IncidentMarker } from "./map/IncidentMarker";
 import { InfrastructureClusterMarker } from "./map/InfrastructureClusterMarker";
 import { AreaInfrastructurePanel } from "./map/AreaInfrastructurePanel";
 import { AreaInfrastructureModal } from "./map/AreaInfrastructureModal";
@@ -596,6 +597,8 @@ function incidentToGeoJSON(incident: Incident | null) {
 /* -------------------------------------------------------------------------- */
 
 interface MapContainerProps {
+  incidents?: Incident[];
+
   showIncidents: boolean;
 
   crisisActive: boolean;
@@ -685,7 +688,7 @@ const FlightMarkerItem = React.memo(function FlightMarkerItem({
       anchor="center"
     >
       <div
-        className="relative group cursor-pointer transition-transform hover:scale-110 hover:z-40 will-change-transform"
+        className="relative group cursor-pointer transition-transform hover:scale-110 hover:z-[99999] will-change-transform"
         onClick={handleClick}
       >
         <MapObjectVector
@@ -697,7 +700,7 @@ const FlightMarkerItem = React.memo(function FlightMarkerItem({
           isSelected={isSelected}
         />
         {!isSelected && (
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap bg-slate-900 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg">
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999999] whitespace-nowrap bg-slate-900 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg">
             {flight.callsign || flight.id} ({Math.round(flight.altitude)}m)
           </div>
         )}
@@ -730,7 +733,7 @@ const VesselMarkerItem = React.memo(function VesselMarkerItem({
       anchor="center"
     >
       <div
-        className="relative group cursor-pointer transition-transform hover:scale-110 hover:z-40 will-change-transform"
+        className="relative group cursor-pointer transition-transform hover:scale-110 hover:z-[99999] will-change-transform"
         onClick={handleClick}
       >
         <MapObjectVector
@@ -742,7 +745,7 @@ const VesselMarkerItem = React.memo(function VesselMarkerItem({
           isSelected={isSelected}
         />
         {!isSelected && (
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap bg-slate-900 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg">
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999999] whitespace-nowrap bg-slate-900 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded shadow-lg">
             {vessel.name || `MMSI ${vessel.mmsi}`} ({vessel.sog} kts)
           </div>
         )}
@@ -760,58 +763,17 @@ const IncidentMarkerItem = React.memo(function IncidentMarkerItem({
   isSelected: boolean;
   onSelect: (inc: Incident) => void;
 }) {
-  const isCritical = inc.severity === "critical";
-  const isWarning = inc.severity === "warning";
-  const makiIconName = getMakiIconNameForIncident(inc);
-
-  const dotBg = isCritical
-    ? "bg-red-600 border-white text-white"
-    : isWarning
-    ? "bg-amber-500 border-white text-slate-950"
-    : "bg-emerald-500 border-white text-slate-950";
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onSelect(inc);
-    },
-    [inc, onSelect]
-  );
-
   return (
     <Marker
       latitude={inc.lat}
       longitude={inc.lng}
       anchor="center"
     >
-      <div
-        onClick={handleClick}
-        className={`relative cursor-pointer group flex flex-col items-center select-none will-change-transform ${
-          isSelected ? "z-50" : "z-30"
-        }`}
-      >
-        <div
-          className={`
-            flex items-center justify-center h-6 w-6 rounded-full border shadow-sm transition-all group-hover:scale-110
-            ${dotBg}
-            ${
-              isSelected
-                ? "ring-2 ring-white ring-offset-2 ring-offset-slate-950 scale-125 shadow-lg"
-                : ""
-            }
-          `}
-        >
-          <MakiIcon name={makiIconName} size={13} />
-        </div>
-        <div
-          className={`
-            mt-0.5 whitespace-nowrap rounded bg-slate-900/90 border border-slate-700/60 px-1 py-0.2 font-mono text-[9px] font-medium text-slate-200 shadow-sm
-            ${isSelected ? "border-white text-white font-bold" : ""}
-          `}
-        >
-          {inc.nodeId}
-        </div>
-      </div>
+      <IncidentMarker
+        inc={inc}
+        isSelected={isSelected}
+        onClick={onSelect}
+      />
     </Marker>
   );
 });
@@ -889,7 +851,7 @@ const SelectedVehicleMarkerItem = React.memo(function SelectedVehicleMarkerItem(
     >
       <div
         onClick={handleClick}
-        className="relative cursor-pointer group flex items-center justify-center p-1 ring-2 ring-sky-400 rounded-full scale-110 will-change-transform z-50"
+        className="relative cursor-pointer group flex items-center justify-center p-1 ring-2 ring-sky-400 rounded-full scale-110 will-change-transform z-50 hover:z-[99999]"
         title={`${vehicle.name} (${vehicle.speed} km/h) - ${vehicle.destination}`}
       >
         {vehicle.type === "ambulance" ? (
@@ -929,6 +891,7 @@ const SelectedVehicleMarkerItem = React.memo(function SelectedVehicleMarkerItem(
 });
 
 export function MapContainer({
+  incidents,
   showIncidents,
   crisisActive,
   onUseFeedContext,
@@ -965,10 +928,18 @@ export function MapContainer({
   const activeShowHeatmap = showHeatmap ?? internalShowHeatmap;
   const activeSetShowHeatmap = setShowHeatmap ?? setInternalShowHeatmap;
 
-  const [incidentList, setIncidentList] = useState<Incident[]>(MOCK_INCIDENTS);
+  const [incidentList, setIncidentList] = useState<Incident[]>(incidents || MOCK_INCIDENTS);
 
   useEffect(() => {
-    fetchIncidentsFromDb().then((list) => setIncidentList([...list]));
+    if (incidents) {
+      setIncidentList(incidents);
+    }
+  }, [incidents]);
+
+  useEffect(() => {
+    if (!incidents) {
+      fetchIncidentsFromDb().then((list) => setIncidentList([...list]));
+    }
 
     const handleUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<Incident[]>;
@@ -978,7 +949,7 @@ export function MapContainer({
     };
     window.addEventListener("scada-incidents-updated", handleUpdate);
     return () => window.removeEventListener("scada-incidents-updated", handleUpdate);
-  }, []);
+  }, [incidents]);
 
   const isClient = useIsClient();
 
@@ -1463,12 +1434,65 @@ export function MapContainer({
       },
     });
 
+  // Quantize zoom level to prevent thrashing during smooth pinch-zoom / mouse-wheel zoom
+  const quantizedZoom = Math.round(viewState.zoom * 2) / 2;
+
+  const visibleEmergencyServices = useMemo(() => {
+    if (!showEmergencyServices || TALLINN_EMERGENCY_SERVICES.length === 0) return [];
+    if (mapRef.current) {
+      const bounds = mapRef.current.getBounds();
+      if (bounds) {
+        const west = bounds.getWest() - 0.08;
+        const east = bounds.getEast() + 0.08;
+        const south = bounds.getSouth() - 0.05;
+        const north = bounds.getNorth() + 0.05;
+        return TALLINN_EMERGENCY_SERVICES.filter(
+          (s) =>
+            s.id === selectedEmergencyService?.id ||
+            (s.lat >= south && s.lat <= north && s.lng >= west && s.lng <= east)
+        );
+      }
+    }
+    const latSpan = Math.max(0.08, 120 / Math.pow(2, viewState.zoom));
+    const lngSpan = Math.max(0.16, 240 / Math.pow(2, viewState.zoom));
+    return TALLINN_EMERGENCY_SERVICES.filter(
+      (s) =>
+        s.id === selectedEmergencyService?.id ||
+        (Math.abs(s.lat - viewState.latitude) <= latSpan &&
+         Math.abs(s.lng - viewState.longitude) <= lngSpan)
+    );
+  }, [showEmergencyServices, viewState.latitude, viewState.longitude, quantizedZoom, selectedEmergencyService?.id]);
+
+  const visibleTransportHubs = useMemo(() => {
+    if (!showTransportHubs || TALLINN_TRANSPORT_HUBS.length === 0) return [];
+    if (mapRef.current) {
+      const bounds = mapRef.current.getBounds();
+      if (bounds) {
+        const west = bounds.getWest() - 0.08;
+        const east = bounds.getEast() + 0.08;
+        const south = bounds.getSouth() - 0.05;
+        const north = bounds.getNorth() + 0.05;
+        return TALLINN_TRANSPORT_HUBS.filter(
+          (h) =>
+            h.id === selectedTransportHub?.id ||
+            (h.lat >= south && h.lat <= north && h.lng >= west && h.lng <= east)
+        );
+      }
+    }
+    const latSpan = Math.max(0.08, 120 / Math.pow(2, viewState.zoom));
+    const lngSpan = Math.max(0.16, 240 / Math.pow(2, viewState.zoom));
+    return TALLINN_TRANSPORT_HUBS.filter(
+      (h) =>
+        h.id === selectedTransportHub?.id ||
+        (Math.abs(h.lat - viewState.latitude) <= latSpan &&
+         Math.abs(h.lng - viewState.longitude) <= lngSpan)
+    );
+  }, [showTransportHubs, viewState.latitude, viewState.longitude, quantizedZoom, selectedTransportHub?.id]);
+
   // Unified Area Infrastructure clusters (Emergency Services + Transport Hubs)
   const infraClusters = useMemo(() => {
-    const services = showEmergencyServices ? TALLINN_EMERGENCY_SERVICES : [];
-    const hubs = showTransportHubs ? TALLINN_TRANSPORT_HUBS : [];
-    return clusterInfrastructure(services, hubs, mapRef.current, viewState.zoom);
-  }, [showEmergencyServices, showTransportHubs, isMapReady, viewState.zoom]);
+    return clusterInfrastructure(visibleEmergencyServices, visibleTransportHubs, mapRef.current, quantizedZoom);
+  }, [visibleEmergencyServices, visibleTransportHubs, isMapReady, quantizedZoom]);
 
   /* ---------------------------------------------------------------------- */
   /* Viewport bounds filtering for HTML DOM markers to maintain 60 FPS       */
@@ -1639,14 +1663,14 @@ export function MapContainer({
 
   const incidentById = useMemo(() => {
     return new globalThis.Map(
-      MOCK_INCIDENTS.map(
+      incidentList.map(
         (incident) => [
           incident.id,
           incident,
         ],
       ),
     );
-  }, []);
+  }, [incidentList]);
 
   /* ---------------------------------------------------------------------- */
   /* Filter data                                                            */
@@ -1789,17 +1813,53 @@ export function MapContainer({
         setSelectedEmergencyService(matchedService);
         setSelectedTransportHub(null);
         setSelectedIncident(null);
+        flyTo(matchedService.lat, matchedService.lng, Math.max(mapAction.center.zoom || 16, 16));
       } else if (matchedHub && minHubDist <= minIncDist) {
         setSelectedTransportHub(matchedHub);
         setSelectedEmergencyService(null);
         setSelectedIncident(null);
+        flyTo(matchedHub.lat, matchedHub.lng, Math.max(mapAction.center.zoom || 16, 16));
       } else if (matchedIncident) {
         setSelectedIncident(matchedIncident);
         setSelectedEmergencyService(null);
         setSelectedTransportHub(null);
+        flyTo(matchedIncident.lat, matchedIncident.lng, Math.max(mapAction.center.zoom || 16.5, 16.5));
       }
     }
-  }, [mapAction, flyTo, incidentList]);
+  }, [mapAction, flyTo, incidentList, setSelectedIncident, setSelectedEmergencyService, setSelectedTransportHub]);
+
+  useEffect(() => {
+    const handleFocusNode = (e: Event) => {
+      const customEvent = e as CustomEvent<{ nodeId: string }>;
+      if (customEvent.detail?.nodeId) {
+        const targetId = customEvent.detail.nodeId.toLowerCase();
+        const found = incidentList.find(
+          (inc) =>
+            (inc.nodeId && inc.nodeId.toLowerCase() === targetId) ||
+            inc.id.toLowerCase() === targetId
+        );
+        if (found) {
+          setShowIncidents?.(true);
+          setSelectedIncident(found);
+          flyTo(found.lat, found.lng, 16.5);
+        }
+      }
+    };
+    window.addEventListener("scada-focus-incident-node", handleFocusNode);
+    return () => window.removeEventListener("scada-focus-incident-node", handleFocusNode);
+  }, [incidentList, setSelectedIncident, setShowIncidents, flyTo]);
+
+  useEffect(() => {
+    if (selectedIncident) {
+      setShowIncidents?.(true);
+      flyTo(selectedIncident.lat, selectedIncident.lng, 16.5);
+      setSelectedEmergencyService(null);
+      setSelectedTransportHub(null);
+      setSelectedFlight(null);
+      setSelectedVessel(null);
+      setSelectedVehicle(null);
+    }
+  }, [selectedIncident, isMapReady, flyTo, setShowIncidents, setSelectedEmergencyService, setSelectedTransportHub, setSelectedFlight, setSelectedVessel, setSelectedVehicle]);
 
   const resetView = useCallback(() => {
     setIs3D(false);
@@ -2016,38 +2076,11 @@ export function MapContainer({
           vehicleCount={vessels.length}
           emergencyCount={TALLINN_EMERGENCY_SERVICES.length}
           transportHubCount={TALLINN_TRANSPORT_HUBS.length}
-          incidentCount={MOCK_INCIDENTS.length}
+          incidentCount={incidentList.length}
           rightOffset={rightOffset}
           isDragging={isCopilotDragging}
         />
 
-        {mapAction && (
-          <div className="absolute top-4 left-16 z-40 bg-[#121820]/95 border border-sky-500/60 rounded-xl px-4 py-2.5 text-white shadow-2xl backdrop-blur-md flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-sky-500/20 border border-sky-500/50 flex items-center justify-center shrink-0">
-                <Target className="w-4 h-4 text-sky-400 animate-pulse" />
-              </div>
-              <div>
-                <div className="text-[10px] font-mono font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                  AI MAP ACTION ACTIVE
-                </div>
-                <div className="text-xs font-semibold text-slate-100 font-mono">
-                  {mapAction.title || "Incident Concentration Hotspots Highlighted"}
-                </div>
-              </div>
-            </div>
-            {onClearMapAction && (
-              <button
-                type="button"
-                onClick={onClearMapAction}
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-mono font-medium rounded-lg text-slate-200 transition-colors shrink-0"
-              >
-                Clear Overlay
-              </button>
-            )}
-          </div>
-        )}
 
         <div className="absolute inset-0 overflow-hidden rounded-xl border border-border bg-background">
           {isClient ? (
@@ -2056,7 +2089,15 @@ export function MapContainer({
               reuseMaps={true}
               mapLib={maplibregl}
               initialViewState={
-                viewState
+                selectedIncident
+                  ? {
+                      latitude: selectedIncident.lat,
+                      longitude: selectedIncident.lng,
+                      zoom: 16.5,
+                      pitch: 0,
+                      bearing: 0,
+                    }
+                  : viewState
               }
               mapStyle={
                 MAP_STYLES[mapTheme]
@@ -2067,9 +2108,17 @@ export function MapContainer({
               }}
               attributionControl={false}
               fadeDuration={0}
-              onLoad={() =>
-                setIsMapReady(true)
-              }
+              onLoad={() => {
+                setIsMapReady(true);
+                if (selectedIncident) {
+                  mapRef.current?.flyTo({
+                    center: [selectedIncident.lng, selectedIncident.lat],
+                    zoom: 16.5,
+                    duration: 600,
+                    essential: true,
+                  });
+                }
+              }}
               onMoveEnd={(event) => {
                 setViewState(
                   event.viewState,
@@ -2151,7 +2200,7 @@ export function MapContainer({
                   longitude={selectedIncident.lng}
                   anchor="left"
                   offset={24}
-                  maxWidth="300px"
+                  maxWidth="320px"
                   closeButton={false}
                   closeOnClick={false}
                   onClose={() => setSelectedIncident(null)}
@@ -2159,6 +2208,7 @@ export function MapContainer({
                   <MapIncidentPopup
                     selectedIncident={selectedIncident}
                     setSelectedIncident={setSelectedIncident}
+                    onCenter={() => flyTo(selectedIncident.lat, selectedIncident.lng, 16)}
                   />
                 </Popup>
               )}
@@ -2267,8 +2317,6 @@ export function MapContainer({
                       </div>
 
                       <div className="relative flex items-center justify-center mt-1">
-                        <span className="absolute inline-flex h-6 w-6 rounded-full bg-sky-500/40 animate-ping" />
-
                         <div className="relative flex h-6 w-6 items-center justify-center rounded-full bg-sky-600 text-white border-2 border-background shadow-md">
                           <MapPin className="w-3.5 h-3.5 text-white" />
                         </div>
@@ -2441,10 +2489,7 @@ export function MapContainer({
                         <div className="space-y-0.5 min-w-0 flex-1">
                           <div className="flex gap-1.5 items-center flex-wrap min-w-0">
                             <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50 uppercase font-semibold text-[10px] tracking-wider flex items-center shrink-0">
-                              <span className="relative flex h-2 w-2 mr-1.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
-                              </span>
+                              <span className="inline-flex rounded-full h-2 w-2 bg-cyan-500 mr-1.5 shrink-0" />
                               <Anchor className="w-3 h-3 mr-1 inline" />
                               {activeVessel.shipCategory}
                             </Badge>
@@ -2499,7 +2544,7 @@ export function MapContainer({
                           </span>
 
                           <span className="flex items-center text-[9px] text-cyan-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mr-1 animate-pulse"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mr-1"></span>
                             AIS REAL-TIME
                           </span>
                         </div>
@@ -2535,10 +2580,7 @@ export function MapContainer({
                         <div className="space-y-0.5 min-w-0 flex-1">
                           <div className="flex gap-1.5 items-center flex-wrap min-w-0">
                             <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/50 uppercase font-semibold text-[10px] tracking-wider flex items-center shrink-0">
-                              <span className="relative flex h-2 w-2 mr-1.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                              </span>
+                              <span className="inline-flex rounded-full h-2 w-2 bg-amber-500 mr-1.5 shrink-0" />
                               <Plane className="w-3 h-3 mr-1 inline" />
                               {activeFlight.callsign.includes("HELI") || activeFlight.altitude < 300
                                 ? "Helicopter"
@@ -2619,7 +2661,7 @@ export function MapContainer({
                           </span>
 
                           <span className="flex items-center text-[9px] text-amber-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1 animate-pulse"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1"></span>
                             ADS-B REAL-TIME
                           </span>
                         </div>

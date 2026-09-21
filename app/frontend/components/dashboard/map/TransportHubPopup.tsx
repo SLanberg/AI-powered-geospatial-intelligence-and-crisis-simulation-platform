@@ -4,8 +4,6 @@ import React, { useState } from "react";
 import {
   X,
   MapPin,
-  Phone,
-  Globe,
   Plane,
   Anchor,
   TrainTrack,
@@ -18,6 +16,8 @@ import {
   Activity,
   Building2,
   Camera,
+  Gauge,
+  Package,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -83,8 +83,16 @@ export function TransportHubPopup({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const utilization = hub.utilizationRate ?? 60;
+  const utilizationColor =
+    utilization > 80
+      ? "bg-rose-500"
+      : utilization > 65
+      ? "bg-amber-400"
+      : "bg-emerald-400";
+
   return (
-    <div className="bg-[#0A0E17] text-popover-foreground p-3.5 rounded-xl border border-border w-[300px] max-w-[300px] max-h-[420px] flex flex-col overflow-hidden box-border z-[9999999]">
+    <div className="bg-[#0A0E17] text-popover-foreground p-3.5 rounded-xl border border-border w-[310px] max-w-[310px] max-h-[460px] flex flex-col overflow-hidden box-border z-[9999999] shadow-2xl">
       {/* Header Bar */}
       <div className="flex justify-between items-start gap-2 pb-2 border-b border-border/80 shrink-0">
         <div className="space-y-0.5 min-w-0 flex-1">
@@ -121,13 +129,13 @@ export function TransportHubPopup({
             {hub.name}
           </h4>
           {hub.nameEn && hub.nameEn !== hub.name && (
-            <p className="text-[10px] text-muted-foreground italic">{hub.nameEn}</p>
+            <p className="text-[10px] text-muted-foreground italic truncate">{hub.nameEn}</p>
           )}
         </div>
 
         <button
           onClick={onClose}
-          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors shrink-0 -mr-1 -mt-1"
+          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors shrink-0 -mr-1 -mt-1 cursor-pointer"
           aria-label="Close popup"
         >
           <X className="w-4 h-4" />
@@ -144,7 +152,7 @@ export function TransportHubPopup({
             </span>
             <span className="text-foreground font-medium flex items-center gap-1 mt-0.5 truncate">
               <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
-              {hub.district}
+              {hub.district || hub.city}
             </span>
           </div>
           <div>
@@ -158,36 +166,91 @@ export function TransportHubPopup({
           </div>
         </div>
 
-        {/* Dynamic Telemetry / Operational Metrics */}
+        {/* Dynamic Telemetry / Operational Metrics: Passengers & Capacity Throughput */}
         <div className="grid grid-cols-2 gap-2">
-          {hub.dailyPassengers && (
-            <div className="bg-muted/40 p-2.5 rounded-lg border border-border/60">
-              <span className="text-[10px] font-mono font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                <Users className="w-3 h-3 text-sky-400" />
-                Daily Pax Flow
+          {/* 1. Количество людей / Пассажиропоток */}
+          <div className="bg-sky-950/20 border border-sky-500/30 p-2.5 rounded-lg flex flex-col justify-between">
+            <span className="text-[10px] font-mono font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              Pax Flow
+            </span>
+            <div className="mt-1">
+              <span className="font-mono text-sm font-extrabold text-foreground block leading-tight">
+                {hub.dailyPassengers
+                  ? `${hub.dailyPassengers.toLocaleString()} / day`
+                  : hub.passengerVolume || "Active"}
               </span>
-              <span className="font-mono text-sm font-bold text-foreground block mt-0.5">
-                {hub.dailyPassengers.toLocaleString()}
+              <span className="text-[9.5px] font-mono text-muted-foreground block mt-0.5 truncate">
+                Avg. Daily Traffic
               </span>
             </div>
-          )}
+          </div>
 
-          {hub.activeTerminalCount && (
-            <div className="bg-muted/40 p-2.5 rounded-lg border border-border/60">
-              <span className="text-[10px] font-mono font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                <Layers className="w-3 h-3 text-emerald-400" />
-                Terminals
+          {/* 2. Пропускная способность / Throughput */}
+          <div className="bg-emerald-950/20 border border-emerald-500/30 p-2.5 rounded-lg flex flex-col justify-between">
+            <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+              <Gauge className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              Capacity / Hr
+            </span>
+            <div className="mt-1">
+              <span className="font-mono text-sm font-extrabold text-foreground block leading-tight truncate" title={hub.hourlyCapacity || hub.capacity || hub.throughput}>
+                {hub.hourlyCapacity || hub.capacity || hub.throughput || "Standard"}
               </span>
-              <span className="font-mono text-sm font-bold text-foreground block mt-0.5">
-                {hub.activeTerminalCount} Active
+              <span className="text-[9.5px] font-mono text-emerald-400/90 block mt-0.5 truncate" title={hub.throughput || hub.capacity}>
+                {hub.throughput || "Continuous"}
               </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Capacity Utilization Progress Bar */}
+        <div className="bg-muted/30 p-2 rounded-lg border border-border/60 space-y-1">
+          <div className="flex justify-between items-center text-[10px] font-mono">
+            <span className="text-muted-foreground font-semibold flex items-center gap-1">
+              <Activity className="w-3 h-3 text-primary" />
+              Capacity Load
+            </span>
+            <span className="font-bold text-foreground">
+              {utilization}%
+            </span>
+          </div>
+          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${utilizationColor}`}
+              style={{ width: `${Math.min(100, Math.max(5, utilization))}%` }}
+            />
+          </div>
+          {hub.capacity && (
+            <div className="flex justify-between items-center text-[9px] font-mono text-muted-foreground pt-0.5">
+              <span>Max: {hub.capacity}</span>
+              {hub.activeTerminalCount && (
+                <span>{hub.activeTerminalCount} Terminals Active</span>
+              )}
             </div>
           )}
         </div>
 
+        {/* Cargo Volume or Terminals breakdown if present */}
+        {(hub.cargoVolume || (hub.activeLinesOrTerminals && hub.activeLinesOrTerminals.length > 0)) && (
+          <div className="flex flex-wrap gap-1.5 items-center">
+            {hub.cargoVolume && (
+              <Badge variant="outline" className="text-[9px] font-mono bg-muted/40 border-border/80 text-muted-foreground flex items-center gap-1 py-0.5 px-2">
+                <Package className="w-3 h-3 text-amber-400" />
+                {hub.cargoVolume}
+              </Badge>
+            )}
+            {hub.activeTerminalCount && (
+              <Badge variant="outline" className="text-[9px] font-mono bg-muted/40 border-border/80 text-muted-foreground flex items-center gap-1 py-0.5 px-2">
+                <Layers className="w-3 h-3 text-emerald-400" />
+                {hub.activeTerminalCount} Terminals
+              </Badge>
+            )}
+          </div>
+        )}
+
         {/* Operational Description */}
         {hub.description && (
-          <div className="p-2.5 bg-muted/20 rounded-lg border border-border/40 text-muted-foreground text-xs leading-relaxed">
+          <div className="p-2.5 bg-muted/20 rounded-lg border border-border/40 text-muted-foreground text-[11px] leading-relaxed">
             {hub.description}
           </div>
         )}
@@ -231,7 +294,7 @@ export function TransportHubPopup({
               size="sm"
               variant="outline"
               onClick={() => onRecenter(hub.lat, hub.lng)}
-              className="flex-1 h-7 text-[11px] font-medium border-border/80 hover:bg-accent hover:text-accent-foreground"
+              className="flex-1 h-7 text-[11px] font-medium border-border/80 hover:bg-accent hover:text-accent-foreground cursor-pointer"
             >
               <Navigation className="w-3 h-3 mr-1 text-primary" />
               Recenter View
@@ -243,7 +306,7 @@ export function TransportHubPopup({
             variant="outline"
             title="Copy Coordinates"
             onClick={handleCopyCoords}
-            className="h-7 px-2.5 text-[11px] border-border/80 hover:bg-accent hover:text-accent-foreground font-mono flex items-center gap-1"
+            className="h-7 px-2.5 text-[11px] border-border/80 hover:bg-accent hover:text-accent-foreground font-mono flex items-center gap-1 cursor-pointer"
           >
             {copied ? (
               <Check className="w-3 h-3 text-emerald-400" />

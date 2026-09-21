@@ -57,7 +57,7 @@ export function ChatInputArea({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask Neural City Copilot or dispatch commands..."
+          placeholder="Ask Cassandra AI Agent or dispatch tactical commands..."
           rows={1}
           disabled={isStreaming}
           className="w-full resize-none rounded-md bg-card border border-border/60 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 min-h-[38px] max-h-[120px]"

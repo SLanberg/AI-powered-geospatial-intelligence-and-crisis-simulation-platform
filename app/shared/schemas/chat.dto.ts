@@ -11,7 +11,7 @@ export type ChatRole = z.infer<typeof ChatRoleSchema>;
  */
 export const ChatMessageSchema = z.object({
   role: ChatRoleSchema,
-  content: z.string().min(1, "Message content cannot be empty"),
+  content: z.string().default(""),
   name: z.string().optional(),
   tool_call_id: z.string().optional(),
 });

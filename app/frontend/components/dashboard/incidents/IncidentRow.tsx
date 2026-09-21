@@ -32,7 +32,7 @@ export function IncidentRow({ incident, onSelect, onEdit, onDelete }: IncidentRo
       case "active":
         return (
           <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30 text-[10px] gap-1 py-0.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
             Active
           </Badge>
         );

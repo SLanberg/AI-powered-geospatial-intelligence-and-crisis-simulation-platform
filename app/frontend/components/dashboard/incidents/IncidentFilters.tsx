@@ -49,7 +49,7 @@ export function IncidentFilters({
   loading = false,
 }: IncidentFiltersProps) {
   return (
-    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-4 bg-card/60 backdrop-blur-md rounded-xl border border-border/50">
+    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-4 bg-card rounded-xl border border-border">
       {/* Search Input */}
       <div className="relative flex-1 min-w-[220px]">
         <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />

@@ -46,8 +46,8 @@ export function AreaInfrastructureModal({
   const showServices = filter === "all" || filter === "services";
 
   return (
-    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="relative flex flex-col w-full max-w-2xl max-h-[85vh] bg-[#0C1017] border border-sky-500/40 rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.9)] overflow-hidden text-slate-100">
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/70 p-4 animate-in fade-in duration-200">
+      <div className="relative flex flex-col w-full max-w-2xl max-h-[85vh] bg-[#0C1017] border border-sky-500/40 rounded-xl shadow-xl overflow-hidden text-slate-100">
         
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-[#121824]">
@@ -187,10 +187,18 @@ export function AreaInfrastructureModal({
                         <span className="text-slate-400 font-medium">District/Location:</span>{" "}
                         <span className="text-slate-200 font-bold">{hub.district || hub.city || "Transit Corridor"}</span>
                       </div>
-                      {hub.passengerVolume && (
+                      <div>
+                        <span className="text-slate-400 font-medium">Pax Flow:</span>{" "}
+                        <span className="text-sky-300 font-bold">
+                          {hub.dailyPassengers ? `${hub.dailyPassengers.toLocaleString()} / day` : hub.passengerVolume || "Active"}
+                        </span>
+                      </div>
+                      {(hub.hourlyCapacity || hub.capacity || hub.throughput) && (
                         <div>
-                          <span className="text-slate-400 font-medium">Capacity/Vol:</span>{" "}
-                          <span className="text-slate-200 font-bold">{hub.passengerVolume}</span>
+                          <span className="text-slate-400 font-medium">Throughput / Cap:</span>{" "}
+                          <span className="text-emerald-400 font-bold">
+                            {hub.hourlyCapacity || hub.capacity || hub.throughput}
+                          </span>
                         </div>
                       )}
                       {hub.status && (
@@ -200,7 +208,7 @@ export function AreaInfrastructureModal({
                         </div>
                       )}
                       {hub.phone && (
-                        <div className="flex items-center gap-1 text-slate-300">
+                        <div className="flex items-center gap-1 text-slate-300 col-span-2">
                           <Phone className="w-3 h-3 text-sky-400 shrink-0" />
                           <span className="font-mono text-[11px]">{hub.phone}</span>
                         </div>

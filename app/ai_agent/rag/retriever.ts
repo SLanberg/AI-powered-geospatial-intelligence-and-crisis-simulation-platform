@@ -33,6 +33,30 @@ const TALLINN_STANDARD_OPERATING_PROCEDURES = [
     content: "During port communication blackout or AIS degradation, patrol vessel EVA-316 maintains visual radar stationing. Coast Guard channels 16 and 67 active for vessel guidance.",
     sector: "Maritime",
   },
+  {
+    id: "NEPAL-CAS-01",
+    title: "Nepal Langtang Lirung Trigger & Avalanche Physics",
+    content: "On 2026-08-26 at 08:37:10 NPT, a catastrophic 6.8 million m³ rock-ice collapse occurred on the north flank of Langtang Lirung (7,234m). The seismic signature was equivalent to an M5.2 event. The massive glacial collapse initiated a hyper-concentrated sediment and debris flood down the Langtang / Trishuli river corridor.",
+    sector: "Nepal-Replay",
+  },
+  {
+    id: "NEPAL-CAS-02",
+    title: "Rasuwagadhi Border & Syabrubesi Downstream Propagation",
+    content: "At ~08:44 NPT (6-7 min post-trigger), the flood pulse hit Rasuwagadhi border (Km 14) damaging the Miteri Friendship Bridge. The last reading was 1.62m before sensor compromise. By 09:00-09:25 NPT, water level at Syabrubesi (Km 28) reached +6.2m, destroying suspension bridges and severing Pasang Lhamu Highway (NH09). At 09:00 NPT, Dhunche command received telephone human reports due to sensor degradation.",
+    sector: "Nepal-Replay",
+  },
+  {
+    id: "NEPAL-CAS-03",
+    title: "Mass Warning SMS Alert & Betrawati-Galchhi Flood Surge",
+    content: "At 09:15-09:16 NPT, DHM/civil defense issued 679,295 emergency mass SMS alerts to downstream populations. Betrawati gauge (Km 56) recorded 3.55m at 10:15 NPT before failure. At Galchhi (Km 82, Dhading confluence), water surged +9m in 30 minutes reaching 11.1m (danger level 9.0m) at 10:28 NPT, causing major inundation along the Prithvi Highway (H04/NH41).",
+    sector: "Nepal-Replay",
+  },
+  {
+    id: "NEPAL-CAS-04",
+    title: "Secondary Seismic Event & Lower Basin Inundation (Muglin, Kalikhola, Devghat)",
+    content: "At 11:45 NPT, a secondary seismic/mass movement (M4.2) struck upper Rasuwa. The flood wave propagated to Muglin (Km 135) at 13:00 NPT (11.5m) and Kalikhola (Km 142) at 14:14 NPT (12.3m, exceeding 10.5m danger threshold). At Devghat hydro-terminal (Km 165), peak water level was recorded at 6.57m at 16:00 NPT before receding substantially by 18:30 NPT. Alternate freight diverted via BP Highway (H06).",
+    sector: "Nepal-Replay",
+  },
 ];
 
 export class RagRetriever {

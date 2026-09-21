@@ -8,6 +8,7 @@ import {
   IsolateGridSectorInput,
   IsolateGridSectorOutput,
 } from "@/shared";
+import { incidentsService } from "@/backend/services/incidents.service";
 
 export const inspectSubstationTool = {
   name: "inspect_substation",
@@ -19,34 +20,34 @@ export const inspectSubstationTool = {
     const input: InspectSubstationInput = InspectSubstationInputSchema.parse(rawInput);
     const subId = input.substation_id.toUpperCase();
 
-    if (subId.includes("SUB-04") || subId.includes("VANALINN")) {
-      return {
-        substation_id: "EE-TLN-SUB-04",
-        status: "TRIPPED",
-        active_alarms: ["TRANSFORMER_ISOLATION_RELAY_TRIPPED", "UNDERFREQUENCY_48.8HZ", "BUS_VOLTAGE_DROP_380V"],
-        breaker_position: "OPEN_SAFETY_LOCKOUT",
-        feeder_trips: ["FEEDER_VL_01", "FEEDER_VL_02", "FEEDER_VL_04"],
-        frequency_hz: 48.82,
-        load_mva: 0.8,
-        capacity_mva: 45.0,
-        oil_temp_c: 88.4,
-        bus_voltage_kv: 9.8,
-      };
-    }
+    // Check if there is an active incident in the database matching this substation
+    try {
+      const incidents = await incidentsService.getIncidents();
+      const matched = incidents.find(
+        (i) =>
+          (i.nodeId && subId.includes(i.nodeId.toUpperCase())) ||
+          (i.title && i.title.toUpperCase().includes(subId)) ||
+          (subId.includes("VANALINN") && i.district?.toLowerCase().includes("vanalinn") && i.category === "Grid Failure") ||
+          (subId.includes("ULEMISTE") && i.district?.toLowerCase().includes("ülemiste") && i.category === "Grid Failure")
+      );
 
-    if (subId.includes("ULE-01") || subId.includes("ULEMISTE")) {
-      return {
-        substation_id: "EE-TLN-ULE-01",
-        status: "VOLTAGE_SURGE",
-        active_alarms: ["OVERVOLTAGE_SURGE_438KV", "FEEDER_ISOLATION_SECTOR_B"],
-        breaker_position: "PARTIALLY_OPEN",
-        feeder_trips: ["FEEDER_ULE_B2"],
-        frequency_hz: 50.12,
-        load_mva: 38.2,
-        capacity_mva: 60.0,
-        oil_temp_c: 64.1,
-        bus_voltage_kv: 112.4,
-      };
+      if (matched) {
+        const isCritical = matched.severity === "critical";
+        return {
+          substation_id: subId,
+          status: isCritical ? "TRIPPED" : "ALARM_ACTIVE",
+          active_alarms: [matched.title.toUpperCase().replace(/\s+/g, "_"), ...(isCritical ? ["UNDERFREQUENCY_48.8HZ"] : [])],
+          breaker_position: isCritical ? "OPEN_SAFETY_LOCKOUT" : "PARTIALLY_OPEN",
+          feeder_trips: [matched.nodeId || "FEEDER_01"],
+          frequency_hz: isCritical ? 48.82 : 50.12,
+          load_mva: isCritical ? 0.8 : 38.2,
+          capacity_mva: 45.0,
+          oil_temp_c: isCritical ? 88.4 : 64.1,
+          bus_voltage_kv: isCritical ? 9.8 : 112.4,
+        };
+      }
+    } catch {
+      // If DB fails, fallback to nominal
     }
 
     return {

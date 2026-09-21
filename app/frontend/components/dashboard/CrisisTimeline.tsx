@@ -301,6 +301,8 @@ export function CrisisTimeline({
   const playbackRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number | null>(null);
   const currentSecondsRef = useRef<number>(0);
+  const lastDispatchedTimeRef = useRef<string>(selectedTime);
+  const lastDispatchedIncidentIdRef = useRef<string | undefined>(selectedIncident?.id);
 
   const timelinePoints = useMemo<TimelinePoint[]>(() => {
     const start = parseTimelineTime(EVENT_TIMELINE[0].fullTime);
@@ -501,9 +503,11 @@ export function CrisisTimeline({
     }, timelinePoints[0]);
 
     if (exactOrClosest) {
+      lastDispatchedTimeRef.current = exactOrClosest.event.time;
       setSelectedTime(exactOrClosest.event.time);
 
       if (setSelectedIncident && exactOrClosest.event.incidentId) {
+        lastDispatchedIncidentIdRef.current = exactOrClosest.event.incidentId;
         const incident = MOCK_INCIDENTS.find(
           (item) => item.id === exactOrClosest.event.incidentId
         );
@@ -511,6 +515,8 @@ export function CrisisTimeline({
         if (incident) {
           setSelectedIncident(incident);
         }
+      } else {
+        lastDispatchedIncidentIdRef.current = undefined;
       }
     }
   };
@@ -651,9 +657,13 @@ export function CrisisTimeline({
           : closestPoint;
       }, timelinePoints[0]);
 
-      setSelectedTime(closest.event.time);
+      if (closest.event.time !== lastDispatchedTimeRef.current) {
+        lastDispatchedTimeRef.current = closest.event.time;
+        setSelectedTime(closest.event.time);
+      }
 
-      if (closest.event.incidentId && setSelectedIncident) {
+      if (closest.event.incidentId && setSelectedIncident && closest.event.incidentId !== lastDispatchedIncidentIdRef.current) {
+        lastDispatchedIncidentIdRef.current = closest.event.incidentId;
         const incident = MOCK_INCIDENTS.find(
           (item) => item.id === closest.event.incidentId
         );
@@ -661,6 +671,8 @@ export function CrisisTimeline({
         if (incident) {
           setSelectedIncident(incident);
         }
+      } else if (!closest.event.incidentId && lastDispatchedIncidentIdRef.current) {
+        lastDispatchedIncidentIdRef.current = undefined;
       }
 
       playbackRef.current = requestAnimationFrame(animate);
@@ -962,54 +974,11 @@ export function CrisisTimeline({
                   strokeWidth="1.5"
                   vectorEffect="non-scaling-stroke"
                 />
-
-                {/* Incident-specific highlights */}
-                {incidentEvents.map((point) => {
-                  const waveformPoint = waveformPoints.find(
-                    (_, index) =>
-                      timelinePoints[index]?.event.id ===
-                      point.event.id
-                  );
-
-                  if (!waveformPoint) return null;
-
-                  const radius =
-                    point.event.severity === "critical"
-                      ? 16
-                      : point.event.severity === "warning"
-                        ? 12
-                        : 8;
-
-                  const opacity =
-                    point.event.severity === "critical"
-                      ? 0.35
-                      : point.event.severity === "warning"
-                        ? 0.25
-                        : 0.15;
-
-                  const color =
-                    point.event.severity === "critical"
-                      ? "#FF3B30"
-                      : point.event.severity === "warning"
-                        ? "#FF9500"
-                        : "#38BDF8";
-
-                  return (
-                    <circle
-                      key={`glow-${point.event.id}`}
-                      cx={waveformPoint.x}
-                      cy={waveformPoint.y}
-                      r={radius}
-                      fill={color}
-                      opacity={opacity}
-                    />
-                  );
-                })}
               </svg>
 
               {/* Explicit High-Contrast Needle / Cursor Playhead */}
               <div
-                className="absolute top-0 bottom-0 pointer-events-none z-30 transition-all duration-75 ease-out"
+                className="absolute top-0 bottom-0 pointer-events-none z-30"
                 style={{
                   left: `${playheadPosition}%`,
                 }}
@@ -1094,7 +1063,7 @@ export function CrisisTimeline({
             </>
           ) : (
             <div className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-emerald-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
               Nominal Operational State
             </div>
           )}

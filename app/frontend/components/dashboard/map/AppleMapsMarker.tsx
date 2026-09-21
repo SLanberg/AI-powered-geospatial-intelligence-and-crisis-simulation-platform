@@ -23,38 +23,32 @@ import type { EmergencyService, EmergencyServiceType } from "../emergencyService
  * on hover or high zoom level to keep map clutter-free and location readable.
  */
 
-type Cfg = { color: string; label: string; bgGlow: string };
+type Cfg = { color: string; label: string };
 
 const CONFIGS: Record<EmergencyServiceType, Cfg> = {
   hospital: {
     color: "#0284C7",
     label: "Hospital (24/7 ER)",
-    bgGlow: "rgba(2, 132, 199, 0.4)",
   },
   clinic: {
     color: "#06B6D4",
     label: "Outpatient Clinic",
-    bgGlow: "rgba(6, 182, 212, 0.4)",
   },
   police: {
     color: "#3B82F6",
     label: "Police Station",
-    bgGlow: "rgba(59, 130, 246, 0.4)",
   },
   fire_station: {
     color: "#F97316",
     label: "Fire & Rescue",
-    bgGlow: "rgba(249, 115, 22, 0.4)",
   },
   shelter: {
     color: "#10B981",
     label: "Emergency Shelter",
-    bgGlow: "rgba(16, 185, 129, 0.4)",
   },
   hazard_site: {
     color: "#A855F7",
     label: "Hazard Site",
-    bgGlow: "rgba(168, 85, 247, 0.4)",
   },
 };
 
@@ -119,7 +113,7 @@ export const AppleMapsMarker = memo(function AppleMapsMarker({
   const cfg = isClinic
     ? CONFIGS.clinic
     : hazardConfig
-    ? { color: hazardConfig.color, label: hazardConfig.label, bgGlow: `${hazardConfig.color}55` }
+    ? { color: hazardConfig.color, label: hazardConfig.label }
     : CONFIGS[service.type] ?? CONFIGS.hospital;
 
   const Icon = isClinic
@@ -141,7 +135,7 @@ export const AppleMapsMarker = memo(function AppleMapsMarker({
   return (
     <div
       className="relative flex flex-col items-center select-none group"
-      style={{ zIndex: isSelected ? 99999 : isHovered ? 9999 : 20 }}
+      style={{ zIndex: isSelected ? 1000000 : isHovered ? 999999 : 20 }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

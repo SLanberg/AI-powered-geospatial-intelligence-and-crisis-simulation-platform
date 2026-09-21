@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { searchIncidentsTool, createIncidentTool } from "./definitions/incidentTools";
+import {
+  searchIncidentsTool,
+  createIncidentTool,
+  updateIncidentTool,
+  deleteIncidentTool,
+} from "./definitions/incidentTools";
 import { inspectSubstationTool, isolateGridSectorTool } from "./definitions/gridTools";
 import { queryTrafficFlowTool, rerouteTrafficTool } from "./definitions/trafficTools";
 import { dispatchEmergencyUnitTool } from "./definitions/dispatchTools";
@@ -38,6 +43,8 @@ export class ToolRegistry {
   private registerDefaultTools(): void {
     this.registerTool(searchIncidentsTool);
     this.registerTool(createIncidentTool);
+    this.registerTool(updateIncidentTool);
+    this.registerTool(deleteIncidentTool);
     this.registerTool(inspectSubstationTool);
     this.registerTool(isolateGridSectorTool);
     this.registerTool(queryTrafficFlowTool);
@@ -114,6 +121,53 @@ export class ToolRegistry {
             sector: { type: "string", description: "District or sector name" },
             limit: { type: "number" },
           },
+        },
+      },
+      {
+        name: "create_incident",
+        description: "Register a new grid anomaly, power outage, or infrastructure incident into Tallinn database.",
+        parameters: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "Incident summary title" },
+            category: { type: "string", description: "Category (e.g. Grid Failure, Traffic Flow, Cyber Security)" },
+            severity: { type: "string", enum: ["critical", "warning", "info"] },
+            district: { type: "string", description: "City district" },
+            description: { type: "string", description: "Detailed description" },
+            lat: { type: "number", description: "Latitude coordinate" },
+            lng: { type: "number", description: "Longitude coordinate" },
+          },
+          required: ["title", "category", "severity", "district", "description"],
+        },
+      },
+      {
+        name: "update_incident",
+        description: "Update details, severity, or operational status of an existing incident in the database.",
+        parameters: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Incident ID to update" },
+            title: { type: "string", description: "Updated title" },
+            category: { type: "string", description: "Updated category" },
+            severity: { type: "string", enum: ["critical", "warning", "info"] },
+            status: { type: "string", enum: ["active", "investigating", "mitigated", "resolved"] },
+            district: { type: "string", description: "Updated district" },
+            description: { type: "string", description: "Updated description" },
+            lat: { type: "number", description: "Updated latitude" },
+            lng: { type: "number", description: "Updated longitude" },
+          },
+          required: ["id"],
+        },
+      },
+      {
+        name: "delete_incident",
+        description: "Decommission and permanently remove an incident from the database.",
+        parameters: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Incident ID to decommission" },
+          },
+          required: ["id"],
         },
       },
       {

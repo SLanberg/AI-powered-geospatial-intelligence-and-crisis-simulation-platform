@@ -57,67 +57,112 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
   }, []);
 
   // Trigger map resize event when AI panel or Sidebar toggles
-  const handleToggleAi = (updater: React.SetStateAction<boolean>) => {
+  const handleToggleAi = React.useCallback((updater: React.SetStateAction<boolean>) => {
     setAiOpen((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
+      if (next) {
+        setCopilotDefaultMode((cur) => cur);
+      }
       setTimeout(() => window.dispatchEvent(new Event("resize")), 220);
       return next;
     });
-  };
+  }, []);
 
-  const handleToggleSidebar = (updater: React.SetStateAction<boolean>) => {
+  const handleToggleSidebar = React.useCallback((updater: React.SetStateAction<boolean>) => {
     setSidebarOpen((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       setTimeout(() => window.dispatchEvent(new Event("resize")), 320);
       return next;
     });
-  };
+  }, []);
+
+  const [currentIncidents, setCurrentIncidents] = useState<Incident[]>(initialIncidents ?? []);
+
+  // Sync initialIncidents when prop changes
+  React.useEffect(() => {
+    if (initialIncidents !== undefined) {
+      setCurrentIncidents(initialIncidents);
+    }
+  }, [initialIncidents]);
+
+  // Real-time synchronization when incidents are created, updated, or deleted
+  React.useEffect(() => {
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<Incident[]>;
+      if (customEvent.detail && Array.isArray(customEvent.detail)) {
+        setCurrentIncidents((prev) => {
+          if (
+            prev.length === customEvent.detail.length &&
+            prev.every((item, idx) => item.id === customEvent.detail[idx]?.id)
+          ) {
+            return prev;
+          }
+          return customEvent.detail;
+        });
+      }
+    };
+    window.addEventListener("scada-incidents-updated", handleUpdate);
+    return () => window.removeEventListener("scada-incidents-updated", handleUpdate);
+  }, []);
 
   const activeNepalEvent = useMemo(() => getActiveEvent(replaySeconds), [replaySeconds]);
-
-  const incidentsData = initialIncidents && initialIncidents.length > 0 ? initialIncidents : (MOCK_INCIDENTS as Incident[]);
 
   const filteredIncidents = useMemo(() => {
     switch (selectedTime) {
       case "08:40":
-        return incidentsData.slice(4);
+        return currentIncidents.slice(4);
       case "08:44":
-        return incidentsData.slice(2);
+        return currentIncidents.slice(2);
       case "08:47":
       default:
-        return incidentsData;
+        return currentIncidents;
     }
-  }, [selectedTime, incidentsData]);
+  }, [selectedTime, currentIncidents]);
 
-  const handleSelectIncidentFromMatrix = (incident: Incident) => {
+  const handleTabChange = React.useCallback((newTab: string) => {
+    setActiveTab(newTab);
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+  }, []);
+
+  const handleSelectIncidentFromMatrix = React.useCallback((incident: Incident) => {
     setSelectedIncident(incident);
     setActiveTab("map");
-  };
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+  }, []);
 
-  const handleUseFeedContext = (context: string) => {
+  const handleUseFeedContext = React.useCallback((context: string) => {
     setAiContext(context);
+    setCopilotDefaultMode("chat");
     setAiOpen(true);
-  };
+  }, []);
 
-  const handleMapAction = (action: MapAction) => {
+  const handleMapAction = React.useCallback((action: MapAction) => {
     setMapAction(action);
     setActiveTab("map");
-  };
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+  }, []);
 
   return (
-    <div className="min-h-screen w-full bg-background text-foreground flex font-sans selection:bg-primary/20">
+    <div className="min-h-screen w-full bg-background text-foreground flex font-sans">
       {/* Left sidebar navigation */}
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleTabChange}
         isOpen={sidebarOpen}
         onToggle={() => handleToggleSidebar((open) => !open)}
+        incidentCount={currentIncidents.length}
       />
 
       {/* Main Command Center Content Area - Map renders full-bleed under translucent Copilot drawer */}
       <main
         style={{
-          transition: "margin-left 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+          transition: "margin-left 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         }}
         className={`flex-1 h-screen flex flex-col overflow-x-hidden ${
           sidebarOpen ? "ml-[220px]" : "ml-0"
@@ -133,54 +178,69 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
           isCopilotDragging={isCopilotDragging}
         />
 
-        {/* Viewport Content Switcher */}
-        {activeTab === "nepal" ? (
-          <div className="w-full flex-1 flex flex-col h-[calc(100vh-49px)]">
-            <NepalIncidentReplayView
-              currentSeconds={replaySeconds}
-              onSeek={setReplaySeconds}
-              onOpenRealTimeAnalysis={() => {
-                setCopilotDefaultMode("analysis");
-                setAiOpen(true);
-              }}
-              copilotWidth={copilotWidth}
-              aiOpen={aiOpen}
-              isCopilotDragging={isCopilotDragging}
-            />
-          </div>
-        ) : activeTab === "incidents" ? (
-          <div className="w-full flex-1 p-4 overflow-y-auto">
-            <IncidentMatrix
-              onSelectIncident={handleSelectIncidentFromMatrix}
-              initialIncidents={initialIncidents}
-            />
-          </div>
-        ) : activeTab === "media" ? (
-          <div className="w-full flex-1 p-4 overflow-y-auto">
-            <MediaFeed />
-          </div>
-        ) : (
-          <div className="w-full flex-1 flex flex-col h-[calc(100vh-49px)]">
-            <MapContainer
-              showIncidents={showIncidents}
-              crisisActive={crisisActive}
-              setCrisisActive={setCrisisActive}
-              onUseFeedContext={handleUseFeedContext}
-              selectedTime={selectedTime}
-              setSelectedTime={setSelectedTime}
-              selectedIncident={selectedIncident as any}
-              setSelectedIncident={setSelectedIncident as any}
-              setShowIncidents={setShowIncidents}
-              showHeatmap={showHeatmap}
-              setShowHeatmap={setShowHeatmap}
-              mapAction={mapAction}
-              onClearMapAction={() => setMapAction(null)}
-              copilotWidth={copilotWidth}
-              aiOpen={aiOpen}
-              isCopilotDragging={isCopilotDragging}
-            />
-          </div>
-        )}
+        {/* Viewport Content Switcher - All views preserved in DOM for instant 0ms tab switching */}
+        <div
+          className={`w-full flex-1 flex flex-col h-[calc(100vh-49px)] ${
+            activeTab === "nepal" ? "block" : "hidden"
+          }`}
+        >
+          <NepalIncidentReplayView
+            currentSeconds={replaySeconds}
+            onSeek={setReplaySeconds}
+            onOpenRealTimeAnalysis={() => {
+              setCopilotDefaultMode("analysis");
+              setAiOpen(true);
+            }}
+            copilotWidth={copilotWidth}
+            aiOpen={aiOpen}
+            isCopilotDragging={isCopilotDragging}
+          />
+        </div>
+
+        <div
+          className={`w-full flex-1 p-4 overflow-y-auto ${
+            activeTab === "incidents" ? "block" : "hidden"
+          }`}
+        >
+          <IncidentMatrix
+            onSelectIncident={handleSelectIncidentFromMatrix}
+            initialIncidents={currentIncidents}
+          />
+        </div>
+
+        <div
+          className={`w-full flex-1 p-4 overflow-y-auto ${
+            activeTab === "media" ? "block" : "hidden"
+          }`}
+        >
+          <MediaFeed />
+        </div>
+
+        <div
+          className={`w-full flex-1 flex flex-col h-[calc(100vh-49px)] ${
+            activeTab === "map" || !activeTab ? "block" : "hidden"
+          }`}
+        >
+          <MapContainer
+            incidents={filteredIncidents}
+            showIncidents={showIncidents}
+            crisisActive={crisisActive}
+            setCrisisActive={setCrisisActive}
+            onUseFeedContext={handleUseFeedContext}
+            selectedTime={selectedTime}
+            setSelectedTime={setSelectedTime}
+            selectedIncident={selectedIncident as any}
+            setSelectedIncident={setSelectedIncident as any}
+            setShowIncidents={setShowIncidents}
+            showHeatmap={showHeatmap}
+            setShowHeatmap={setShowHeatmap}
+            mapAction={mapAction}
+            onClearMapAction={() => setMapAction(null)}
+            copilotWidth={copilotWidth}
+            aiOpen={aiOpen}
+            isCopilotDragging={isCopilotDragging}
+          />
+        </div>
       </main>
 
       <AIAssistant
@@ -194,6 +254,7 @@ export function NeuralCityDashboard({ initialIncidents }: NeuralCityDashboardPro
         currentReplaySeconds={replaySeconds}
         onSeekReplay={setReplaySeconds}
         selectedIncident={selectedIncident}
+        incidents={filteredIncidents}
         defaultMode={copilotDefaultMode}
         width={copilotWidth}
         onWidthChange={setCopilotWidth}

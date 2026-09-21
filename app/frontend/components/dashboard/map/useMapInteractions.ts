@@ -43,7 +43,7 @@ export function useMapInteractions({
 
         if (incident) {
           setSelectedIncident(incident);
-          flyTo(incident.lat, incident.lng, 14.8);
+          flyTo(incident.lat, incident.lng, 16.5);
         }
 
         return;

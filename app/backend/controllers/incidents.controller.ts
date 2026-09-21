@@ -24,7 +24,11 @@ export class IncidentsController {
       };
 
       const validated = IncidentListResponseSchema.parse(responseData);
-      return NextResponse.json(validated);
+      return NextResponse.json(validated, {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to fetch incidents";
       return NextResponse.json(
@@ -93,7 +97,8 @@ export class IncidentsController {
   async updateIncident(request: Request, id: string): Promise<NextResponse> {
     try {
       const body = await request.json();
-      const updated = await incidentsService.updateIncident(id, body);
+      const validatedData = CreateIncidentPayloadSchema.partial().parse(body);
+      const updated = await incidentsService.updateIncident(id, validatedData);
       return NextResponse.json({
         status: "updated",
         message: `Successfully updated incident ${id}`,
@@ -103,7 +108,7 @@ export class IncidentsController {
       const message = error instanceof Error ? error.message : "Failed to update incident";
       return NextResponse.json(
         { status: "error", error: message },
-        { status: 500 }
+        { status: 400 }
       );
     }
   }
