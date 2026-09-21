@@ -15,6 +15,7 @@ export const backendRoutes = {
     vessels: () => telemetryController.getVessels(),
     flights: () => telemetryController.getFlights(),
     infrastructure: () => telemetryController.getInfrastructure(),
+    publicTransport: () => telemetryController.getPublicTransport(),
   },
   chat: {
     status: () => chatController.getStatus(),

@@ -58,6 +58,9 @@ import {
 
 import { AppleMapsMarker } from "./map/AppleMapsMarker";
 import { IncidentMarker } from "./map/IncidentMarker";
+import { TallinnBusMarker } from "./map/TallinnBusMarker";
+import { TallinnBusPopup } from "./map/TallinnBusPopup";
+import type { PublicTransportData } from "@/shared";
 import { InfrastructureClusterMarker } from "./map/InfrastructureClusterMarker";
 import { AreaInfrastructurePanel } from "./map/AreaInfrastructurePanel";
 import { AreaInfrastructureModal } from "./map/AreaInfrastructureModal";
@@ -1013,6 +1016,14 @@ export function MapContainer({
   const [selectedVehicle, setSelectedVehicle] =
     useState<Vehicle | null>(null);
 
+  /* Real-Time Tallinn Public Transport state */
+  const [publicTransportMode, setPublicTransportMode] = useState<"realtime" | "simulation">(
+    (process.env.NEXT_PUBLIC_PUBLIC_TRANSPORT_MODE as "realtime" | "simulation") || "realtime"
+  );
+  const [showPublicTransport, setShowPublicTransport] = useState<boolean>(true);
+  const [publicTransportVehicles, setPublicTransportVehicles] = useState<PublicTransportData[]>([]);
+  const [selectedPublicTransport, setSelectedPublicTransport] = useState<PublicTransportData | null>(null);
+
   /* Special Facilities & Emergency Services state */
   const [
     showEmergencyServices,
@@ -1284,6 +1295,69 @@ export function MapContainer({
       clearInterval(interval);
     };
   }, []);
+
+  /* ---------------------------------------------------------------------- */
+  /* Fetch Real-Time Tallinn Public Transport Telemetry                     */
+  /* ---------------------------------------------------------------------- */
+
+  useEffect(() => {
+    if (publicTransportMode !== "realtime") return;
+
+    let isMounted = true;
+
+    const fetchPublicTransport = async () => {
+      try {
+        const res = await fetch("/api/telemetry/public-transport");
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (isMounted && data.vehicles && Array.isArray(data.vehicles)) {
+          setPublicTransportVehicles(data.vehicles);
+        }
+      } catch (_err) {
+        // silent fallback
+      }
+    };
+
+    fetchPublicTransport();
+    const interval = setInterval(fetchPublicTransport, 10000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [publicTransportMode]);
+
+  /* ---------------------------------------------------------------------- */
+  /* Smooth Kinematic Movement for Public Transport Vehicles                */
+  /* ---------------------------------------------------------------------- */
+
+  useEffect(() => {
+    if (publicTransportMode !== "realtime") return;
+
+    const moveInterval = setInterval(() => {
+      setPublicTransportVehicles((prev) => {
+        if (!prev || prev.length === 0) return prev;
+        return prev.map((v) => {
+          if (!v.speed || v.speed <= 0) return v;
+          const speedMps = v.speed / 3.6;
+          const bearingRad = (v.bearing * Math.PI) / 180;
+          const distMeters = speedMps * 1.0;
+          const dLat = (distMeters * Math.cos(bearingRad)) / 111320;
+          const dLng = (distMeters * Math.sin(bearingRad)) / (111320 * Math.cos((v.lat * Math.PI) / 180));
+
+          return {
+            ...v,
+            lat: v.lat + dLat,
+            lon: v.lon + dLng,
+            lng: v.lon + dLng,
+          };
+        });
+      });
+    }, 1000);
+
+    return () => clearInterval(moveInterval);
+  }, [publicTransportMode]);
 
   /* ---------------------------------------------------------------------- */
   /* Ground traffic simulation ticks                                       */
@@ -2064,6 +2138,11 @@ export function MapContainer({
           setShowFlights={activeSetShowFlights}
           showVehicles={activeShowVehicles}
           setShowVehicles={activeSetShowVehicles}
+          showPublicTransport={showPublicTransport}
+          setShowPublicTransport={setShowPublicTransport}
+          publicTransportCount={publicTransportVehicles.length}
+          publicTransportMode={publicTransportMode}
+          setPublicTransportMode={setPublicTransportMode}
           showEmergencyServices={showEmergencyServices}
           setShowEmergencyServices={setShowEmergencyServices}
           showTransportHubs={showTransportHubs}
@@ -2462,6 +2541,53 @@ export function MapContainer({
                     onSelect={handleVesselSelect}
                   />
                 ))}
+
+              {/* ------------------------------------------------------ */}
+              {/* Real-time Tallinn Public Transport Vehicles            */}
+              {/* ------------------------------------------------------ */}
+              {showPublicTransport &&
+                publicTransportMode === "realtime" &&
+                publicTransportVehicles.map((v) => (
+                  <Marker
+                    key={`tallinn-bus-${v.id}`}
+                    latitude={v.lat}
+                    longitude={v.lon}
+                    anchor="center"
+                  >
+                    <TallinnBusMarker
+                      vehicle={v}
+                      zoom={viewState.zoom}
+                      isSelected={selectedPublicTransport?.id === v.id}
+                      onClick={(veh) => {
+                        setSelectedIncident(null);
+                        setSelectedFlight(null);
+                        setSelectedVessel(null);
+                        setSelectedVehicle(null);
+                        setSelectedEmergencyService(null);
+                        setSelectedTransportHub(null);
+                        setSelectedPublicTransport(veh);
+                      }}
+                    />
+                  </Marker>
+                ))}
+
+              {/* Tallinn Bus Popup */}
+              {showPublicTransport && selectedPublicTransport && (
+                <Popup
+                  latitude={selectedPublicTransport.lat}
+                  longitude={selectedPublicTransport.lon}
+                  anchor="top"
+                  offset={16}
+                  closeButton={false}
+                  closeOnClick={false}
+                  onClose={() => setSelectedPublicTransport(null)}
+                >
+                  <TallinnBusPopup
+                    vehicle={selectedPublicTransport}
+                    onClose={() => setSelectedPublicTransport(null)}
+                  />
+                </Popup>
+              )}
 
               {/* ------------------------------------------------------ */}
               {/* AIS Vessel Popup                                       */}

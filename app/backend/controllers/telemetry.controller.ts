@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { vesselsService } from "../services/vessels.service";
 import { flightsService } from "../services/flights.service";
 import { infrastructureService } from "../services/infrastructure.service";
+import { tallinnTransportAdapter } from "../services/tallinnTransport.service";
 import { startTelemetryWsServer } from "../ws/telemetryWsServer";
-import { VesselResponseSchema, FlightResponseSchema } from "@/shared";
+import { VesselResponseSchema, FlightResponseSchema, PublicTransportResponseSchema } from "@/shared";
 
 export class TelemetryController {
   /**
@@ -48,6 +49,21 @@ export class TelemetryController {
       return NextResponse.json({ status: "error", error: message }, { status: 500 });
     }
   }
+
+  /**
+   * GET /api/telemetry/public-transport
+   */
+  async getPublicTransport(): Promise<NextResponse> {
+    try {
+      const result = await tallinnTransportAdapter.fetchLiveVehicles();
+      const validated = PublicTransportResponseSchema.parse(result);
+      return NextResponse.json(validated);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to fetch public transport telemetry";
+      return NextResponse.json({ status: "error", error: message }, { status: 500 });
+    }
+  }
 }
 
 export const telemetryController = new TelemetryController();
+

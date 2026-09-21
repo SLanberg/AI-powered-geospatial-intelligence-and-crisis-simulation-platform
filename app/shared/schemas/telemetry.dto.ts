@@ -99,3 +99,36 @@ export const InfrastructureResponseSchema = z.object({
   data: z.array(InfrastructureSchema),
 });
 export type InfrastructureResponse = z.infer<typeof InfrastructureResponseSchema>;
+
+/**
+ * Real-Time Tallinn Public Transport DTO Schema
+ */
+export const PublicTransportTypeSchema = z.enum(["bus", "trolleybus", "tram", "night_bus"]);
+export type PublicTransportType = z.infer<typeof PublicTransportTypeSchema>;
+
+export const PublicTransportDataSchema = z.object({
+  id: z.string(),
+  type: PublicTransportTypeSchema,
+  route: z.string(),
+  tripId: z.string(),
+  lat: z.number(),
+  lon: z.number(),
+  lng: z.number(),
+  bearing: z.number(),
+  speed: z.number(),
+  timestamp: z.string(),
+  destination: z.string(),
+  lowFloor: z.boolean(),
+  source: z.literal("tallinn_transport"),
+});
+export type PublicTransportData = z.infer<typeof PublicTransportDataSchema>;
+
+export const PublicTransportResponseSchema = z.object({
+  status: z.string(),
+  count: z.number().nonnegative(),
+  mode: z.enum(["realtime", "simulation"]),
+  vehicles: z.array(PublicTransportDataSchema),
+  updatedAt: z.string(),
+});
+export type PublicTransportResponse = z.infer<typeof PublicTransportResponseSchema>;
+

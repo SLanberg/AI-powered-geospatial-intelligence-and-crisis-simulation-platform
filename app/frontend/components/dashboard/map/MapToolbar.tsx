@@ -17,6 +17,7 @@ import {
   Flame,
   Activity,
 } from "lucide-react";
+import { PublicTransportIcon } from "./PublicTransportIcon";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -46,6 +47,8 @@ export interface MapToolbarProps {
   setShowFlights?: (show: boolean | ((prev: boolean) => boolean)) => void;
   showVehicles?: boolean;
   setShowVehicles?: (show: boolean | ((prev: boolean) => boolean)) => void;
+  showPublicTransport?: boolean;
+  setShowPublicTransport?: (show: boolean | ((prev: boolean) => boolean)) => void;
   showEmergencyServices?: boolean;
   setShowEmergencyServices?: (show: boolean | ((prev: boolean) => boolean)) => void;
   showTransportHubs?: boolean;
@@ -54,6 +57,10 @@ export interface MapToolbarProps {
   setShowIncidents?: (show: boolean | ((prev: boolean) => boolean)) => void;
   showHeatmap?: boolean;
   setShowHeatmap?: (show: boolean | ((prev: boolean) => boolean)) => void;
+
+  /* Public Transport Mode switch */
+  publicTransportMode?: "realtime" | "simulation";
+  setPublicTransportMode?: (mode: "realtime" | "simulation") => void;
 
   /* Custom layers extension */
   customLayers?: LayerConfig[];
@@ -65,6 +72,7 @@ export interface MapToolbarProps {
   /* Counts */
   flightCount?: number;
   vehicleCount?: number;
+  publicTransportCount?: number;
   emergencyCount?: number;
   transportHubCount?: number;
   incidentCount?: number;
@@ -541,6 +549,8 @@ export const MapToolbar = React.memo(function MapToolbar({
   setShowFlights,
   showVehicles = true,
   setShowVehicles,
+  showPublicTransport = true,
+  setShowPublicTransport,
   showEmergencyServices = true,
   setShowEmergencyServices,
   showTransportHubs = true,
@@ -549,11 +559,14 @@ export const MapToolbar = React.memo(function MapToolbar({
   setShowIncidents,
   showHeatmap = false,
   setShowHeatmap,
+  publicTransportMode = "realtime",
+  setPublicTransportMode,
   customLayers = [],
   rightOffset = 0,
   isDragging = false,
   flightCount = 0,
   vehicleCount = 0,
+  publicTransportCount = 0,
   emergencyCount = 0,
   transportHubCount = 0,
   incidentCount = 0,
@@ -578,6 +591,18 @@ export const MapToolbar = React.memo(function MapToolbar({
 
   /* Build layer config */
   const layers: LayerConfig[] = [
+    ...(setShowPublicTransport
+      ? [
+          {
+            id: "public_transport",
+            label: publicTransportMode === "realtime" ? "Tallinn Transit (Live)" : "Tallinn Transit (Sim)",
+            icon: <PublicTransportIcon type="bus" size={15} color="#0065b3" />,
+            visible: showPublicTransport,
+            count: publicTransportCount,
+            onToggle: () => setShowPublicTransport((p: boolean) => !p),
+          },
+        ]
+      : []),
     ...(setShowFlights
       ? [
           {
