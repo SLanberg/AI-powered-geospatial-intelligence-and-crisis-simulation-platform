@@ -1,4 +1,4 @@
-# 🌆 Neural City (City Signal)
+# 🌆 Neural City
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.3.4-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.2.8-blue?style=flat-square&logo=react)](https://react.dev/)
@@ -7,7 +7,7 @@
 [![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![MapLibre](https://img.shields.io/badge/MapLibre_GL-6.7.0-blueviolet?style=flat-square)](https://maplibre.org/)
 
-**Neural City** (City Signal) is an advanced, real-time urban infrastructure monitoring, crisis management, and emergency response platform. It fuses live GIS spatial feeds, public transit tracking, telemetry data (vessels & flights), citizen incident reporting, and an AI-driven Copilot assistant into an interactive command dashboard.
+**Neural City** is an advanced, real-time urban infrastructure monitoring, crisis management, and emergency response platform. It fuses live GIS spatial feeds, public transit tracking, telemetry data (vessels & flights), citizen incident reporting, and an AI-driven Copilot assistant into an interactive command dashboard.
 
 ---
 
@@ -24,6 +24,16 @@
 - [API Routes & Services](#-api-routes--services)
 - [AI Assistant Subsystem](#-ai-assistant-subsystem)
 - [Testing & Quality Assurance](#-testing--quality-assurance)
+
+---
+
+## Screenshots
+
+<img width="2559" height="1305" alt="image" src="https://github.com/user-attachments/assets/283be786-852c-47c3-a629-b3f48e918319" />
+<img width="2559" height="1311" alt="image" src="https://github.com/user-attachments/assets/b392c4ba-6f8f-4994-ba6f-211a94410406" />
+<img width="2559" height="1304" alt="image" src="https://github.com/user-attachments/assets/f72d9770-bd84-4999-bcd5-e0327579c880" />
+<img width="2559" height="1305" alt="image" src="https://github.com/user-attachments/assets/baca1cc1-7704-45c8-8160-7f1f82a60500" />
+<img width="2559" height="1303" alt="image" src="https://github.com/user-attachments/assets/73a5ac46-4d13-4d67-98fc-a59254c0497c" />
 
 ---
 
